@@ -1,6 +1,7 @@
 """
-Google Colab-Safe Temporal XGBoost Training for SAPFLUXNET Data
-FIXED VERSION - Handles Dask categorical columns properly
+Google Colab-Safe Hybrid Temporal XGBoost Training for SAPFLUXNET Data
+FIXED VERSION - Uses original hybrid temporal split method
+Implements proper site-wise temporal cross-validation
 """
 
 import dask.dataframe as dd
@@ -136,9 +137,14 @@ def prepare_features_conservative(ddf):
     
     return ddf, feature_cols, target_col
 
-def create_temporal_split_safe(ddf, feature_cols, target_col, train_ratio=0.8):
-    """Create temporal split safely without memory issues"""
-    print(f"Creating temporal split (train_ratio={train_ratio})...")
+def hybrid_temporal_split_safe(ddf, feature_cols, target_col, train_ratio=0.8):
+    """
+    Original hybrid temporal split method - site-wise temporal cross-validation
+    Each site is split temporally (early data → train, late data → test)
+    Then all sites' train data combined, all sites' test data combined
+    """
+    print(f"Creating hybrid temporal split (train_ratio={train_ratio})...")
+    print("Using original hybrid method: site-wise temporal cross-validation")
     
     # Select only needed columns
     needed_cols = [target_col] + feature_cols
@@ -149,73 +155,69 @@ def create_temporal_split_safe(ddf, feature_cols, target_col, train_ratio=0.8):
     
     ddf_subset = ddf[needed_cols]
     
-    # Process each partition separately to avoid memory issues
-    def process_partition_for_temporal_split(partition_df, is_train=True):
-        """Process a single partition for temporal split"""
-        # Remove rows with missing target
-        partition_df = partition_df.dropna(subset=[target_col])
-        
-        if len(partition_df) == 0:
-            return pd.DataFrame(columns=partition_df.columns)
-        
-        result_list = []
-        
-        # Group by site if available
-        if 'site' in partition_df.columns:
-            sites = partition_df['site'].unique()
-        else:
-            sites = ['all']  # Single group if no site column
-        
-        for site in sites:
-            if 'site' in partition_df.columns:
-                site_data = partition_df[partition_df['site'] == site].copy()
-            else:
-                site_data = partition_df.copy()
-            
-            if len(site_data) == 0:
-                continue
-            
-            # Sort by timestamp if available
-            if 'TIMESTAMP' in site_data.columns:
-                site_data = site_data.sort_values('TIMESTAMP')
-            
-            # Split temporally
-            if len(site_data) > 1:
-                split_idx = max(1, int(len(site_data) * train_ratio))
-                if is_train:
-                    result_list.append(site_data.iloc[:split_idx])
-                else:
-                    if split_idx < len(site_data):
-                        result_list.append(site_data.iloc[split_idx:])
-            else:
-                # Single row goes to train
-                if is_train:
-                    result_list.append(site_data)
-        
-        if result_list:
-            return pd.concat(result_list, ignore_index=True)
-        else:
-            return pd.DataFrame(columns=partition_df.columns)
+    # Remove rows with missing target
+    ddf_clean = ddf_subset.dropna(subset=[target_col])
     
-    # Create train and test splits using map_partitions
-    print("Creating train split...")
-    train_ddf = ddf_subset.map_partitions(
-        lambda df: process_partition_for_temporal_split(df, is_train=True),
-        meta=pd.DataFrame(columns=needed_cols)
-    )
+    # Convert to pandas for easier site-wise manipulation
+    print("Converting to pandas for site-wise temporal splitting...")
+    df = ddf_clean.compute()
     
-    print("Creating test split...")
-    test_ddf = ddf_subset.map_partitions(
-        lambda df: process_partition_for_temporal_split(df, is_train=False),
-        meta=pd.DataFrame(columns=needed_cols)
-    )
+    train_data_list = []
+    test_data_list = []
     
-    print("Temporal split completed successfully")
+    # Sort data by timestamp first (global sort)
+    if 'TIMESTAMP' in df.columns:
+        df = df.sort_values('TIMESTAMP').reset_index(drop=True)
+        print("Data sorted by timestamp globally")
+    
+    # Split each site separately by time
+    sites = df['site'].unique()
+    print(f"Processing {len(sites)} sites for temporal splitting...")
+    
+    for i, site in enumerate(sites):
+        site_data = df[df['site'] == site].copy()
+        
+        # Sort by timestamp within site (ensure temporal order)
+        if 'TIMESTAMP' in site_data.columns:
+            site_data = site_data.sort_values('TIMESTAMP').reset_index(drop=True)
+        
+        # Calculate temporal split point (early 80% → train, late 20% → test)
+        split_idx = max(1, int(len(site_data) * train_ratio))
+        
+        # Split the data temporally
+        train_portion = site_data.iloc[:split_idx]  # Early data
+        test_portion = site_data.iloc[split_idx:]   # Late data
+        
+        train_data_list.append(train_portion)
+        test_data_list.append(test_portion)
+        
+        if (i + 1) % 10 == 0 or i == len(sites) - 1:
+            print(f"  Processed {i+1}/{len(sites)} sites")
+        
+        # Show details for first few sites
+        if i < 5:
+            print(f"  {site}: {len(train_portion):,} train (early), {len(test_portion):,} test (late)")
+    
+    # Combine all sites' train data and all sites' test data
+    print("Combining train and test data across all sites...")
+    train_data = pd.concat(train_data_list, ignore_index=True)
+    test_data = pd.concat(test_data_list, ignore_index=True)
+    
+    print(f"\nHybrid temporal split completed:")
+    print(f"  Train: {len(train_data):,} rows ({len(train_data)/len(df)*100:.1f}%) - Early time periods from all sites")
+    print(f"  Test:  {len(test_data):,} rows ({len(test_data)/len(df)*100:.1f}%) - Late time periods from all sites")
+    
+    # Convert back to Dask DataFrames with appropriate partitioning
+    print("Converting back to Dask DataFrames...")
+    train_ddf = dd.from_pandas(train_data, npartitions=max(1, len(train_data) // 10000))
+    test_ddf = dd.from_pandas(test_data, npartitions=max(1, len(test_data) // 10000))
+    
+    print("✅ Hybrid temporal split completed successfully")
     return train_ddf, test_ddf
 
-def train_temporal_xgboost(train_ddf, test_ddf, feature_cols, target_col, client):
-    """Train XGBoost with temporal data"""
-    print("Training XGBoost with temporal data...")
+def train_hybrid_temporal_xgboost(train_ddf, test_ddf, feature_cols, target_col, client):
+    """Train XGBoost model with hybrid temporal validation"""
+    print("Training XGBoost with hybrid temporal validation...")
     
     # Fill missing values with simple approach (no categorical issues now)
     print("Filling missing values...")
@@ -258,7 +260,7 @@ def train_temporal_xgboost(train_ddf, test_ddf, feature_cols, target_col, client
     print("DMatrix objects created")
     
     # Train model
-    print("Starting training...")
+    print("Starting hybrid temporal training...")
     output = xgb.dask.train(
         client,
         params,
@@ -270,7 +272,7 @@ def train_temporal_xgboost(train_ddf, test_ddf, feature_cols, target_col, client
     )
     
     model = output['booster']
-    print("Training completed!")
+    print("Hybrid temporal training completed!")
     
     # Make predictions
     print("Making predictions...")
@@ -294,9 +296,9 @@ def train_temporal_xgboost(train_ddf, test_ddf, feature_cols, target_col, client
         'test_r2': r2_score(y_test_actual, y_pred_test_actual)
     }
     
-    print(f"\nTemporal Model Performance:")
-    print(f"  Train R²: {metrics['train_r2']:.4f}")
-    print(f"  Test R²: {metrics['test_r2']:.4f}")
+    print(f"\nHybrid Temporal Model Performance:")
+    print(f"  Train R²: {metrics['train_r2']:.4f} (Early time periods)")
+    print(f"  Test R²: {metrics['test_r2']:.4f} (Late time periods)")
     print(f"  Train RMSE: {metrics['train_rmse']:.4f}")
     print(f"  Test RMSE: {metrics['test_rmse']:.4f}")
     print(f"  Train samples: {len(y_train_actual):,}")
@@ -322,41 +324,53 @@ def get_feature_importance(model, feature_cols):
         print(f"Could not extract feature importance: {e}")
         return pd.DataFrame({'feature': feature_cols, 'importance': [0.0] * len(feature_cols)})
 
-def save_temporal_results(model, metrics, feature_importance, feature_cols, output_dir='colab_temporal_models'):
-    """Save temporal model and results"""
+def save_hybrid_temporal_results(model, metrics, feature_importance, feature_cols, output_dir='colab_hybrid_temporal_models'):
+    """Save hybrid temporal model results"""
     os.makedirs(output_dir, exist_ok=True)
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
     
     # Save model
-    model_path = f"{output_dir}/sapfluxnet_temporal_fixed_{timestamp}.json"
+    model_path = f"{output_dir}/sapfluxnet_hybrid_temporal_{timestamp}.json"
     model.save_model(model_path)
     
     # Save feature importance
-    feature_importance_path = f"{output_dir}/sapfluxnet_temporal_importance_{timestamp}.csv"
+    feature_importance_path = f"{output_dir}/sapfluxnet_hybrid_temporal_importance_{timestamp}.csv"
     feature_importance.to_csv(feature_importance_path, index=False)
     
     # Save feature list
-    feature_path = f"{output_dir}/sapfluxnet_temporal_features_{timestamp}.txt"
+    feature_path = f"{output_dir}/sapfluxnet_hybrid_temporal_features_{timestamp}.txt"
     with open(feature_path, 'w') as f:
-        f.write("Features used in temporal training (FIXED VERSION):\n")
+        f.write("Features used in hybrid temporal training:\n")
+        f.write("Method: Site-wise temporal cross-validation\n")
+        f.write("Split: Early time periods (train) vs Late time periods (test)\n\n")
         for i, feature in enumerate(feature_cols):
             f.write(f"{i+1:3d}. {feature}\n")
     
     # Save metrics
-    metrics_path = f"{output_dir}/sapfluxnet_temporal_metrics_{timestamp}.txt"
+    metrics_path = f"{output_dir}/sapfluxnet_hybrid_temporal_metrics_{timestamp}.txt"
     with open(metrics_path, 'w') as f:
-        f.write("SAPFLUXNET Temporal Training Results (FIXED VERSION)\n")
-        f.write("=" * 50 + "\n")
+        f.write("SAPFLUXNET Hybrid Temporal Training Results\n")
+        f.write("=" * 45 + "\n")
         f.write(f"Training completed: {datetime.now()}\n")
-        f.write("Note: This model uses temporal splits for proper time series validation\n")
+        f.write("Method: Original hybrid temporal cross-validation\n")
+        f.write("Approach: Site-wise temporal split (early → train, late → test)\n")
         f.write("Fixed: Handles Dask categorical columns properly\n\n")
         
         f.write("Model Performance:\n")
         f.write("-" * 20 + "\n")
         for key, value in metrics.items():
             f.write(f"  {key}: {value:.4f}\n")
+        
+        f.write("\nValidation Method:\n")
+        f.write("-" * 18 + "\n")
+        f.write("- Each site split temporally (80% early data → train, 20% late data → test)\n")
+        f.write("- All sites' train data combined for training\n")
+        f.write("- All sites' test data combined for testing\n")
+        f.write("- Tests model's ability to predict future time periods\n")
+        f.write("- Prevents data leakage from future to past\n")
+        f.write("- Proper temporal cross-validation for time series data\n")
     
-    print(f"\nTemporal model results saved:")
+    print(f"\nHybrid temporal model results saved:")
     print(f"  Model: {model_path}")
     print(f"  Feature importance: {feature_importance_path}")
     print(f"  Features: {feature_path}")
@@ -365,12 +379,12 @@ def save_temporal_results(model, metrics, feature_importance, feature_cols, outp
     return model_path
 
 def main():
-    """Main temporal training pipeline for Google Colab"""
-    print("SAPFLUXNET Google Colab Temporal XGBoost Training (FIXED VERSION)")
-    print("=" * 70)
+    """Main hybrid temporal training pipeline for Google Colab"""
+    print("SAPFLUXNET Google Colab Hybrid Temporal XGBoost Training")
+    print("=" * 60)
     print(f"Started at: {datetime.now()}")
-    print("Note: This version fixes Dask categorical column issues")
-    print("Note: Uses proper temporal splits for time series validation")
+    print("Method: Original hybrid temporal cross-validation")
+    print("Approach: Site-wise temporal split for proper time series validation")
     
     # Check if we're in Google Colab
     try:
@@ -393,11 +407,17 @@ def main():
         # Step 2: Prepare features
         ddf_clean, feature_cols, target_col = prepare_features_conservative(ddf)
         
-        # Step 3: Create temporal split
-        train_ddf, test_ddf = create_temporal_split_safe(ddf_clean, feature_cols, target_col)
+        # Step 3: Create hybrid temporal split (original method)
+        print("\n" + "="*50)
+        print("CREATING HYBRID TEMPORAL SPLIT")
+        print("="*50)
+        train_ddf, test_ddf = hybrid_temporal_split_safe(ddf_clean, feature_cols, target_col)
         
-        # Step 4: Train temporal model
-        model, metrics = train_temporal_xgboost(
+        # Step 4: Train hybrid temporal model
+        print("\n" + "="*50)
+        print("TRAINING HYBRID TEMPORAL MODEL")
+        print("="*50)
+        model, metrics = train_hybrid_temporal_xgboost(
             train_ddf, test_ddf, feature_cols, target_col, client
         )
         
@@ -405,16 +425,17 @@ def main():
         feature_importance = get_feature_importance(model, feature_cols)
         
         # Step 6: Save results
-        model_path = save_temporal_results(model, metrics, feature_importance, feature_cols)
+        model_path = save_hybrid_temporal_results(model, metrics, feature_importance, feature_cols)
         
-        print(f"\n✅ Temporal training completed successfully!")
+        print(f"\n✅ Hybrid temporal training completed successfully!")
         print(f"Final Test R²: {metrics['test_r2']:.4f}")
         print(f"Model saved: {model_path}")
-        print(f"💡 This model uses proper temporal validation - test data is from later time periods")
+        print(f"💡 This model uses proper temporal validation - trained on early periods, tested on late periods")
         print(f"🔧 Fixed: Dask categorical columns handled properly")
+        print(f"📊 Method: Original hybrid temporal cross-validation")
         
     except Exception as e:
-        print(f"\n❌ Temporal training failed: {str(e)}")
+        print(f"\n❌ Hybrid temporal training failed: {str(e)}")
         import traceback
         traceback.print_exc()
         print("💡 Try reducing memory usage or check data format.")
