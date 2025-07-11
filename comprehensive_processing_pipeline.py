@@ -114,16 +114,16 @@ class MemoryEfficientSAPFLUXNETProcessor:
         'CAN_TUR_P39_POS', 'CAN_TUR_P74',
         'CHE_LOT_NOR',
         'DEU_HIN_OAK', 'DEU_HIN_TER', 'DEU_STE_2P3', 'DEU_STE_4P5',
-        'ESP_CAN', 'ESP_GUA_VAL', 'ESP_TIL_PIN',
-        'FIN_HYY_SME',
+        'ESP_CAN', 'ESP_GUA_VAL', 'ESP_TIL_PIN', 'ESP_TIL_OAK',
+        'FIN_HYY_SME', 'FIN_PET',
         'FRA_FON', 'FRA_HES_HE2_NON',
-        'GBR_GUI_ST2', 'GBR_GUI_ST3',
+        'GBR_GUI_ST2', 'GBR_GUI_ST3', 'GBR_DEV_CON', 'GBR_DEV_DRO',
         'GUF_GUY_ST2', 'GUF_NOU_PET',
-        'JPN_EBE_SUG',
+        'JPN_EBE_SUG', 'JPN_EBE_HYB',
         'KOR_TAE_TC1_LOW', 'KOR_TAE_TC2_MED', 'KOR_TAE_TC3_EXT',
         'MEX_VER_BSJ', 'MEX_VER_BSM',
         'PRT_LEZ_ARN',
-        'RUS_FYO',
+        'RUS_FYO', 'RUS_CHE_Y4',
         'SWE_NOR_ST1_AF1', 'SWE_NOR_ST1_AF2', 'SWE_NOR_ST1_BEF', 'SWE_NOR_ST2',
         'SWE_NOR_ST3', 'SWE_NOR_ST4_AFT', 'SWE_NOR_ST4_BEF', 'SWE_NOR_ST5_REF',
         'SWE_SKO_MIN', 'SWE_SKY_38Y', 'SWE_SKY_68Y',
@@ -132,6 +132,7 @@ class MemoryEfficientSAPFLUXNETProcessor:
         'USA_SIL_OAK_1PR', 'USA_SIL_OAK_2PR', 'USA_SIL_OAK_POS',
         'USA_SMI_SCB', 'USA_SMI_SER', 'USA_SYL_HL1', 'USA_SYL_HL2',
         'USA_UMB_CON', 'USA_UMB_GIR', 'USA_WIL_WC1', 'USA_WIL_WC2',
+        'USA_HIL_HF2',
         'UZB_YAN_DIS'
     }
     
@@ -687,6 +688,18 @@ class MemoryEfficientSAPFLUXNETProcessor:
         if data is None:
             return None
         
+        # Fix column naming issues
+        if 'TIMESTAMP_solar' in data.columns:
+            data = data.rename(columns={'TIMESTAMP_solar': 'solar_TIMESTAMP'})
+            print(f"    🔧 Renamed TIMESTAMP_solar to solar_TIMESTAMP")
+        
+        # Exclude problematic columns that cause inconsistencies
+        columns_to_exclude = ['pl_name', 'swc_deep', 'netrad', 'seasonal_leaf_area']
+        for col in columns_to_exclude:
+            if col in data.columns:
+                data = data.drop(columns=[col])
+                print(f"    🚫 Excluded problematic column: {col}")
+        
         original_rows = len(data)
         
         # Apply quality flag filtering if flags file exists and filtering is enabled
@@ -785,21 +798,22 @@ class MemoryEfficientSAPFLUXNETProcessor:
         
         features = df.copy()
         
+        # Note: All interaction features excluded - can be computed during training
         # VPD and radiation interaction
-        if 'vpd' in df.columns and 'ppfd_in' in df.columns:
-            features['vpd_ppfd_interaction'] = df['vpd'] * df['ppfd_in']
+        # if 'vpd' in df.columns and 'ppfd_in' in df.columns:
+        #     features['vpd_ppfd_interaction'] = df['vpd'] * df['ppfd_in']
         
         # Temperature and humidity ratio
-        if 'ta' in df.columns and 'vpd' in df.columns:
-            features['temp_humidity_ratio'] = df['ta'] / (df['vpd'] + 1e-6)
+        # if 'ta' in df.columns and 'vpd' in df.columns:
+        #     features['temp_humidity_ratio'] = df['ta'] / (df['vpd'] + 1e-6)
         
         # Water stress index
-        if 'swc_shallow' in df.columns and 'vpd' in df.columns:
-            features['water_stress_index'] = df['swc_shallow'] / (df['vpd'] + 1e-6)
+        # if 'swc_shallow' in df.columns and 'vpd' in df.columns:
+        #     features['water_stress_index'] = df['swc_shallow'] / (df['vpd'] + 1e-6)
         
         # Light efficiency
-        if 'ppfd_in' in df.columns and 'sw_in' in df.columns:
-            features['light_efficiency'] = df['ppfd_in'] / (df['sw_in'] + 1e-6)
+        # if 'ppfd_in' in df.columns and 'sw_in' in df.columns:
+        #     features['light_efficiency'] = df['ppfd_in'] / (df['sw_in'] + 1e-6)
         
         
         return features
@@ -898,10 +912,10 @@ class MemoryEfficientSAPFLUXNETProcessor:
                 features['site_code'] = site_data['si_code']
             if 'si_name' in site_data and pd.notna(site_data['si_name']):
                 features['site_name'] = site_data['si_name']
-            if 'si_paper' in site_data and pd.notna(site_data['si_paper']):
-                features['site_paper'] = site_data['si_paper']
-            if 'si_remarks' in site_data and pd.notna(site_data['si_remarks']):
-                features['site_remarks'] = site_data['si_remarks']
+            # Note: si_paper excluded - not predictive for modeling
+            # if 'si_paper' in site_data and pd.notna(site_data['si_paper']):
+            #     features['site_paper'] = site_data['si_paper']
+            # Note: si_remarks excluded due to inconsistency issues
             if 'is_inside_country' in site_data and pd.notna(site_data['is_inside_country']):
                 features['is_inside_country'] = site_data['is_inside_country']
         
@@ -934,20 +948,19 @@ class MemoryEfficientSAPFLUXNETProcessor:
                 features['soil_texture'] = stand_data['st_USDA_soil_texture']
             
             # Terrain and management
-            if 'st_aspect' in stand_data and pd.notna(stand_data['st_aspect']):
-                features['aspect'] = stand_data['st_aspect']
+            # Note: aspect excluded - redundant with terrain
+            # if 'st_aspect' in stand_data and pd.notna(stand_data['st_aspect']):
+            #     features['aspect'] = stand_data['st_aspect']
             if 'st_terrain' in stand_data and pd.notna(stand_data['st_terrain']):
                 features['terrain'] = stand_data['st_terrain']
             if 'st_growth_condition' in stand_data and pd.notna(stand_data['st_growth_condition']):
                 features['growth_condition'] = stand_data['st_growth_condition']
             
             # Additional stand metadata (using actual column names)
-            if 'st_name' in stand_data and pd.notna(stand_data['st_name']):
-                features['stand_name'] = stand_data['st_name']
-            if 'st_remarks' in stand_data and pd.notna(stand_data['st_remarks']):
-                features['stand_remarks'] = stand_data['st_remarks']
-            if 'st_soil_texture' in stand_data and pd.notna(stand_data['st_soil_texture']):
-                features['stand_soil_texture'] = stand_data['st_soil_texture']
+            # Note: st_name and st_remarks excluded due to inconsistency issues
+            # Note: stand_soil_texture excluded - redundant with individual texture percentages
+            # if 'st_soil_texture' in stand_data and pd.notna(stand_data['st_soil_texture']):
+            #     features['stand_soil_texture'] = stand_data['st_soil_texture']
         
         # Species-level features
         if 'species' in metadata:
@@ -960,8 +973,9 @@ class MemoryEfficientSAPFLUXNETProcessor:
                 features['leaf_habit'] = species_data['sp_leaf_habit']
             if 'sp_ntrees' in species_data and pd.notna(species_data['sp_ntrees']):
                 features['n_trees'] = species_data['sp_ntrees']
-            if 'sp_basal_area_perc' in species_data and pd.notna(species_data['sp_basal_area_perc']):
-                features['species_basal_area_perc'] = species_data['sp_basal_area_perc']
+            # Note: species_basal_area_perc excluded - redundant with basal_area
+            # if 'sp_basal_area_perc' in species_data and pd.notna(species_data['sp_basal_area_perc']):
+            #     features['species_basal_area_perc'] = species_data['sp_basal_area_perc']
         
         # Environmental metadata features
         if 'environmental' in metadata:
@@ -972,18 +986,15 @@ class MemoryEfficientSAPFLUXNETProcessor:
                 features['measurement_timestep'] = env_data['env_timestep']
             if 'env_time_zone' in env_data and pd.notna(env_data['env_time_zone']):
                 features['timezone'] = env_data['env_time_zone']
-            if 'env_time_daylight' in env_data and pd.notna(env_data['env_time_daylight']):
-                features['daylight_time'] = env_data['env_time_daylight']
+            # Note: daylight_time excluded - redundant with solar time features
+            # if 'env_time_daylight' in env_data and pd.notna(env_data['env_time_daylight']):
+            #     features['daylight_time'] = env_data['env_time_daylight']
             
             # Sensor depth information
-            if 'env_swc_shallow_depth' in env_data and pd.notna(env_data['env_swc_shallow_depth']):
-                features['swc_shallow_depth'] = env_data['env_swc_shallow_depth']
+            # Note: swc_shallow_depth excluded due to inconsistency issues (only 50% of sites have it)
             
             # Measurement context
-            if 'env_leafarea_seasonal' in env_data and pd.notna(env_data['env_leafarea_seasonal']):
-                features['seasonal_leaf_area'] = env_data['env_leafarea_seasonal']
-            if 'env_remarks' in env_data and pd.notna(env_data['env_remarks']):
-                features['env_remarks'] = env_data['env_remarks']
+            # Note: env_leafarea_seasonal and env_remarks excluded due to inconsistency issues
         
         # Plant metadata features (individual tree characteristics)
         if 'plants' in metadata and 'plant_id' in features.columns:
@@ -1009,10 +1020,11 @@ class MemoryEfficientSAPFLUXNETProcessor:
                         'pl_name': plant.get('pl_name')
                     }
             
-            # Add essential plant metadata features (excluding sensor details and treatment codes)
+            # Add essential plant metadata features (excluding sensor details, treatment codes, and problematic columns)
             essential_plant_cols = ['pl_age', 'pl_dbh', 'pl_height', 'pl_leaf_area', 
                                   'pl_bark_thick', 'pl_social', 'pl_species',
-                                  'pl_sapw_area', 'pl_sapw_depth', 'pl_name']
+                                  'pl_sapw_area', 'pl_sapw_depth']
+            # Note: pl_name excluded due to high cardinality and inconsistency issues
             
             for col_name in essential_plant_cols:
                 features[col_name] = features['plant_id'].map(
@@ -1035,7 +1047,7 @@ class MemoryEfficientSAPFLUXNETProcessor:
                 features['latitude'], 
                 bins=[-90, -23.5, 23.5, 90], 
                 labels=[0, 1, 2]
-            ).astype(int)
+            ).astype('float64')
             
             # Absolute latitude for continuous relationships
             features['latitude_abs'] = abs(features['latitude'])
@@ -1059,7 +1071,7 @@ class MemoryEfficientSAPFLUXNETProcessor:
                 'evergreen': 3,
                 'semi-deciduous': 4
             }
-            features['leaf_habit_code'] = features['leaf_habit'].map(leaf_habit_map)
+            features['leaf_habit_code'] = features['leaf_habit'].map(leaf_habit_map).astype('float64')
         
         # Biome encoding
         if 'biome' in features.columns:
@@ -1080,7 +1092,7 @@ class MemoryEfficientSAPFLUXNETProcessor:
                 'Mangroves': 14,
                 'Woodland/Shrubland': 15
             }
-            features['biome_code'] = features['biome'].map(biome_map)
+            features['biome_code'] = features['biome'].map(biome_map).astype('float64')
         
         # IGBP class encoding
         if 'igbp_class' in features.columns:
@@ -1102,7 +1114,7 @@ class MemoryEfficientSAPFLUXNETProcessor:
                 'SNO': 15, # Snow and Ice
                 'BSV': 16  # Barren or Sparsely Vegetated
             }
-            features['igbp_code'] = features['igbp_class'].map(igbp_map)
+            features['igbp_code'] = features['igbp_class'].map(igbp_map).astype('float64')
         
         # Tree size class based on DBH
         if 'pl_dbh' in features.columns:
@@ -1128,7 +1140,7 @@ class MemoryEfficientSAPFLUXNETProcessor:
                 'intermediate': 1,
                 'suppressed': 0
             }
-            features['social_status_code'] = features['pl_social'].map(social_map)
+            features['social_status_code'] = features['pl_social'].map(social_map).astype('float64')
         
         # Sapwood efficiency (sapwood area per unit leaf area)
         if 'pl_sapw_area' in features.columns and 'pl_leaf_area' in features.columns:
@@ -1262,9 +1274,9 @@ class MemoryEfficientSAPFLUXNETProcessor:
                 
                 # Determine if this is likely categorical or continuous
                 if unique_count <= 20:
-                    # Likely categorical - encode it
+                    # Likely categorical - encode it as numeric (not pandas categorical)
                     encoding_map = {val: idx for idx, val in enumerate(unique_values)}
-                    features[f'{col}_code'] = features[col].map(encoding_map)
+                    features[f'{col}_code'] = features[col].map(encoding_map).astype('float64')
                     features = features.drop(col, axis=1)
                 elif unique_count <= 100:
                     # Moderate cardinality - could be categorical or continuous
@@ -1275,14 +1287,14 @@ class MemoryEfficientSAPFLUXNETProcessor:
                         try:
                             features[col] = pd.to_numeric(features[col], errors='coerce')
                         except:
-                            # If conversion fails, encode as categorical
+                            # If conversion fails, encode as categorical (numeric dtype)
                             encoding_map = {val: idx for idx, val in enumerate(unique_values)}
-                            features[f'{col}_code'] = features[col].map(encoding_map)
+                            features[f'{col}_code'] = features[col].map(encoding_map).astype('float64')
                             features = features.drop(col, axis=1)
                     else:
-                        # Looks like categorical - encode it
+                        # Looks like categorical - encode it as numeric (not pandas categorical)
                         encoding_map = {val: idx for idx, val in enumerate(unique_values)}
-                        features[f'{col}_code'] = features[col].map(encoding_map)
+                        features[f'{col}_code'] = features[col].map(encoding_map).astype('float64')
                         features = features.drop(col, axis=1)
                 else:
                     # High cardinality - likely continuous data
@@ -1305,15 +1317,13 @@ class MemoryEfficientSAPFLUXNETProcessor:
         features = df.copy()
         
         # Water stress features
-        if 'vpd' in df.columns and 'swc_shallow' in df.columns:
-            # VPD is already the key water stress indicator
-            # Just create one combined index for convenience
-            features['water_stress_index'] = df['vpd'] / (df['swc_shallow'] + 1e-6)
+        # Note: water_stress_index excluded - VPD and swc_shallow are already available as individual features
         
         # Light features
-        if 'ppfd_in' in df.columns and 'sw_in' in df.columns:
-            # PPFD efficiency relative to total shortwave radiation
-            features['ppfd_efficiency'] = df['ppfd_in'] / (df['sw_in'] + 1e-6)
+        # Note: ppfd_efficiency excluded - can be computed during training as ppfd_in / sw_in
+        # if 'ppfd_in' in df.columns and 'sw_in' in df.columns:
+        #     # PPFD efficiency relative to total shortwave radiation
+        #     features['ppfd_efficiency'] = df['ppfd_in'] / (df['sw_in'] + 1e-6)
         
         # Temperature features
         if 'ta' in df.columns:
@@ -1321,50 +1331,53 @@ class MemoryEfficientSAPFLUXNETProcessor:
             features['temp_deviation'] = abs(df['ta'] - 25)
         
         # Physiological features
-        if 'vpd' in df.columns and 'ppfd_in' in df.columns:
-            # Stomatal conductance proxy (key physiological control)
-            features['stomatal_conductance_proxy'] = df['ppfd_in'] / (df['vpd'] + 1e-6)
+        # Note: stomatal_conductance_proxy excluded - can be computed during training as ppfd_in / vpd
+        # if 'vpd' in df.columns and 'ppfd_in' in df.columns:
+        #     # Stomatal conductance proxy (key physiological control)
+        #     features['stomatal_conductance_proxy'] = df['ppfd_in'] / (df['vpd'] + 1e-6)
             
         # Soil moisture features
-        if 'swc_shallow' in df.columns:
-            # Moisture availability index
-            features['moisture_availability'] = df['swc_shallow']
+        # Note: moisture_availability excluded - swc_shallow is already available as individual feature
         
         # Wind effects on transpiration
-        if 'ws' in df.columns:
-            # Wind stress (higher wind = more transpiration)
-            features['wind_stress'] = df['ws'] / (df['ws'].max() + 1e-6)
-            
-            # Wind × VPD interaction (wind enhances VPD effects)
-            if 'vpd' in df.columns:
-                features['wind_vpd_interaction'] = df['ws'] * df['vpd']
+        # Note: wind_stress and wind_vpd_interaction excluded - can be computed during training
+        # if 'ws' in df.columns:
+        #     # Wind stress (higher wind = more transpiration)
+        #     features['wind_stress'] = df['ws'] / (df['ws'].max() + 1e-6)
+        #     
+        #     # Wind × VPD interaction (wind enhances VPD effects)
+        #     if 'vpd' in df.columns:
+        #         features['wind_vpd_interaction'] = df['ws'] * df['vpd']
         
         # Precipitation effects
-        if 'precip' in df.columns:
-            # Recent precipitation (lagged)
-            features['recent_precip_1h'] = df['precip'].shift(1).fillna(0)
-            features['recent_precip_6h'] = df['precip'].rolling(6, min_periods=1).sum()
-            features['recent_precip_24h'] = df['precip'].rolling(24, min_periods=1).sum()
-            
-            # Precipitation intensity
-            features['precip_intensity'] = df['precip'] / (df['precip'].rolling(6, min_periods=1).sum() + 1e-6)
+        # Note: recent_precip and precip_intensity excluded - can be computed during training
+        # if 'precip' in df.columns:
+        #     # Recent precipitation (lagged)
+        #     features['recent_precip_1h'] = df['precip'].shift(1).fillna(0)
+        #     features['recent_precip_6h'] = df['precip'].rolling(6, min_periods=1).sum()
+        #     features['recent_precip_24h'] = df['precip'].rolling(24, min_periods=1).sum()
+        #     
+        #     # Precipitation intensity
+        #     features['precip_intensity'] = df['precip'] / (df['precip'].rolling(6, min_periods=1).sum() + 1e-6)
         
         # Diurnal cycle features removed for simplicity
         
         # Seasonal water use patterns removed for simplicity
         
         # Use existing data efficiently - avoid redundant calculations
-        if 'ext_rad' in df.columns:
-            # Extraterrestrial radiation is the perfect seasonal signal
-            # Use it directly instead of calculating seasonal features
-            
-            # Key interaction: VPD × PPFD × Solar potential (stomatal control)
-            if 'vpd' in df.columns and 'ppfd_in' in df.columns:
-                features['stomatal_control_index'] = df['vpd'] * df['ppfd_in'] * df['ext_rad']
-            
-            # Light efficiency relative to solar potential
-            if 'ppfd_in' in df.columns:
-                features['light_efficiency'] = df['ppfd_in'] / (df['ext_rad'] + 1e-6)
+        # Note: netrad and swc_deep excluded due to inconsistency issues across sites
+        # Note: stomatal_control_index and light_efficiency excluded - can be computed during training
+        # if 'ext_rad' in df.columns:
+        #     # Extraterrestrial radiation is the perfect seasonal signal
+        #     # Use it directly instead of calculating seasonal features
+        #     
+        #     # Key interaction: VPD × PPFD × Solar potential (stomatal control)
+        #     if 'vpd' in df.columns and 'ppfd_in' in df.columns:
+        #         features['stomatal_control_index'] = df['vpd'] * df['ppfd_in'] * df['ext_rad']
+        #     
+        #     # Light efficiency relative to solar potential
+        #     if 'ppfd_in' in df.columns:
+        #         features['light_efficiency'] = df['ppfd_in'] / (df['ext_rad'] + 1e-6)
         
         # Tree-specific features (if available)
         if 'pl_dbh' in df.columns:
@@ -1943,6 +1956,27 @@ class MemoryEfficientSAPFLUXNETProcessor:
     def ensure_consistent_schema(self, df):
         """Ensure consistent schema across all sites by adding missing columns with NA values"""
         
+        # First, remove any problematic columns that might have been missed
+        problematic_columns = [
+            'pl_name', 'swc_deep', 'netrad', 'seasonal_leaf_area', 'seasonal_leaf_area_code',
+            'stand_name_code', 'stand_remarks_code', 'site_remarks_code', 'env_remarks_code',
+            'water_stress_index', 'moisture_availability', 'swc_shallow_depth',
+            # Redundant features (can be computed during training)
+            'wind_stress', 'wind_vpd_interaction', 'soil_texture_code', 'stand_soil_texture_code',
+            'light_efficiency', 'ppfd_efficiency', 'stomatal_conductance_proxy', 'stomatal_control_index',
+            'vpd_ppfd_interaction', 'precip_intensity', 'recent_precip_1h', 'recent_precip_6h', 
+            'recent_precip_24h', 'aspect_code', 'species_basal_area_perc', 'site_paper_code',
+            'terrain_code', 'temp_humidity_ratio', 'daylight_time'
+        ]
+        
+        # Ensure inconsistent columns are properly handled for XGBoost
+        # These columns may be missing in some files but should be preserved as NaN
+        xgboost_missing_columns = ['leaf_habit_code', 'soil_depth']
+        for col in problematic_columns:
+            if col in df.columns:
+                df = df.drop(columns=[col])
+                print(f"    🚫 Removed problematic column from final schema: {col}")
+        
         # Define the complete expected schema
         expected_columns = {
             # Core environmental variables (should exist in all sites)
@@ -1971,6 +2005,21 @@ class MemoryEfficientSAPFLUXNETProcessor:
         for col, default_value in expected_columns.items():
             if col not in df.columns:
                 df[col] = default_value
+        
+        # Add XGBoost-inconsistent columns if missing
+        for col in xgboost_missing_columns:
+            if col not in df.columns:
+                df[col] = np.nan
+                print(f"    🔧 Added missing XGBoost column: {col}")
+            else:
+                # Ensure any invalid values are converted to NaN for XGBoost
+                if df[col].dtype == 'object':
+                    # For categorical columns, replace empty strings or invalid values with NaN
+                    df[col] = df[col].replace(['', 'nan', 'None', 'NULL'], np.nan)
+                else:
+                    # For numeric columns, ensure inf/-inf are converted to NaN
+                    df[col] = df[col].replace([np.inf, -np.inf], np.nan)
+                print(f"    🔧 Ensured XGBoost compatibility for: {col}")
         
         return df
 
