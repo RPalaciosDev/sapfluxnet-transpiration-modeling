@@ -138,30 +138,10 @@ def train_minimal_xgboost(train_ddf, test_ddf, feature_cols, target_col, client)
     """Train XGBoost with minimal memory usage"""
     print("Training XGBoost with minimal memory usage...")
     
-    # Handle categorical columns and missing values properly
-    def fix_categorical_and_fillna(df):
-        """Fix categorical columns and fill missing values"""
-        df_fixed = df.copy()
-        
-        for col in df_fixed.columns:
-            if df_fixed[col].dtype.name == 'category':
-                # Convert categorical to numeric, preserving the encoding
-                df_fixed[col] = df_fixed[col].cat.codes
-                # Replace -1 (missing category) with NaN, then fill with 0
-                df_fixed[col] = df_fixed[col].replace(-1, np.nan)
-        
-        # Now fill all missing values with 0
-        df_fixed = df_fixed.fillna(0)
-        return df_fixed
-    
-    # Apply the fix to both train and test dataframes
-    print("Converting categorical columns and filling missing values...")
-    
-    # Get a sample to determine the output meta
-    sample_fixed = fix_categorical_and_fillna(train_ddf.get_partition(0).compute())
-    
-    train_ddf = train_ddf.map_partitions(fix_categorical_and_fillna, meta=sample_fixed)
-    test_ddf = test_ddf.map_partitions(fix_categorical_and_fillna, meta=sample_fixed)
+    # Fill missing values (now that pipeline creates numeric columns)
+    print("Filling missing values...")
+    train_ddf = train_ddf.fillna(0)
+    test_ddf = test_ddf.fillna(0)
     
     # Convert to Dask arrays
     X_train = train_ddf[feature_cols].to_dask_array(lengths=True)
