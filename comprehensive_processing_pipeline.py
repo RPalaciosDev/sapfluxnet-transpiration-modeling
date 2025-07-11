@@ -1047,7 +1047,7 @@ class MemoryEfficientSAPFLUXNETProcessor:
                 features['latitude'], 
                 bins=[-90, -23.5, 23.5, 90], 
                 labels=[0, 1, 2]
-            ).astype(int)
+            ).astype('float64')
             
             # Absolute latitude for continuous relationships
             features['latitude_abs'] = abs(features['latitude'])
@@ -1071,7 +1071,7 @@ class MemoryEfficientSAPFLUXNETProcessor:
                 'evergreen': 3,
                 'semi-deciduous': 4
             }
-            features['leaf_habit_code'] = features['leaf_habit'].map(leaf_habit_map)
+            features['leaf_habit_code'] = features['leaf_habit'].map(leaf_habit_map).astype('float64')
         
         # Biome encoding
         if 'biome' in features.columns:
@@ -1092,7 +1092,7 @@ class MemoryEfficientSAPFLUXNETProcessor:
                 'Mangroves': 14,
                 'Woodland/Shrubland': 15
             }
-            features['biome_code'] = features['biome'].map(biome_map)
+            features['biome_code'] = features['biome'].map(biome_map).astype('float64')
         
         # IGBP class encoding
         if 'igbp_class' in features.columns:
@@ -1114,7 +1114,7 @@ class MemoryEfficientSAPFLUXNETProcessor:
                 'SNO': 15, # Snow and Ice
                 'BSV': 16  # Barren or Sparsely Vegetated
             }
-            features['igbp_code'] = features['igbp_class'].map(igbp_map)
+            features['igbp_code'] = features['igbp_class'].map(igbp_map).astype('float64')
         
         # Tree size class based on DBH
         if 'pl_dbh' in features.columns:
@@ -1140,7 +1140,7 @@ class MemoryEfficientSAPFLUXNETProcessor:
                 'intermediate': 1,
                 'suppressed': 0
             }
-            features['social_status_code'] = features['pl_social'].map(social_map)
+            features['social_status_code'] = features['pl_social'].map(social_map).astype('float64')
         
         # Sapwood efficiency (sapwood area per unit leaf area)
         if 'pl_sapw_area' in features.columns and 'pl_leaf_area' in features.columns:
@@ -1274,9 +1274,9 @@ class MemoryEfficientSAPFLUXNETProcessor:
                 
                 # Determine if this is likely categorical or continuous
                 if unique_count <= 20:
-                    # Likely categorical - encode it
+                    # Likely categorical - encode it as numeric (not pandas categorical)
                     encoding_map = {val: idx for idx, val in enumerate(unique_values)}
-                    features[f'{col}_code'] = features[col].map(encoding_map)
+                    features[f'{col}_code'] = features[col].map(encoding_map).astype('float64')
                     features = features.drop(col, axis=1)
                 elif unique_count <= 100:
                     # Moderate cardinality - could be categorical or continuous
@@ -1287,14 +1287,14 @@ class MemoryEfficientSAPFLUXNETProcessor:
                         try:
                             features[col] = pd.to_numeric(features[col], errors='coerce')
                         except:
-                            # If conversion fails, encode as categorical
+                            # If conversion fails, encode as categorical (numeric dtype)
                             encoding_map = {val: idx for idx, val in enumerate(unique_values)}
-                            features[f'{col}_code'] = features[col].map(encoding_map)
+                            features[f'{col}_code'] = features[col].map(encoding_map).astype('float64')
                             features = features.drop(col, axis=1)
                     else:
-                        # Looks like categorical - encode it
+                        # Looks like categorical - encode it as numeric (not pandas categorical)
                         encoding_map = {val: idx for idx, val in enumerate(unique_values)}
-                        features[f'{col}_code'] = features[col].map(encoding_map)
+                        features[f'{col}_code'] = features[col].map(encoding_map).astype('float64')
                         features = features.drop(col, axis=1)
                 else:
                     # High cardinality - likely continuous data

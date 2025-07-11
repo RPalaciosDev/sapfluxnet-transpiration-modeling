@@ -1,6 +1,6 @@
 """
 Google Colab-Safe Temporal XGBoost Training for SAPFLUXNET Data
-Handles temporal splits properly while avoiding memory traps.
+FIXED VERSION - Handles Dask categorical columns properly
 """
 
 import dask.dataframe as dd
@@ -43,8 +43,31 @@ def setup_conservative_dask_client():
     print(f"Dask client created successfully")
     return client
 
+def fix_dask_categorical_columns(ddf):
+    """Fix Dask categorical columns by converting them to numeric"""
+    print("Fixing Dask categorical columns...")
+    
+    # Identify categorical columns that should be numeric
+    categorical_cols = [col for col in ddf.columns if ddf[col].dtype.name == 'category']
+    
+    if categorical_cols:
+        print(f"Found {len(categorical_cols)} categorical columns to fix:")
+        for col in categorical_cols:
+            print(f"  - {col}")
+        
+        # Convert categorical columns to numeric
+        for col in categorical_cols:
+            print(f"Converting {col} to numeric...")
+            ddf[col] = ddf[col].astype('float64')
+        
+        print("✅ All categorical columns converted to numeric")
+    else:
+        print("✅ No categorical columns found")
+    
+    return ddf
+
 def load_data_conservative(data_dir):
-    """Load data with conservative memory usage"""
+    """Load data with conservative memory usage and fix categorical columns"""
     print(f"Loading data from {data_dir} with conservative memory usage...")
     
     # Use small chunks
@@ -56,6 +79,9 @@ def load_data_conservative(data_dir):
             blocksize=f"{chunk_size}MB"
         )
         print(f"Data loaded successfully with {ddf.npartitions} partitions")
+        
+        # Fix categorical columns immediately after loading
+        ddf = fix_dask_categorical_columns(ddf)
         
         # Get sample to understand structure
         sample = ddf.get_partition(0).compute()
@@ -73,6 +99,10 @@ def load_data_conservative(data_dir):
             blocksize=f"{chunk_size}MB"
         )
         print(f"CSV data loaded with {ddf.npartitions} partitions")
+        
+        # Fix categorical columns for CSV too
+        ddf = fix_dask_categorical_columns(ddf)
+        
         return ddf
 
 def prepare_features_conservative(ddf):
@@ -105,31 +135,6 @@ def prepare_features_conservative(ddf):
     print(f"First 10 features: {feature_cols[:10]}")
     
     return ddf, feature_cols, target_col
-
-def safe_fillna_partition(partition_df, fill_value=0):
-    """Safely fill NaN values in a partition, handling categorical columns"""
-    result_df = partition_df.copy()
-    
-    for col in result_df.columns:
-        if result_df[col].dtype.name == 'category':
-            # For categorical columns, convert to numeric first
-            print(f"Converting categorical column to numeric: {col}")
-            if hasattr(result_df[col], 'cat'):
-                # Convert categorical to numeric codes
-                result_df[col] = result_df[col].cat.codes.astype('float64')
-            else:
-                # Fallback: convert to string then numeric
-                result_df[col] = pd.to_numeric(result_df[col], errors='coerce')
-        
-        # Now safely fill NaN values
-        if result_df[col].dtype in ['object']:
-            # For object columns, fill with string
-            result_df[col] = result_df[col].fillna(str(fill_value))
-        else:
-            # For numeric columns, fill with numeric value
-            result_df[col] = result_df[col].fillna(fill_value)
-    
-    return result_df
 
 def create_temporal_split_safe(ddf, feature_cols, target_col, train_ratio=0.8):
     """Create temporal split safely without memory issues"""
@@ -212,50 +217,21 @@ def train_temporal_xgboost(train_ddf, test_ddf, feature_cols, target_col, client
     """Train XGBoost with temporal data"""
     print("Training XGBoost with temporal data...")
     
-    # Handle categorical columns and fill missing values safely
-    print("Handling categorical columns and filling missing values...")
+    # Fill missing values with simple approach (no categorical issues now)
+    print("Filling missing values...")
+    train_ddf = train_ddf.fillna(0)
+    test_ddf = test_ddf.fillna(0)
     
-    # Apply safe fillna to both train and test
-    train_ddf = train_ddf.map_partitions(
-        safe_fillna_partition,
-        meta=train_ddf._meta
-    )
+    print("Missing values filled successfully")
     
-    test_ddf = test_ddf.map_partitions(
-        safe_fillna_partition,
-        meta=test_ddf._meta
-    )
-    
-    print("Missing values handled successfully")
-    
-    # Convert to Dask arrays with error handling
+    # Convert to Dask arrays
     print("Converting to Dask arrays...")
-    try:
-        X_train = train_ddf[feature_cols].to_dask_array(lengths=True)
-        y_train = train_ddf[target_col].to_dask_array(lengths=True)
-        X_test = test_ddf[feature_cols].to_dask_array(lengths=True)
-        y_test = test_ddf[target_col].to_dask_array(lengths=True)
-        
-        print("Data converted to Dask arrays successfully")
-        
-    except Exception as e:
-        print(f"Error converting to Dask arrays: {e}")
-        print("Trying alternative approach...")
-        
-        # Alternative: compute small chunks at a time
-        # This is slower but more memory-safe
-        train_pd = train_ddf.compute()
-        test_pd = test_ddf.compute()
-        
-        print(f"Converted to pandas: train={len(train_pd)}, test={len(test_pd)}")
-        
-        # Convert to Dask arrays from pandas
-        X_train = da.from_array(train_pd[feature_cols].values, chunks=(1000, len(feature_cols)))
-        y_train = da.from_array(train_pd[target_col].values, chunks=1000)
-        X_test = da.from_array(test_pd[feature_cols].values, chunks=(1000, len(feature_cols)))
-        y_test = da.from_array(test_pd[target_col].values, chunks=1000)
-        
-        print("Alternative conversion successful")
+    X_train = train_ddf[feature_cols].to_dask_array(lengths=True)
+    y_train = train_ddf[target_col].to_dask_array(lengths=True)
+    X_test = test_ddf[feature_cols].to_dask_array(lengths=True)
+    y_test = test_ddf[target_col].to_dask_array(lengths=True)
+    
+    print("Data converted to Dask arrays successfully")
     
     # Conservative XGBoost parameters
     params = {
@@ -352,7 +328,7 @@ def save_temporal_results(model, metrics, feature_importance, feature_cols, outp
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
     
     # Save model
-    model_path = f"{output_dir}/sapfluxnet_temporal_{timestamp}.json"
+    model_path = f"{output_dir}/sapfluxnet_temporal_fixed_{timestamp}.json"
     model.save_model(model_path)
     
     # Save feature importance
@@ -362,17 +338,18 @@ def save_temporal_results(model, metrics, feature_importance, feature_cols, outp
     # Save feature list
     feature_path = f"{output_dir}/sapfluxnet_temporal_features_{timestamp}.txt"
     with open(feature_path, 'w') as f:
-        f.write("Features used in temporal training:\n")
+        f.write("Features used in temporal training (FIXED VERSION):\n")
         for i, feature in enumerate(feature_cols):
             f.write(f"{i+1:3d}. {feature}\n")
     
     # Save metrics
     metrics_path = f"{output_dir}/sapfluxnet_temporal_metrics_{timestamp}.txt"
     with open(metrics_path, 'w') as f:
-        f.write("SAPFLUXNET Temporal Training Results\n")
-        f.write("=" * 40 + "\n")
+        f.write("SAPFLUXNET Temporal Training Results (FIXED VERSION)\n")
+        f.write("=" * 50 + "\n")
         f.write(f"Training completed: {datetime.now()}\n")
-        f.write("Note: This model uses temporal splits for proper time series validation\n\n")
+        f.write("Note: This model uses temporal splits for proper time series validation\n")
+        f.write("Fixed: Handles Dask categorical columns properly\n\n")
         
         f.write("Model Performance:\n")
         f.write("-" * 20 + "\n")
@@ -389,10 +366,11 @@ def save_temporal_results(model, metrics, feature_importance, feature_cols, outp
 
 def main():
     """Main temporal training pipeline for Google Colab"""
-    print("SAPFLUXNET Google Colab Temporal XGBoost Training")
-    print("=" * 55)
+    print("SAPFLUXNET Google Colab Temporal XGBoost Training (FIXED VERSION)")
+    print("=" * 70)
     print(f"Started at: {datetime.now()}")
-    print("Note: This version uses proper temporal splits for time series validation")
+    print("Note: This version fixes Dask categorical column issues")
+    print("Note: Uses proper temporal splits for time series validation")
     
     # Check if we're in Google Colab
     try:
@@ -409,7 +387,7 @@ def main():
     client = setup_conservative_dask_client()
     
     try:
-        # Step 1: Load data
+        # Step 1: Load data (with categorical fix)
         ddf = load_data_conservative(data_dir)
         
         # Step 2: Prepare features
@@ -433,6 +411,7 @@ def main():
         print(f"Final Test R²: {metrics['test_r2']:.4f}")
         print(f"Model saved: {model_path}")
         print(f"💡 This model uses proper temporal validation - test data is from later time periods")
+        print(f"🔧 Fixed: Dask categorical columns handled properly")
         
     except Exception as e:
         print(f"\n❌ Temporal training failed: {str(e)}")
