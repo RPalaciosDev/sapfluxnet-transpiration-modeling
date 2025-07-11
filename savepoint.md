@@ -1,6 +1,7 @@
+import dask.dataframe as dd
+import xgboost as xgb
 import pandas as pd
 import numpy as np
-import xgboost as xgb
 from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
 import matplotlib.pyplot as plt
 import os
@@ -9,84 +10,64 @@ from datetime import datetime
 import warnings
 warnings.filterwarnings('ignore')
 
-def load_data(data_dir='test_parquet_export'):
-    """Load all processed site data"""
-    print("Loading processed site data...")
+def load_data_dask(data_dir='comprehensive_processed'):
+    """Load all processed site data using Dask"""
+    print("Loading processed site data with Dask...")
     
-    all_data = []
-    sites_loaded = 0
+    # Use Dask to read all parquet files at once
+    ddf = dd.read_parquet(f"{data_dir}/*_comprehensive.parquet")
     
-    # Get all parquet files
-    parquet_files = [f for f in os.listdir(data_dir) if f.endswith('_comprehensive.parquet')]
+    print(f"Dask DataFrame created with {ddf.npartitions} partitions")
+    print(f"Columns: {list(ddf.columns)}")
     
-    for file in parquet_files:
-        # Extract site name
-        site = file.replace('_comprehensive.parquet', '')
-        file_path = os.path.join(data_dir, file)
-        
-        try:
-            site_data = pd.read_parquet(file_path)
-            
-            if len(site_data) > 0:
-                all_data.append(site_data)
-                sites_loaded += 1
-                print(f"  {site}: {len(site_data):,} rows")
-        except Exception as e:
-            print(f"  {site}: Error loading {file} - {str(e)}")
+    # Get basic info about the dataset
+    total_rows = len(ddf)
+    print(f"Total rows: {total_rows:,}")
     
-    if not all_data:
-        raise ValueError("No data loaded!")
-    
-    # Combine all data
-    combined_data = pd.concat(all_data, ignore_index=True)
-    print(f"\nCombined dataset: {len(combined_data):,} rows, {len(combined_data.columns)} columns")
-    print(f"Sites loaded: {sites_loaded}")
-    
-    return combined_data
+    return ddf
 
-def prepare_features(data):
-    """Prepare features and target variable"""
-    print("\nPreparing features and target...")
+def prepare_features_dask(ddf):
+    """Prepare features and target variable using Dask operations"""
+    print("\nPreparing features and target with Dask...")
     
     # Remove non-feature columns
     exclude_cols = ['TIMESTAMP', 'solar_TIMESTAMP', 'site', 'plant_id']
     
     # Find target variable
-    if 'sap_flow' not in data.columns:
+    if 'sap_flow' not in ddf.columns:
         raise ValueError("Target variable 'sap_flow' not found!")
     
-    # Prepare features (only numeric columns)
-    feature_cols = []
-    for col in data.columns:
-        if col not in exclude_cols + ['sap_flow']:
-            if pd.api.types.is_numeric_dtype(data[col]):
-                feature_cols.append(col)
-            else:
-                print(f"  Dropping non-numeric column: {col}")
+    # Get numeric columns for features
+    numeric_cols = ddf.select_dtypes(include=[np.number]).columns.tolist()
+    feature_cols = [col for col in numeric_cols if col not in exclude_cols + ['sap_flow']]
     
     print(f"Target variable: sap_flow")
     print(f"Features: {len(feature_cols)} numeric features")
     
     # Remove rows with missing target
-    data_clean = data.dropna(subset=['sap_flow'])
-    print(f"Cleaned dataset: {len(data_clean):,} rows")
+    ddf_clean = ddf.dropna(subset=['sap_flow'])
+    print(f"Cleaned dataset: {len(ddf_clean):,} rows")
     
-    return data_clean, feature_cols
+    return ddf_clean, feature_cols
 
-def hybrid_temporal_split(data, feature_cols, train_ratio=0.8):
-    """Hybrid site + temporal split: 80% early data from each site -> train, 20% later data -> test"""
+def hybrid_temporal_split_dask(ddf, feature_cols, train_ratio=0.8):
+    """Hybrid site + temporal split using simpler approach"""
     print(f"\nCreating hybrid temporal split (train_ratio={train_ratio})...")
+    
+    # Convert to pandas for easier manipulation
+    print("Converting to pandas for splitting...")
+    df = ddf.compute()
     
     train_data_list = []
     test_data_list = []
     
     # Sort data by timestamp first
-    if 'TIMESTAMP' in data.columns:
-        data = data.sort_values('TIMESTAMP').reset_index(drop=True)
+    if 'TIMESTAMP' in df.columns:
+        df = df.sort_values('TIMESTAMP').reset_index(drop=True)
     
     # Split each site separately
-    for site in data['site'].unique():
-        site_data = data[data['site'] == site].copy()
+    for site in df['site'].unique():
+        site_data = df[df['site'] == site].copy()
         
         # Sort by timestamp within site
         if 'TIMESTAMP' in site_data.columns:
@@ -106,20 +87,24 @@ def hybrid_temporal_split(data, feature_cols, train_ratio=0.8):
     test_data = pd.concat(test_data_list, ignore_index=True)
     
     print(f"\nFinal split:")
-    print(f"  Train: {len(train_data):,} rows ({len(train_data)/len(data)*100:.1f}%)")
-    print(f"  Test:  {len(test_data):,} rows ({len(test_data)/len(data)*100:.1f}%)")
+    print(f"  Train: {len(train_data):,} rows ({len(train_data)/len(df)*100:.1f}%)")
+    print(f"  Test:  {len(test_data):,} rows ({len(test_data)/len(df)*100:.1f}%)")
     
-    return train_data, test_data
+    # Convert back to Dask DataFrames
+    train_ddf = dd.from_pandas(train_data, npartitions=4)
+    test_ddf = dd.from_pandas(test_data, npartitions=4)
+    
+    return train_ddf, test_ddf
 
-def train_xgboost(train_data, test_data, feature_cols):
-    """Train XGBoost model"""
-    print("\nTraining XGBoost model...")
+def train_dask_xgboost(train_ddf, test_ddf, feature_cols):
+    """Train XGBoost model using modern xgboost.dask"""
+    print("\nTraining XGBoost model with Dask...")
     
-    # Prepare data
-    X_train = train_data[feature_cols]
-    y_train = train_data['sap_flow']
-    X_test = test_data[feature_cols]
-    y_test = test_data['sap_flow']
+    # Prepare data (keep as Dask DataFrames)
+    X_train = train_ddf[feature_cols]
+    y_train = train_ddf['sap_flow']
+    X_test = test_ddf[feature_cols]
+    y_test = test_ddf['sap_flow']
     
     # XGBoost parameters
     params = {
@@ -131,35 +116,37 @@ def train_xgboost(train_data, test_data, feature_cols):
         'subsample': 0.8,
         'colsample_bytree': 0.8,
         'random_state': 42,
-        'n_jobs': -1
+        'tree_method': 'hist'  # Better for distributed training
     }
     
     print(f"XGBoost parameters: {params}")
+    print("Starting distributed training...")
     
-    # Train model
-    model = xgb.XGBRegressor(**params)
+    # Train model with modern xgboost.dask
+    model = xgb.dask.DaskXGBRegressor(**params)
     
-    # Early stopping
-    eval_set = [(X_train, y_train), (X_test, y_test)]
-    model.fit(
-        X_train, y_train,
-        eval_set=eval_set,
-        early_stopping_rounds=50,
-        verbose=0
-    )
+    # Fit the model (this handles distributed training automatically)
+    model.fit(X_train, y_train)
     
-    # Make predictions
-    y_pred_train = model.predict(X_train)
-    y_pred_test = model.predict(X_test)
+    print("Training completed!")
+    
+    # Make predictions (compute results)
+    print("Making predictions...")
+    y_pred_train = model.predict(X_train).compute()
+    y_pred_test = model.predict(X_test).compute()
+    
+    # Get actual values for metrics
+    y_train_actual = y_train.compute()
+    y_test_actual = y_test.compute()
     
     # Calculate metrics
     metrics = {
-        'train_rmse': np.sqrt(mean_squared_error(y_train, y_pred_train)),
-        'test_rmse': np.sqrt(mean_squared_error(y_test, y_pred_test)),
-        'train_mae': mean_absolute_error(y_train, y_pred_train),
-        'test_mae': mean_absolute_error(y_test, y_pred_test),
-        'train_r2': r2_score(y_train, y_pred_train),
-        'test_r2': r2_score(y_test, y_pred_test)
+        'train_rmse': np.sqrt(mean_squared_error(y_train_actual, y_pred_train)),
+        'test_rmse': np.sqrt(mean_squared_error(y_test_actual, y_pred_test)),
+        'train_mae': mean_absolute_error(y_train_actual, y_pred_train),
+        'test_mae': mean_absolute_error(y_test_actual, y_pred_test),
+        'train_r2': r2_score(y_train_actual, y_pred_train),
+        'test_r2': r2_score(y_test_actual, y_pred_test)
     }
     
     print(f"\nModel Performance:")
@@ -168,7 +155,7 @@ def train_xgboost(train_data, test_data, feature_cols):
     print(f"  Train RMSE: {metrics['train_rmse']:.4f}")
     print(f"  Test RMSE: {metrics['test_rmse']:.4f}")
     
-    return model, metrics, y_pred_train, y_pred_test
+    return model, metrics, y_pred_train, y_pred_test, y_train_actual, y_test_actual
 
 def get_feature_importance(model, feature_cols):
     """Get and display feature importance"""
@@ -183,24 +170,24 @@ def get_feature_importance(model, feature_cols):
     
     return feature_importance
 
-def save_model_and_results(model, metrics, feature_importance, output_dir='xgboost_models'):
+def save_model_and_results(model, metrics, feature_importance, output_dir='dask_xgboost_models'):
     """Save trained model and results"""
     os.makedirs(output_dir, exist_ok=True)
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
     
     # Save model
-    model_path = f"{output_dir}/sapfluxnet_xgboost_{timestamp}.pkl"
+    model_path = f"{output_dir}/sapfluxnet_dask_xgboost_{timestamp}.pkl"
     with open(model_path, 'wb') as f:
         pickle.dump(model, f)
     
     # Save feature importance
-    feature_path = f"{output_dir}/sapfluxnet_features_{timestamp}.csv"
+    feature_path = f"{output_dir}/sapfluxnet_dask_features_{timestamp}.csv"
     feature_importance.to_csv(feature_path, index=False)
     
     # Save metrics
-    metrics_path = f"{output_dir}/sapfluxnet_metrics_{timestamp}.txt"
+    metrics_path = f"{output_dir}/sapfluxnet_dask_metrics_{timestamp}.txt"
     with open(metrics_path, 'w') as f:
-        f.write("SAPFLUXNET XGBoost Model Results\n")
+        f.write("SAPFLUXNET Dask-XGBoost Model Results\n")
         f.write("=" * 40 + "\n")
         f.write(f"Training completed: {datetime.now()}\n\n")
         
@@ -216,7 +203,7 @@ def save_model_and_results(model, metrics, feature_importance, output_dir='xgboo
     
     return model_path
 
-def plot_results(y_train, y_pred_train, y_test, y_pred_test, output_dir='xgboost_models'):
+def plot_results(y_train, y_pred_train, y_test, y_pred_test, output_dir='dask_xgboost_models'):
     """Plot model results"""
     # Create plots
     fig, axes = plt.subplots(2, 2, figsize=(15, 12))
@@ -275,40 +262,23 @@ def plot_results(y_train, y_pred_train, y_test, y_pred_test, output_dir='xgboost
     
     # Save plot
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-    plot_path = f"{output_dir}/sapfluxnet_results_{timestamp}.png"
+    plot_path = f"{output_dir}/sapfluxnet_dask_results_{timestamp}.png"
     plt.savefig(plot_path, dpi=300, bbox_inches='tight')
     print(f"Results plot saved: {plot_path}")
     
     plt.show()
 
 def main():
-    """Main training pipeline"""
-    print("SAPFLUXNET XGBoost Training Pipeline")
+    """Main training pipeline using Dask-XGBoost"""
+    print("SAPFLUXNET Dask-XGBoost Training Pipeline")
     print("=" * 60)
     print(f"Started at: {datetime.now()}")
     
     try:
-        # Step 1: Load data
-        data = load_data('test_parquet_export')
+        # Step 1: Load data with Dask
+        ddf = load_data_dask('comprehensive_processed')
         
-        # Step 2: Prepare features
-        data, feature_cols = prepare_features(data)
+        # Step 2: Prepare features with Dask
+        ddf_clean, feature_cols = prepare_features_dask(ddf)
         
-        # Step 3: Split data
-        train_data, test_data = hybrid_temporal_split(data, feature_cols, train_ratio=0.8)
-        
-        # Step 4: Train model
-        model, metrics, y_pred_train, y_pred_test = train_xgboost(train_data, test_data, feature_cols)
-        
-        # Step 5: Get feature importance
-        feature_importance = get_feature_importance(model, feature_cols)
-        
-        # Step 6: Save model and results
-        model_path = save_model_and_results(model, metrics, feature_importance)
-        
-        # Step 7: Plot results
-        plot_results(train_data['sap_flow'], y_pred_train, test_data['sap_flow'], y_pred_test)
-        
-        print(f"\nTraining completed successfully!")
-        print(f"Final Test R²: {metrics['test_r2']:.4f}")
-        print(f"Model save
+     
