@@ -237,6 +237,7 @@ test_fixed_export/
 test_parquet_export/
 shapefiles/
 gee_shapefiles/
+comprehensive_processed/
 
 # Model files
 *.joblib
