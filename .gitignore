@@ -207,7 +207,6 @@ __marimo__/
 
 # Data files
 *.csv
-*.parquet
 *.feather
 *.h5
 *.hdf5
@@ -233,12 +232,12 @@ sapwood/
 leaf/
 plant/
 sapwood/
-comprehensive_processed/
 test_csv_export/
 test_fixed_export/
 test_parquet_export/
 shapefiles/
 gee_shapefiles/
+comprehensive_processed/
 
 # Model files
 *.joblib
