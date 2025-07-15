@@ -629,8 +629,12 @@ def get_feature_importance(model, feature_cols):
         return feature_importance
     except Exception as e:
         print(f"Could not extract feature importance: {e}")
-        return pd.DataFrame({'feature': [f'f{i}' for i in range(len(feature_cols))], 
-                           'importance': [0.0] * len(feature_cols)})
+        if feature_cols is not None:
+            return pd.DataFrame({'feature': [f'f{i}' for i in range(len(feature_cols))], 
+                               'importance': [0.0] * len(feature_cols)})
+        else:
+            # Return empty DataFrame when feature_cols is None
+            return pd.DataFrame({'feature': [], 'importance': []})
 
 def save_external_memory_results(model, metrics, feature_importance, feature_cols, total_rows, output_dir='external_memory_models'):
     """Save external memory model results"""
@@ -653,8 +657,14 @@ def save_external_memory_results(model, metrics, feature_importance, feature_col
         f.write("Dataset: Full dataset (no sampling)\n")
         f.write(f"Total rows: {total_rows:,}\n")
         f.write("Purpose: Full dataset baseline with memory efficiency\n\n")
-        for i, feature in enumerate(feature_cols):
-            f.write(f"{i+1:3d}. {feature}\n")
+        
+        if feature_cols is not None:
+            for i, feature in enumerate(feature_cols):
+                f.write(f"{i+1:3d}. {feature}\n")
+        else:
+            f.write("Features: Used existing libsvm format files\n")
+            f.write("Feature names not available when using pre-processed libsvm files\n")
+            f.write("Check original data pipeline for feature information\n")
     
     # Save metrics
     metrics_path = f"{output_dir}/sapfluxnet_external_memory_metrics_{timestamp}.txt"
