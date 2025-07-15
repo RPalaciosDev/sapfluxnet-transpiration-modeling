@@ -245,11 +245,80 @@ def create_random_split_external(data_file, train_file, test_file, train_ratio=0
     
     return train_file, test_file
 
+def validate_libsvm_format(file_path, max_lines_to_check=10):
+    """Validate that the file is in proper libsvm format"""
+    print(f"Validating libsvm format for: {file_path}")
+    
+    if not os.path.exists(file_path):
+        print(f"❌ File does not exist: {file_path}")
+        return False
+    
+    try:
+        with open(file_path, 'r') as f:
+            for i, line in enumerate(f):
+                if i >= max_lines_to_check:
+                    break
+                
+                line = line.strip()
+                if not line:
+                    continue
+                    
+                # Check libsvm format: target feature1:value1 feature2:value2 ...
+                parts = line.split()
+                if len(parts) < 1:
+                    print(f"❌ Line {i+1}: Empty line")
+                    return False
+                
+                # First part should be the target (numeric)
+                try:
+                    float(parts[0])
+                except ValueError:
+                    print(f"❌ Line {i+1}: Invalid target value: {parts[0]}")
+                    return False
+                
+                # Check feature:value format
+                for j, part in enumerate(parts[1:], 1):
+                    if ':' not in part:
+                        print(f"❌ Line {i+1}, Part {j}: Missing colon in feature:value format: {part}")
+                        return False
+                    
+                    feature_idx, value = part.split(':', 1)
+                    try:
+                        int(feature_idx)  # Feature index should be integer
+                        float(value)      # Value should be numeric
+                    except ValueError:
+                        print(f"❌ Line {i+1}, Part {j}: Invalid feature:value format: {part}")
+                        return False
+        
+        print(f"✅ libsvm format validation passed for: {file_path}")
+        return True
+        
+    except Exception as e:
+        print(f"❌ Error validating libsvm format: {e}")
+        return False
+
 def train_external_memory_xgboost(train_file, test_file, feature_cols):
     """Train XGBoost model using external memory"""
     print("Training XGBoost with external memory...")
     print(f"XGBoost version: {xgb.__version__}")
     log_memory_usage("Before external memory training")
+    
+    # Validate libsvm format
+    if not validate_libsvm_format(train_file):
+        raise ValueError(f"Invalid libsvm format in train file: {train_file}")
+    if not validate_libsvm_format(test_file):
+        raise ValueError(f"Invalid libsvm format in test file: {test_file}")
+    
+    # Show sample lines for debugging
+    print(f"Sample lines from {train_file}:")
+    try:
+        with open(train_file, 'r') as f:
+            for i, line in enumerate(f):
+                if i >= 3:  # Show first 3 lines
+                    break
+                print(f"  Line {i+1}: {line.strip()}")
+    except Exception as e:
+        print(f"Could not read sample lines: {e}")
     
     # Create DMatrix objects for external memory with format specification
     print("Creating external memory DMatrix objects...")
@@ -260,16 +329,37 @@ def train_external_memory_xgboost(train_file, test_file, feature_cols):
     print(f"Current working directory: {os.getcwd()}")
     
     try:
-        # Try with format specification (newer XGBoost versions)
-        print("Attempting to create DMatrix with format specification...")
+        # Try with proper libsvm format specification for external memory
+        print("Attempting to create DMatrix with libsvm format specification...")
         dtrain = xgb.DMatrix(f"{train_file}?format=libsvm")
         dtest = xgb.DMatrix(f"{test_file}?format=libsvm")
     except Exception as e:
-        print(f"Format specification failed: {e}")
-        print("Trying without format specification...")
-        # Fallback for older versions
-        dtrain = xgb.DMatrix(train_file)
-        dtest = xgb.DMatrix(test_file)
+        print(f"libsvm format specification failed: {e}")
+        try:
+            # Try alternative format specification
+            print("Trying alternative format specification...")
+            dtrain = xgb.DMatrix(f"file://{os.path.abspath(train_file)}?format=libsvm")
+            dtest = xgb.DMatrix(f"file://{os.path.abspath(test_file)}?format=libsvm")
+        except Exception as e2:
+            print(f"Alternative format failed: {e2}")
+            try:
+                # Try with explicit cache prefix for external memory
+                print("Trying with cache prefix...")
+                dtrain = xgb.DMatrix(f"{train_file}#dtrain.cache?format=libsvm")
+                dtest = xgb.DMatrix(f"{test_file}#dtest.cache?format=libsvm")
+            except Exception as e3:
+                print(f"Cache prefix failed: {e3}")
+                try:
+                    # Try QuantileDMatrix for external memory (more robust)
+                    print("Trying QuantileDMatrix for external memory...")
+                    dtrain = xgb.QuantileDMatrix(train_file)
+                    dtest = xgb.QuantileDMatrix(test_file)
+                except Exception as e4:
+                    print(f"QuantileDMatrix failed: {e4}")
+                    print("Falling back to regular DMatrix (loads into memory)...")
+                    # Final fallback - load into memory (not external memory)
+                    dtrain = xgb.DMatrix(train_file)
+                    dtest = xgb.DMatrix(test_file)
     
     log_memory_usage("After DMatrix creation")
     
