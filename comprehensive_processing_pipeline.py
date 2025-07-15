@@ -178,7 +178,7 @@ class MemoryEfficientSAPFLUXNETProcessor:
     PROBLEMATIC_SITES = EXTREMELY_PROBLEMATIC_SITES | HIGH_PROBLEMATIC_SITES | MODERATE_PROBLEMATIC_SITES
     
     def __init__(self, output_dir='comprehensive_processed', chunk_size=1000, max_memory_gb=12, force_reprocess=False, skip_problematic_sites=True, use_quality_flags=True, compress_output=False, optimize_io=True, export_format='csv', config_overrides=None):
-        self.output_dir = output_dir
+        self.base_output_dir = output_dir
         self.chunk_size = chunk_size
         self.max_memory_gb = max_memory_gb  # Leave 4GB buffer
         self.force_reprocess = force_reprocess  # Force reprocessing of all sites
@@ -186,16 +186,19 @@ class MemoryEfficientSAPFLUXNETProcessor:
         self.use_quality_flags = use_quality_flags  # Whether to filter out flagged data points
         self.compress_output = compress_output  # Whether to compress output files
         self.optimize_io = optimize_io  # Whether to use optimized I/O strategies
-        self.export_format = export_format.lower()  # Export format: csv, parquet, feather, hdf5, pickle
+        self.export_format = export_format.lower()  # Export format: csv, parquet, feather, hdf5, pickle, libsvm
         
         # Validate export format
         self.validate_export_format()
+        
+        # Create format-specific output directory
+        self.output_dir = self.get_format_specific_output_dir()
         
         # Apply configuration overrides if provided
         if config_overrides:
             self.apply_config_overrides(config_overrides)
         
-        os.makedirs(output_dir, exist_ok=True)
+        os.makedirs(self.output_dir, exist_ok=True)
         
         # Get system information for adaptive processing
         self.system_memory_gb = psutil.virtual_memory().total / (1024**3)
@@ -258,7 +261,7 @@ class MemoryEfficientSAPFLUXNETProcessor:
     
     def validate_export_format(self):
         """Validate the export format and check for required dependencies"""
-        valid_formats = ['csv', 'parquet', 'feather', 'hdf5', 'pickle']
+        valid_formats = ['csv', 'parquet', 'feather', 'hdf5', 'pickle', 'libsvm']
         
         if self.export_format not in valid_formats:
             raise ValueError(f"Invalid export format: {self.export_format}. Valid formats: {valid_formats}")
@@ -281,6 +284,12 @@ class MemoryEfficientSAPFLUXNETProcessor:
                 import tables
             except ImportError:
                 raise ImportError("tables (PyTables) is required for HDF5 export. Install with: pip install tables")
+        
+        elif self.export_format == 'libsvm':
+            try:
+                from sklearn.datasets import dump_svmlight_file
+            except ImportError:
+                raise ImportError("scikit-learn is required for libsvm export. Install with: pip install scikit-learn")
     
     def get_output_file_extension(self):
         """Get the appropriate file extension for the export format"""
@@ -289,15 +298,25 @@ class MemoryEfficientSAPFLUXNETProcessor:
             'parquet': '.parquet',
             'feather': '.feather',
             'hdf5': '.h5',
-            'pickle': '.pkl'
+            'pickle': '.pkl',
+            'libsvm': '.svm'
         }
         return extensions.get(self.export_format, '.csv')
+    
+    def get_format_specific_output_dir(self):
+        """Get format-specific output directory name"""
+        if self.base_output_dir == 'comprehensive_processed':
+            # Use format-specific directory for default case
+            return f'processed_{self.export_format}'
+        else:
+            # For custom directories, append format suffix
+            return f'{self.base_output_dir}_{self.export_format}'
     
     def save_dataframe_formatted(self, df, output_file, site_name):
         """Save DataFrame in the specified format with optimized I/O"""
         
         # Add compression extension if needed
-        if self.compress_output and self.export_format == 'csv':
+        if self.compress_output and self.export_format in ['csv', 'libsvm']:
             output_file += '.gz'
         
         try:
@@ -318,6 +337,9 @@ class MemoryEfficientSAPFLUXNETProcessor:
                 
             elif self.export_format == 'pickle':
                 df.to_pickle(output_file, compression='gzip' if self.compress_output else None)
+                
+            elif self.export_format == 'libsvm':
+                self._save_libsvm_format(df, output_file, site_name)
             
             # Track statistics
             self.stats['io_operations'] += 1
@@ -332,6 +354,60 @@ class MemoryEfficientSAPFLUXNETProcessor:
                 print(f"  🔄 Falling back to CSV format...")
                 self.export_format = 'csv'
                 self.save_dataframe_formatted(df, output_file.replace(self.get_output_file_extension(), '.csv'), site_name)
+    
+    def _save_libsvm_format(self, df, output_file, site_name):
+        """Save DataFrame in libsvm format for XGBoost external memory"""
+        from sklearn.datasets import dump_svmlight_file
+        import gzip
+        
+        # Identify target column
+        target_col = 'sap_flow'
+        if target_col not in df.columns:
+            raise ValueError(f"Target column '{target_col}' not found in data for {site_name}")
+        
+        # Define columns to exclude from features
+        exclude_cols = [
+            'TIMESTAMP', 'solar_TIMESTAMP', 'site', 'plant_id',
+            'Unnamed: 0', target_col
+        ]
+        
+        # Select feature columns
+        feature_cols = [col for col in df.columns 
+                       if col not in exclude_cols
+                       and not col.endswith('_flags')
+                       and not col.endswith('_md')]
+        
+        # Prepare data
+        df_clean = df.dropna(subset=[target_col])
+        
+        if len(df_clean) == 0:
+            raise ValueError(f"No valid data after removing missing target values for {site_name}")
+        
+        # Fill missing values in features
+        X = df_clean[feature_cols].fillna(0)
+        y = df_clean[target_col]
+        
+        # Convert to numpy arrays
+        X_array = X.values
+        y_array = y.values
+        
+        # Save to libsvm format
+        if self.compress_output:
+            # Save to temporary file first, then compress
+            temp_file = output_file.replace('.gz', '')
+            dump_svmlight_file(X_array, y_array, temp_file)
+            
+            # Compress the file
+            with open(temp_file, 'rb') as f_in:
+                with gzip.open(output_file, 'wb') as f_out:
+                    f_out.writelines(f_in)
+            
+            # Remove temporary file
+            os.remove(temp_file)
+        else:
+            dump_svmlight_file(X_array, y_array, output_file)
+        
+        print(f"    📊 LibSVM: {len(df_clean)} samples, {len(feature_cols)} features")
     
     @contextmanager
     def optimized_file_writer(self, file_path, mode='w'):
@@ -506,9 +582,9 @@ class MemoryEfficientSAPFLUXNETProcessor:
     def validate_existing_file(self, file_path):
         """Validate that an existing processed file is not corrupted (supports multiple formats)"""
         try:
-            # Check for compressed version first (only for CSV)
+            # Check for compressed version first (for CSV and libsvm)
             actual_file_path = file_path
-            if self.compress_output and self.export_format == 'csv' and os.path.exists(file_path + '.gz'):
+            if self.compress_output and self.export_format in ['csv', 'libsvm'] and os.path.exists(file_path + '.gz'):
                 actual_file_path = file_path + '.gz'
             elif not os.path.exists(file_path):
                 return False
@@ -528,8 +604,10 @@ class MemoryEfficientSAPFLUXNETProcessor:
             elif self.export_format == 'pickle':
                 sample = pd.read_pickle(actual_file_path)
                 sample = sample.head(5)
+            elif self.export_format == 'libsvm':
+                return self._validate_libsvm_file(actual_file_path)
             
-            # Check if file has expected structure
+            # Check if file has expected structure (not applicable for libsvm)
             if len(sample.columns) < 50:  # Should have many features
                 return False
             
@@ -546,6 +624,40 @@ class MemoryEfficientSAPFLUXNETProcessor:
             
         except Exception as e:
             # If any error occurs, file is corrupted
+            return False
+    
+    def _validate_libsvm_file(self, file_path):
+        """Validate libsvm format file"""
+        try:
+            from sklearn.datasets import load_svmlight_file
+            import gzip
+            
+            # Try to load first few lines to check format
+            if file_path.endswith('.gz'):
+                with gzip.open(file_path, 'rt') as f:
+                    lines = [f.readline() for _ in range(5)]
+            else:
+                with open(file_path, 'r') as f:
+                    lines = [f.readline() for _ in range(5)]
+            
+            # Check if lines look like libsvm format
+            valid_lines = 0
+            for line in lines:
+                line = line.strip()
+                if line and not line.startswith('#'):
+                    # Basic libsvm format check: should start with target value
+                    parts = line.split(' ', 1)
+                    if len(parts) >= 1:
+                        try:
+                            float(parts[0])  # Target should be numeric
+                            valid_lines += 1
+                        except ValueError:
+                            pass
+            
+            # If we have at least 3 valid lines, consider it valid
+            return valid_lines >= 3
+            
+        except Exception as e:
             return False
     
     def validate_sap_flow_data(self, sapf_file):
@@ -2032,7 +2144,7 @@ def main():
     parser.add_argument('--force', action='store_true', 
                        help='Force reprocessing of all sites (ignore existing files)')
     parser.add_argument('--output-dir', default='comprehensive_processed',
-                       help='Output directory for processed files (default: comprehensive_processed)')
+                       help='Base output directory for processed files (default: comprehensive_processed). Format-specific directories will be created (e.g., processed_csv, processed_parquet, processed_libsvm)')
     parser.add_argument('--chunk-size', type=int, default=1500,
                        help='Chunk size for processing (default: 1500)')
     parser.add_argument('--max-memory', type=int, default=12,
@@ -2055,7 +2167,7 @@ def main():
                        help='Override maximum lag hours for feature creation')
     parser.add_argument('--rolling-windows', type=str, default=None,
                        help='Override rolling windows (comma-separated list, e.g., "3,6,12,24")')
-    parser.add_argument('--export-format', choices=['csv', 'parquet', 'feather', 'hdf5', 'pickle'], default='csv',
+    parser.add_argument('--export-format', choices=['csv', 'parquet', 'feather', 'hdf5', 'pickle', 'libsvm'], default='csv',
                        help='Export format for processed files (default: csv)')
 
     
@@ -2110,6 +2222,7 @@ def main():
         print(f"💾 I/O optimization: {'Enabled' if processor.optimize_io else 'Disabled'}")
         print(f"🗜️  Compression: {'Enabled' if processor.compress_output else 'Disabled'}")
         print(f"📁 Export format: {processor.export_format.upper()}")
+        print(f"🗂️  Directory structure: Format-specific directories created")
         if processor.use_quality_flags:
             print(f"🏷️  Quality flag filtering applied (OUT_WARN and RANGE_WARN data removed)")
         else:

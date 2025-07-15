@@ -226,6 +226,8 @@ __marimo__/
 *.tar
 *.tar.gz
 *.rar
+*.svm
+*.svm.gz
 
 # Large data directories
 sapwood/
@@ -238,6 +240,22 @@ test_parquet_export/
 shapefiles/
 gee_shapefiles/
 comprehensive_processed/
+
+# Format-specific processed data directories
+processed_csv/
+processed_parquet/
+processed_feather/
+processed_hdf5/
+processed_pickle/
+processed_libsvm/
+
+# Custom format-specific directories (pattern: *_format/)
+*_csv/
+*_parquet/
+*_feather/
+*_hdf5/
+*_pickle/
+*_libsvm/
 
 # Model files
 *.joblib
@@ -285,3 +303,8 @@ secrets.json
 output/
 results/
 exports/
+
+# Temporary training directories
+temp_external_memory/
+external_memory_models/
+colab_*_models/

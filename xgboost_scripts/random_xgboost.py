@@ -16,6 +16,16 @@ import warnings
 import gc
 from dask.distributed import Client, LocalCluster
 import psutil
+
+# Import XGBoost Dask support with error handling
+try:
+    from xgboost import dask as xgb_dask
+    print("✅ XGBoost Dask support loaded successfully")
+except ImportError as e:
+    print(f"❌ XGBoost Dask not available: {e}")
+    print("💡 Install with: pip install 'xgboost[dask]' or pip install xgboost dask distributed")
+    xgb_dask = None
+
 warnings.filterwarnings('ignore')
 
 def get_available_memory_gb():
@@ -25,7 +35,7 @@ def get_available_memory_gb():
 def setup_conservative_dask_client():
     """Setup conservative Dask client for Google Colab"""
     available_memory = get_available_memory_gb()
-    memory_limit = max(1.0, available_memory * 0.4)  # Use only 40% of available memory
+    memory_limit = max(1.0, available_memory * 0.25)  # Use only 25% of available memory
     
     print(f"Available memory: {available_memory:.1f}GB")
     print(f"Setting up conservative Dask client with {memory_limit:.1f}GB memory limit...")
@@ -131,6 +141,17 @@ def prepare_features_conservative(ddf):
                    and not col.endswith('_flags')
                    and not col.endswith('_md')]
     
+    # Reduce features for memory efficiency (keep most important ones)
+    if len(feature_cols) > 100:
+        print(f"⚠️  Large feature set ({len(feature_cols)} features) - reducing for memory efficiency")
+        # Keep basic environmental features and some engineered features
+        priority_features = [col for col in feature_cols if any(base in col for base in 
+                           ['ta', 'rh', 'vpd', 'sw_in', 'ws', 'precip', 'swc', 'ppfd', 
+                            'hour', 'day_of_year', 'month', 'year', 'lag_1h', 'lag_3h', 
+                            'rolling_3h', 'rolling_6h', 'site_lat', 'site_lon'])]
+        feature_cols = priority_features[:80]  # Limit to 80 features
+        print(f"🔧 Reduced to {len(feature_cols)} priority features for memory efficiency")
+    
     print(f"Target: {target_col}")
     print(f"Features: {len(feature_cols)} columns")
     print(f"First 10 features: {feature_cols[:10]}")
@@ -179,6 +200,17 @@ def train_random_xgboost(train_ddf, test_ddf, feature_cols, target_col, client):
     """Train XGBoost model with random split validation"""
     print("Training XGBoost with random split validation...")
     
+    # Check if XGBoost Dask is available
+    if xgb_dask is None:
+        raise ImportError("XGBoost Dask support not available. Install with: pip install 'xgboost[dask]'")
+    
+    # Check data sizes first
+    print("Checking data sizes...")
+    train_size = len(train_ddf)
+    test_size = len(test_ddf)
+    print(f"Train size: {train_size:,} rows")
+    print(f"Test size: {test_size:,} rows")
+    
     # Fill missing values with simple approach (no categorical issues now)
     print("Filling missing values...")
     train_ddf = train_ddf.fillna(0)
@@ -186,12 +218,39 @@ def train_random_xgboost(train_ddf, test_ddf, feature_cols, target_col, client):
     
     print("Missing values filled successfully")
     
-    # Convert to Dask arrays
+    # Convert to Dask arrays with proper partition handling
     print("Converting to Dask arrays...")
-    X_train = train_ddf[feature_cols].to_dask_array(lengths=True)
-    y_train = train_ddf[target_col].to_dask_array(lengths=True)
-    X_test = test_ddf[feature_cols].to_dask_array(lengths=True)
-    y_test = test_ddf[target_col].to_dask_array(lengths=True)
+    
+    # Repartition to ensure consistent partitions (reduced for memory)
+    print("Repartitioning data for consistent conversion...")
+    train_ddf = train_ddf.repartition(npartitions=8)   # Reduced partitions for memory
+    test_ddf = test_ddf.repartition(npartitions=4)     # Reduced partitions for memory
+    
+    # Persist to avoid recomputation
+    train_ddf = train_ddf.persist()
+    test_ddf = test_ddf.persist()
+    
+    # Force garbage collection
+    gc.collect()
+    
+    # Convert to Dask arrays without lengths parameter (let Dask compute them)
+    print("Converting training features...")
+    X_train = train_ddf[feature_cols].to_dask_array()
+    print("Converting training target...")
+    y_train = train_ddf[target_col].to_dask_array()
+    
+    # Clear training dataframe to save memory
+    del train_ddf
+    gc.collect()
+    
+    print("Converting test features...")
+    X_test = test_ddf[feature_cols].to_dask_array()
+    print("Converting test target...")
+    y_test = test_ddf[target_col].to_dask_array()
+    
+    # Clear test dataframe to save memory
+    del test_ddf
+    gc.collect()
     
     print("Data converted to Dask arrays successfully")
     
@@ -214,14 +273,14 @@ def train_random_xgboost(train_ddf, test_ddf, feature_cols, target_col, client):
     
     # Create DMatrix objects
     print("Creating DMatrix objects...")
-    dtrain = xgb.dask.DaskDMatrix(client, X_train, y_train)
-    dtest = xgb.dask.DaskDMatrix(client, X_test, y_test)
+    dtrain = xgb_dask.DaskDMatrix(client, X_train, y_train)
+    dtest = xgb_dask.DaskDMatrix(client, X_test, y_test)
     
     print("DMatrix objects created")
     
     # Train model
     print("Starting random split training...")
-    output = xgb.dask.train(
+    output = xgb_dask.train(
         client,
         params,
         dtrain,
@@ -236,8 +295,8 @@ def train_random_xgboost(train_ddf, test_ddf, feature_cols, target_col, client):
     
     # Make predictions
     print("Making predictions...")
-    y_pred_train = xgb.dask.predict(client, model, dtrain)
-    y_pred_test = xgb.dask.predict(client, model, dtest)
+    y_pred_train = xgb_dask.predict(client, model, dtrain)
+    y_pred_test = xgb_dask.predict(client, model, dtest)
     
     # Compute metrics
     print("Computing metrics...")

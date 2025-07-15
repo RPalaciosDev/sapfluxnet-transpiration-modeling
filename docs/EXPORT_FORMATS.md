@@ -44,25 +44,40 @@ The pipeline now supports multiple export formats for processed data, each with 
 - **Cons**: Python-only, security concerns
 - **Best for**: Python-specific workflows
 
+### 6. LibSVM (XGBoost External Memory)
+
+- **Extension**: `.svm`
+- **Dependencies**: `pip install scikit-learn`
+- **Pros**: Optimized for XGBoost external memory, very memory efficient, sparse format
+- **Cons**: Limited to numeric features, not human-readable, ML-specific
+- **Best for**: XGBoost external memory training, large datasets with memory constraints
+
 ## Usage
 
 ### Command Line
 
 ```bash
-# Export as Parquet (recommended for ML)
+# Export as Parquet (recommended for ML) - saves to processed_parquet/
 python comprehensive_processing_pipeline.py --export-format parquet
 
-# Export as Feather (fastest)
+# Export as Feather (fastest) - saves to processed_feather/
 python comprehensive_processing_pipeline.py --export-format feather
 
-# Export as HDF5 (best compression)
+# Export as HDF5 (best compression) - saves to processed_hdf5/
 python comprehensive_processing_pipeline.py --export-format hdf5
 
-# Export as Pickle (Python-specific)
+# Export as Pickle (Python-specific) - saves to processed_pickle/
 python comprehensive_processing_pipeline.py --export-format pickle
 
-# Default CSV export
+# Export as LibSVM (XGBoost external memory) - saves to processed_libsvm/
+python comprehensive_processing_pipeline.py --export-format libsvm
+
+# Default CSV export - saves to processed_csv/
 python comprehensive_processing_pipeline.py --export-format csv
+
+# Custom output directory with format suffix
+python comprehensive_processing_pipeline.py --export-format parquet --output-dir my_data
+# Creates: my_data_parquet/
 ```
 
 ### Python API
@@ -72,7 +87,7 @@ from comprehensive_processing_pipeline import MemoryEfficientSAPFLUXNETProcessor
 
 # Create processor with specific export format
 processor = MemoryEfficientSAPFLUXNETProcessor(
-    export_format='parquet',  # or 'feather', 'hdf5', 'pickle', 'csv'
+    export_format='parquet',  # or 'feather', 'hdf5', 'pickle', 'libsvm', 'csv'
     compress_output=True      # compression works with all formats
 )
 
@@ -86,13 +101,17 @@ The training script (`simple_xgboost_training.py`) automatically detects and loa
 
 ```python
 # The load_data function automatically handles all formats
-data = load_data('comprehensive_processed')
+# Note: Use format-specific directory names
+data = load_data('processed_parquet')  # For parquet files
+data = load_data('processed_csv')      # For CSV files
+data = load_data('processed_libsvm')   # For libsvm files
 ```
 
 ### Manual Loading
 
 ```python
 import pandas as pd
+from sklearn.datasets import load_svmlight_file
 
 # Parquet (recommended)
 data = pd.read_parquet('site_comprehensive.parquet')
@@ -105,6 +124,9 @@ data = pd.read_hdf('site_comprehensive.h5', key='data')
 
 # Pickle
 data = pd.read_pickle('site_comprehensive.pkl')
+
+# LibSVM (for XGBoost external memory)
+X, y = load_svmlight_file('site_comprehensive.svm')
 
 # CSV
 data = pd.read_csv('site_comprehensive.csv')
@@ -148,6 +170,10 @@ Typical results:
 
 **Use Pickle** - Preserves exact Python objects
 
+### For XGBoost External Memory Training
+
+**Use LibSVM** - Optimized for memory-efficient XGBoost training on large datasets
+
 ## Installation
 
 Install required dependencies:
@@ -159,22 +185,39 @@ pip install pyarrow
 # For HDF5
 pip install tables
 
+# For LibSVM
+pip install scikit-learn
+
 # CSV and Pickle are built-in
 ```
 
-## File Naming Convention
+## Directory Structure and File Naming
+
+### Directory Structure
+
+Format-specific directories are automatically created:
+
+- **CSV**: `processed_csv/`
+- **Parquet**: `processed_parquet/`
+- **Feather**: `processed_feather/`
+- **HDF5**: `processed_hdf5/`
+- **Pickle**: `processed_pickle/`
+- **LibSVM**: `processed_libsvm/`
+
+### File Naming Convention
 
 All processed files follow the pattern:
 
-- `{site}_comprehensive.{extension}`
+- `{directory}/{site}_comprehensive.{extension}`
 
 Examples:
 
-- `ARG_MAZ_comprehensive.parquet`
-- `AUS_MAR_UBW_comprehensive.feather`
-- `FRA_PUE_comprehensive.h5`
-- `USA_UMB_CON_comprehensive.pkl`
-- `ESP_CAN_comprehensive.csv`
+- `processed_parquet/ARG_MAZ_comprehensive.parquet`
+- `processed_feather/AUS_MAR_UBW_comprehensive.feather`
+- `processed_hdf5/FRA_PUE_comprehensive.h5`
+- `processed_pickle/USA_UMB_CON_comprehensive.pkl`
+- `processed_libsvm/ESP_CAN_comprehensive.svm`
+- `processed_csv/ESP_CAN_comprehensive.csv`
 
 ## Compression
 
@@ -185,5 +228,6 @@ Compression is supported for all formats:
 - **Feather**: lz4 compression
 - **HDF5**: built-in compression
 - **Pickle**: gzip compression
+- **LibSVM**: gzip compression
 
 Enable compression with `--compress` flag or `compress_output=True` parameter.
