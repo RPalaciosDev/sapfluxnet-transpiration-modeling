@@ -203,16 +203,33 @@ def create_random_split_external(data_file, train_file, test_file, train_ratio=0
     with open(data_file, 'r') as f:
         lines = f.readlines()
     
-    total_lines = len(lines)
-    print(f"Total samples: {total_lines:,}")
+    # Filter out empty lines and validate format
+    valid_lines = []
+    for i, line in enumerate(lines):
+        line = line.strip()
+        if line and not line.startswith('#'):
+            # Basic validation: should start with a number (target)
+            parts = line.split(' ', 1)
+            if len(parts) >= 1:
+                try:
+                    float(parts[0])  # Target should be numeric
+                    valid_lines.append(line + '\n')
+                except ValueError:
+                    print(f"Warning: Invalid line {i+1}: {line[:50]}...")
+    
+    total_lines = len(valid_lines)
+    print(f"Total valid samples: {total_lines:,}")
+    
+    if total_lines == 0:
+        raise ValueError("No valid libsvm format lines found in data file")
     
     # Shuffle lines
-    np.random.shuffle(lines)
+    np.random.shuffle(valid_lines)
     
     # Split
     train_size = int(total_lines * train_ratio)
-    train_lines = lines[:train_size]
-    test_lines = lines[train_size:]
+    train_lines = valid_lines[:train_size]
+    test_lines = valid_lines[train_size:]
     
     # Write train file
     with open(train_file, 'w') as f:
@@ -231,12 +248,28 @@ def create_random_split_external(data_file, train_file, test_file, train_ratio=0
 def train_external_memory_xgboost(train_file, test_file, feature_cols):
     """Train XGBoost model using external memory"""
     print("Training XGBoost with external memory...")
+    print(f"XGBoost version: {xgb.__version__}")
     log_memory_usage("Before external memory training")
     
-    # Create DMatrix objects for external memory
+    # Create DMatrix objects for external memory with format specification
     print("Creating external memory DMatrix objects...")
-    dtrain = xgb.DMatrix(train_file)
-    dtest = xgb.DMatrix(test_file)
+    print(f"About to load train file: {train_file}")
+    print(f"About to load test file: {test_file}")
+    print(f"Train file exists: {os.path.exists(train_file)}")
+    print(f"Test file exists: {os.path.exists(test_file)}")
+    print(f"Current working directory: {os.getcwd()}")
+    
+    try:
+        # Try with format specification (newer XGBoost versions)
+        print("Attempting to create DMatrix with format specification...")
+        dtrain = xgb.DMatrix(f"{train_file}?format=libsvm")
+        dtest = xgb.DMatrix(f"{test_file}?format=libsvm")
+    except Exception as e:
+        print(f"Format specification failed: {e}")
+        print("Trying without format specification...")
+        # Fallback for older versions
+        dtrain = xgb.DMatrix(train_file)
+        dtest = xgb.DMatrix(test_file)
     
     log_memory_usage("After DMatrix creation")
     
@@ -412,10 +445,37 @@ def main():
     # Set up directories - check for libsvm format first
     libsvm_dir = 'processed_libsvm'
     parquet_dir = 'test_parquet_export'
-    temp_dir = 'temp_external_memory'
+    
+    # Try different temp directory approaches for permission issues
+    try:
+        # Option 1: Use system temp directory
+        temp_dir = tempfile.mkdtemp(prefix='xgboost_external_')
+        print(f"Using system temp directory: {temp_dir}")
+    except Exception as e:
+        print(f"System temp failed: {e}")
+        # Option 2: Use local temp directory
+        temp_dir = 'temp_external_memory'
+        print(f"Using local temp directory: {temp_dir}")
     
     # Create temporary directory
     os.makedirs(temp_dir, exist_ok=True)
+    
+    # Check directory permissions
+    print(f"Temporary directory: {temp_dir}")
+    print(f"Directory exists: {os.path.exists(temp_dir)}")
+    print(f"Directory is writable: {os.access(temp_dir, os.W_OK)}")
+    print(f"Directory is readable: {os.access(temp_dir, os.R_OK)}")
+    
+    # Test write permissions
+    test_file = os.path.join(temp_dir, 'permission_test.txt')
+    try:
+        with open(test_file, 'w') as f:
+            f.write('test')
+        os.remove(test_file)
+        print("✅ Write permissions confirmed")
+    except Exception as e:
+        print(f"❌ Write permission test failed: {e}")
+        raise
     
     try:
         # Check if libsvm format is available (from pipeline)
@@ -450,10 +510,30 @@ def main():
         print("CREATING RANDOM SPLIT")
         print("="*60)
         
+        # Verify input file exists
+        if not os.path.exists(all_data_file):
+            raise FileNotFoundError(f"Input data file not found: {all_data_file}")
+        
         train_file = os.path.join(temp_dir, 'train.svm')
         test_file = os.path.join(temp_dir, 'test.svm')
         
-        create_random_split_external(all_data_file, train_file, test_file)
+        train_file, test_file = create_random_split_external(all_data_file, train_file, test_file)
+        
+        # Verify files exist and check permissions
+        print(f"Verifying created files:")
+        print(f"  Train file: {train_file}")
+        print(f"    - Exists: {'YES' if os.path.exists(train_file) else 'NO'}")
+        if os.path.exists(train_file):
+            print(f"    - Readable: {'YES' if os.access(train_file, os.R_OK) else 'NO'}")
+            print(f"    - File size: {os.path.getsize(train_file):,} bytes")
+            print(f"    - Absolute path: {os.path.abspath(train_file)}")
+        
+        print(f"  Test file: {test_file}")
+        print(f"    - Exists: {'YES' if os.path.exists(test_file) else 'NO'}")
+        if os.path.exists(test_file):
+            print(f"    - Readable: {'YES' if os.access(test_file, os.R_OK) else 'NO'}")
+            print(f"    - File size: {os.path.getsize(test_file):,} bytes")
+            print(f"    - Absolute path: {os.path.abspath(test_file)}")
         
         # Step 3: Train model
         print("\n" + "="*60)
@@ -487,9 +567,13 @@ def main():
     finally:
         # Clean up temporary files
         if os.path.exists(temp_dir):
-            print(f"\nCleaning up temporary files...")
-            shutil.rmtree(temp_dir)
-            print("Temporary files cleaned up")
+            print(f"\nCleaning up temporary files from: {temp_dir}")
+            try:
+                shutil.rmtree(temp_dir)
+                print("Temporary files cleaned up successfully")
+            except Exception as e:
+                print(f"Warning: Could not clean up temp directory: {e}")
+                print("You may need to manually remove: {temp_dir}")
     
     print(f"\nFinished at: {datetime.now()}")
 
