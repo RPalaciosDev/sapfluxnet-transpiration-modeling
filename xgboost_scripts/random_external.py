@@ -245,56 +245,146 @@ def prepare_chunk_for_external_memory(chunk, feature_cols, target_col):
 def create_random_split_external(data_file, train_file, test_file, train_ratio=0.8, random_state=42):
     """
     Create random train/test split for external memory format
+    Memory-efficient version that processes large files without loading everything into memory
     """
     print(f"Creating random split (train_ratio={train_ratio})...")
     
-    # Read the data file and create random split
-    np.random.seed(random_state)
+    # Check available disk space first
+    def check_space_gb(path):
+        try:
+            statvfs = os.statvfs(path)
+            return statvfs.f_bavail * statvfs.f_frsize / (1024**3)
+        except:
+            return 0
+    
+    # Get file size and estimate space needed
+    data_file_size = os.path.getsize(data_file) / (1024**3)  # GB
+    available_space = check_space_gb(os.path.dirname(train_file))
+    
+    print(f"📊 Input file size: {data_file_size:.1f} GB")
+    print(f"💾 Available space: {available_space:.1f} GB")
+    print(f"💾 Estimated space needed: {data_file_size * 1.2:.1f} GB (with buffer)")
+    
+    if available_space < data_file_size * 1.2:
+        print(f"⚠️  WARNING: Potentially insufficient disk space!")
+        print(f"⚠️  Available: {available_space:.1f} GB, Needed: ~{data_file_size * 1.2:.1f} GB")
+    
+    # First pass: Count total lines and validate format
+    print("🔍 First pass: Counting lines and validating format...")
+    total_lines = 0
+    invalid_lines = 0
     
     with open(data_file, 'r') as f:
-        lines = f.readlines()
+        for i, line in enumerate(f):
+            if i % 100000 == 0 and i > 0:  # Progress update every 100k lines
+                print(f"  Processed {i:,} lines...")
+            
+            line = line.strip()
+            if line and not line.startswith('#'):
+                # Basic validation: should start with a number (target)
+                parts = line.split(' ', 1)
+                if len(parts) >= 1:
+                    try:
+                        float(parts[0])  # Target should be numeric
+                        total_lines += 1
+                    except ValueError:
+                        invalid_lines += 1
+                        if invalid_lines <= 10:  # Show first 10 invalid lines
+                            print(f"Warning: Invalid line {i+1}: {line[:50]}...")
     
-    # Filter out empty lines and validate format
-    valid_lines = []
-    for i, line in enumerate(lines):
-        line = line.strip()
-        if line and not line.startswith('#'):
-            # Basic validation: should start with a number (target)
-            parts = line.split(' ', 1)
-            if len(parts) >= 1:
-                try:
-                    float(parts[0])  # Target should be numeric
-                    valid_lines.append(line + '\n')
-                except ValueError:
-                    print(f"Warning: Invalid line {i+1}: {line[:50]}...")
-    
-    total_lines = len(valid_lines)
-    print(f"Total valid samples: {total_lines:,}")
+    print(f"📊 Total valid samples: {total_lines:,}")
+    print(f"⚠️  Invalid lines skipped: {invalid_lines:,}")
     
     if total_lines == 0:
         raise ValueError("No valid libsvm format lines found in data file")
     
-    # Shuffle lines
-    np.random.shuffle(valid_lines)
-    
-    # Split
+    # Create random indices for train/test split
+    np.random.seed(random_state)
     train_size = int(total_lines * train_ratio)
-    train_lines = valid_lines[:train_size]
-    test_lines = valid_lines[train_size:]
     
-    # Write train file
-    with open(train_file, 'w') as f:
-        f.writelines(train_lines)
+    # Generate random indices for training set
+    all_indices = np.arange(total_lines)
+    np.random.shuffle(all_indices)
+    train_indices = set(all_indices[:train_size])
     
-    # Write test file
-    with open(test_file, 'w') as f:
-        f.writelines(test_lines)
+    print(f"📊 Train samples: {train_size:,} ({train_size/total_lines*100:.1f}%)")
+    print(f"📊 Test samples: {total_lines - train_size:,} ({(total_lines-train_size)/total_lines*100:.1f}%)")
     
-    print(f"Random split completed:")
-    print(f"  Train: {len(train_lines):,} rows ({len(train_lines)/total_lines*100:.1f}%)")
-    print(f"  Test: {len(test_lines):,} rows ({len(test_lines)/total_lines*100:.1f}%)")
+    # Second pass: Split into train/test files
+    print("✂️  Second pass: Creating train/test split...")
     
-    return train_file, test_file
+    try:
+        with open(data_file, 'r') as input_f, \
+             open(train_file, 'w') as train_f, \
+             open(test_file, 'w') as test_f:
+            
+            valid_line_idx = 0
+            train_count = 0
+            test_count = 0
+            
+            for i, line in enumerate(input_f):
+                if i % 100000 == 0 and i > 0:  # Progress update
+                    current_space = check_space_gb(os.path.dirname(train_file))
+                    print(f"  Processed {i:,} lines, Space: {current_space:.1f} GB")
+                    
+                    if current_space < 1.0:  # Less than 1GB left
+                        print(f"⚠️  LOW DISK SPACE: Only {current_space:.1f} GB remaining!")
+                
+                line = line.strip()
+                if line and not line.startswith('#'):
+                    # Validate format
+                    parts = line.split(' ', 1)
+                    if len(parts) >= 1:
+                        try:
+                            float(parts[0])  # Target should be numeric
+                            
+                            # Decide train or test based on pre-generated indices
+                            if valid_line_idx in train_indices:
+                                train_f.write(line + '\n')
+                                train_count += 1
+                            else:
+                                test_f.write(line + '\n')
+                                test_count += 1
+                            
+                            valid_line_idx += 1
+                            
+                        except ValueError:
+                            continue  # Skip invalid lines
+        
+        print(f"✅ Split completed successfully!")
+        print(f"  Train file: {train_count:,} rows")
+        print(f"  Test file: {test_count:,} rows")
+        
+        # Verify files were created
+        if not os.path.exists(train_file) or not os.path.exists(test_file):
+            raise FileNotFoundError("Train or test file was not created properly")
+        
+        if os.path.getsize(train_file) == 0 or os.path.getsize(test_file) == 0:
+            raise ValueError("Train or test file is empty")
+        
+        return train_file, test_file
+        
+    except OSError as e:
+        if e.errno == 28:  # No space left on device
+            print(f"❌ DISK FULL ERROR during split: {e}")
+            print(f"💾 Available space: {check_space_gb(os.path.dirname(train_file)):.1f} GB")
+            print(f"💾 Try using a different directory or freeing up space")
+            
+            # Clean up partial files
+            for f in [train_file, test_file]:
+                if os.path.exists(f):
+                    try:
+                        os.remove(f)
+                        print(f"  Cleaned up partial file: {f}")
+                    except:
+                        pass
+            raise
+        else:
+            print(f"❌ File system error during split: {e}")
+            raise
+    except Exception as e:
+        print(f"❌ Unexpected error during split: {e}")
+        raise
 
 def validate_libsvm_format(file_path, max_lines_to_check=10):
     """Validate that the file is in proper libsvm format"""
