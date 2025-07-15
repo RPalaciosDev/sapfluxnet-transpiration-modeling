@@ -30,37 +30,88 @@ def combine_libsvm_files(libsvm_dir, output_dir):
     """
     print(f"Combining libsvm files from {libsvm_dir}...")
     
+    # Check available disk space
+    def check_space_gb(path):
+        try:
+            statvfs = os.statvfs(path)
+            return statvfs.f_bavail * statvfs.f_frsize / (1024**3)
+        except:
+            return 0
+    
+    available_space = check_space_gb(output_dir)
+    print(f"💾 Available space in output directory: {available_space:.1f} GB")
+    
     # Get all libsvm files (including compressed)
     libsvm_files = [f for f in os.listdir(libsvm_dir) if f.endswith('.svm') or f.endswith('.svm.gz')]
     print(f"Found {len(libsvm_files)} libsvm files to combine")
+    
+    # Estimate total size needed
+    total_input_size = 0
+    for libsvm_file in libsvm_files:
+        file_path = os.path.join(libsvm_dir, libsvm_file)
+        try:
+            total_input_size += os.path.getsize(file_path)
+        except:
+            pass
+    
+    total_input_size_gb = total_input_size / (1024**3)
+    print(f"📊 Total input size: {total_input_size_gb:.1f} GB")
+    
+    if available_space < total_input_size_gb * 1.5:  # Need some buffer
+        print(f"⚠️  WARNING: Low disk space!")
+        print(f"⚠️  Available: {available_space:.1f} GB, Needed: ~{total_input_size_gb * 1.5:.1f} GB")
+        print(f"⚠️  Consider freeing up space or using a different directory")
     
     # Combine all files
     all_data_file = os.path.join(output_dir, 'all_data.svm')
     total_rows = 0
     
-    with open(all_data_file, 'w') as output_file:
-        for i, libsvm_file in enumerate(libsvm_files):
-            print(f"Processing file {i+1}/{len(libsvm_files)}: {libsvm_file}")
-            
-            file_path = os.path.join(libsvm_dir, libsvm_file)
-            
-            # Handle compressed files
-            if libsvm_file.endswith('.gz'):
-                import gzip
-                with gzip.open(file_path, 'rt') as f:
-                    lines = f.readlines()
-            else:
-                with open(file_path, 'r') as f:
-                    lines = f.readlines()
-            
-            # Write lines to combined file
-            output_file.writelines(lines)
-            total_rows += len(lines)
-            
-            print(f"  Added {len(lines)} rows from {libsvm_file}")
-    
-    print(f"Combination completed: {total_rows:,} total rows")
-    return all_data_file, total_rows
+    try:
+        with open(all_data_file, 'w') as output_file:
+            for i, libsvm_file in enumerate(libsvm_files):
+                print(f"Processing file {i+1}/{len(libsvm_files)}: {libsvm_file}")
+                
+                file_path = os.path.join(libsvm_dir, libsvm_file)
+                
+                # Handle compressed files
+                if libsvm_file.endswith('.gz'):
+                    import gzip
+                    with gzip.open(file_path, 'rt') as f:
+                        lines = f.readlines()
+                else:
+                    with open(file_path, 'r') as f:
+                        lines = f.readlines()
+                
+                # Write lines to combined file
+                output_file.writelines(lines)
+                total_rows += len(lines)
+                
+                print(f"  Added {len(lines)} rows from {libsvm_file}")
+                
+                # Check disk space periodically
+                if i % 5 == 0:  # Check every 5 files
+                    current_space = check_space_gb(output_dir)
+                    print(f"  💾 Current space: {current_space:.1f} GB")
+                    if current_space < 1.0:  # Less than 1GB left
+                        print(f"⚠️  LOW DISK SPACE WARNING: Only {current_space:.1f} GB left!")
+        
+        print(f"Combination completed: {total_rows:,} total rows")
+        return all_data_file, total_rows
+        
+    except OSError as e:
+        if e.errno == 28:  # No space left on device
+            print(f"❌ DISK FULL ERROR: {e}")
+            print(f"💾 Try using a different directory with more space")
+            print(f"💾 Current directory space: {check_space_gb(output_dir):.1f} GB")
+            print(f"💾 System temp space: {check_space_gb('/tmp'):.1f} GB")
+            print(f"💾 You can try setting a different temp directory in the script")
+            raise
+        else:
+            print(f"❌ File system error: {e}")
+            raise
+    except Exception as e:
+        print(f"❌ Unexpected error during file combination: {e}")
+        raise
 
 def log_memory_usage(step_name):
     """Log current memory usage for debugging"""
@@ -536,16 +587,43 @@ def main():
     libsvm_dir = 'processed_libsvm'
     parquet_dir = 'test_parquet_export'
     
-    # Try different temp directory approaches for permission issues
-    try:
-        # Option 1: Use system temp directory
-        temp_dir = tempfile.mkdtemp(prefix='xgboost_external_')
-        print(f"Using system temp directory: {temp_dir}")
-    except Exception as e:
-        print(f"System temp failed: {e}")
-        # Option 2: Use local temp directory
+    # Check disk space first
+    def check_disk_space(path):
+        """Check available disk space in GB"""
+        try:
+            statvfs = os.statvfs(path)
+            available_bytes = statvfs.f_bavail * statvfs.f_frsize
+            return available_bytes / (1024**3)  # Convert to GB
+        except:
+            return 0
+    
+    # Check space in current directory vs system temp
+    current_dir_space = check_disk_space('.')
+    temp_dir_space = check_disk_space('/tmp')
+    
+    print(f"💾 Disk space check:")
+    print(f"  Current directory: {current_dir_space:.1f} GB available")
+    print(f"  System temp (/tmp): {temp_dir_space:.1f} GB available")
+    
+    # Choose temp directory based on available space
+    if current_dir_space > temp_dir_space and current_dir_space > 10:
+        # Use local temp directory if we have more space here
         temp_dir = 'temp_external_memory'
-        print(f"Using local temp directory: {temp_dir}")
+        print(f"✅ Using local temp directory: {temp_dir} ({current_dir_space:.1f} GB available)")
+    elif temp_dir_space > 10:
+        # Use system temp if it has enough space
+        try:
+            temp_dir = tempfile.mkdtemp(prefix='xgboost_external_')
+            print(f"✅ Using system temp directory: {temp_dir} ({temp_dir_space:.1f} GB available)")
+        except Exception as e:
+            print(f"❌ System temp failed: {e}")
+            temp_dir = 'temp_external_memory'
+            print(f"⚠️  Falling back to local temp directory: {temp_dir}")
+    else:
+        print(f"⚠️  Low disk space detected!")
+        print(f"⚠️  Current dir: {current_dir_space:.1f} GB, /tmp: {temp_dir_space:.1f} GB")
+        temp_dir = 'temp_external_memory'
+        print(f"⚠️  Using local temp directory: {temp_dir} (may need more space)")
     
     # Create temporary directory
     os.makedirs(temp_dir, exist_ok=True)
