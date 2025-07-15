@@ -88,6 +88,10 @@ def combine_libsvm_files(libsvm_dir, output_dir):
                 
                 print(f"  Added {len(lines)} rows from {libsvm_file}")
                 
+                # Explicit cleanup after processing each file
+                del lines
+                gc.collect()
+                
                 # Check disk space periodically
                 if i % 5 == 0:  # Check every 5 files
                     current_space = check_space_gb(output_dir)
@@ -96,6 +100,11 @@ def combine_libsvm_files(libsvm_dir, output_dir):
                         print(f"⚠️  LOW DISK SPACE WARNING: Only {current_space:.1f} GB left!")
         
         print(f"Combination completed: {total_rows:,} total rows")
+        
+        # Final cleanup
+        del libsvm_files
+        gc.collect()
+        
         return all_data_file, total_rows
         
     except OSError as e:
@@ -362,6 +371,10 @@ def create_random_split_external(data_file, train_file, test_file, train_ratio=0
         if os.path.getsize(train_file) == 0 or os.path.getsize(test_file) == 0:
             raise ValueError("Train or test file is empty")
         
+        # Cleanup large data structures
+        del all_indices, train_indices
+        gc.collect()
+        
         return train_file, test_file
         
     except OSError as e:
@@ -437,6 +450,32 @@ def validate_libsvm_format(file_path, max_lines_to_check=10):
     except Exception as e:
         print(f"❌ Error validating libsvm format: {e}")
         return False
+
+def extract_targets_memory_efficient(file_path):
+    """
+    Extract target values from libsvm file without loading everything into memory
+    """
+    print(f"Extracting targets from: {file_path}")
+    targets = []
+    
+    with open(file_path, 'r') as f:
+        for i, line in enumerate(f):
+            if i % 500000 == 0 and i > 0:  # Progress every 500k lines
+                print(f"  Processed {i:,} lines...")
+            
+            line = line.strip()
+            if line and not line.startswith('#'):
+                # First part is the target value
+                parts = line.split(' ', 1)
+                if len(parts) >= 1:
+                    try:
+                        target = float(parts[0])
+                        targets.append(target)
+                    except ValueError:
+                        continue  # Skip invalid lines
+    
+    print(f"  Extracted {len(targets):,} target values")
+    return np.array(targets)
 
 def train_external_memory_xgboost(train_file, test_file, feature_cols):
     """Train XGBoost model using external memory"""
@@ -544,8 +583,8 @@ def train_external_memory_xgboost(train_file, test_file, feature_cols):
     
     # Load actual values for metrics (this loads into memory, but just targets)
     print("Loading actual values for metrics...")
-    _, y_train_actual = load_svmlight_file(train_file)
-    _, y_test_actual = load_svmlight_file(test_file)
+    y_train_actual = extract_targets_memory_efficient(train_file)
+    y_test_actual = extract_targets_memory_efficient(test_file)
     
     # Calculate metrics
     metrics = {
@@ -565,8 +604,10 @@ def train_external_memory_xgboost(train_file, test_file, feature_cols):
     print(f"  Train samples: {len(y_train_actual):,}")
     print(f"  Test samples: {len(y_test_actual):,}")
     
-    # Cleanup
+    # Comprehensive cleanup
     del dtrain, dtest
+    del y_pred_train, y_pred_test
+    del y_train_actual, y_test_actual
     gc.collect()
     log_memory_usage("After cleanup")
     
@@ -803,6 +844,20 @@ def main():
         # Step 4: Get feature importance
         feature_importance = get_feature_importance(model, feature_cols)
         
+        # Cleanup training files to free up disk space
+        print("🧹 Cleaning up training files...")
+        for temp_file in [train_file, test_file]:
+            if os.path.exists(temp_file):
+                try:
+                    os.remove(temp_file)
+                    print(f"  Removed: {temp_file}")
+                except Exception as e:
+                    print(f"  Warning: Could not remove {temp_file}: {e}")
+        
+        # Force garbage collection after training
+        gc.collect()
+        log_memory_usage("After training cleanup")
+        
         # Step 5: Save results
         model_path = save_external_memory_results(
             model, metrics, feature_importance, feature_cols, total_rows
@@ -815,6 +870,12 @@ def main():
         print(f"🚀 Memory-efficient external memory approach")
         print(f"📊 Method: External Memory XGBoost")
         print(f"🎯 Purpose: Full dataset baseline performance")
+        
+        # Final cleanup of large variables
+        print("🧹 Final cleanup...")
+        del model, metrics, feature_importance
+        gc.collect()
+        log_memory_usage("After final cleanup")
         
     except Exception as e:
         print(f"\n❌ External memory training failed: {str(e)}")
