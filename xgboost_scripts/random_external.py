@@ -674,7 +674,7 @@ def main():
     print(f"Available memory: {available_memory:.1f}GB")
     
     # Set up directories - check for libsvm format first
-    libsvm_dir = 'processed_libsvm'
+    libsvm_dir = '../processed_libsvm'
     parquet_dir = 'test_parquet_export'
     
     # Check disk space first
