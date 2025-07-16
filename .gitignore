@@ -206,7 +206,6 @@ __marimo__/
 .abstra/
 
 # Data files
-*.csv
 *.feather
 *.h5
 *.hdf5
@@ -214,7 +213,6 @@ __marimo__/
 *.pickle
 *.xlsx
 *.xls
-*.json
 *.geojson
 *.shp
 *.shx
@@ -306,5 +304,4 @@ exports/
 
 # Temporary training directories
 temp_external_memory/
-external_memory_models/
 colab_*_models/

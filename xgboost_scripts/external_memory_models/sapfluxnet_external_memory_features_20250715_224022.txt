@@ -1,0 +1,9 @@
+Features used in external memory training:
+Method: External Memory XGBoost with random 80/20 split
+Dataset: Full dataset (no sampling)
+Total rows: 8,692,194
+Purpose: Full dataset baseline with memory efficiency
+
+Features: Used existing libsvm format files
+Feature names not available when using pre-processed libsvm files
+Check original data pipeline for feature information
