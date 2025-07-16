@@ -156,9 +156,23 @@ def add_temporal_features_for_rolling_window(df):
     print("Adding temporal features for rolling window analysis...")
     
     # Create synthetic timestamp based on row order
-    # Assume hourly data
+    # Use 6-hour intervals to avoid overflow with large datasets
     start_date = datetime(2020, 1, 1)
-    df['TIMESTAMP'] = pd.date_range(start=start_date, periods=len(df), freq='H')
+    
+    # Calculate reasonable time intervals for large datasets
+    total_hours = len(df) * 6  # 6-hour intervals
+    total_days = total_hours / 24
+    
+    print(f"Dataset size: {len(df):,} rows")
+    print(f"Simulating {total_days:.1f} days of data with 6-hour intervals")
+    
+    # Create date range with 6-hour frequency to avoid overflow
+    try:
+        df['TIMESTAMP'] = pd.date_range(start=start_date, periods=len(df), freq='6H')
+    except Exception as e:
+        print(f"Large dataset detected, using daily frequency: {e}")
+        # Fallback to daily frequency for very large datasets
+        df['TIMESTAMP'] = pd.date_range(start=start_date, periods=len(df), freq='D')
     
     # Add temporal features for seasonal analysis
     df['month'] = df['TIMESTAMP'].dt.month
@@ -711,7 +725,7 @@ def main():
         
         rolling_splits, seasonal_info = create_rolling_window_splits(
             df, feature_cols, target_col, 
-            window_size_days=30, forecast_horizon_days=7, n_windows=12
+            window_size_days=30, forecast_horizon_days=7, n_windows=10
         )
         
         # Step 4: Train rolling window models with external memory
