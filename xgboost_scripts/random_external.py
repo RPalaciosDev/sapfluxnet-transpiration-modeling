@@ -503,10 +503,91 @@ def extract_targets_memory_efficient(file_path):
     return np.array(targets)
 
 def train_external_memory_xgboost(train_file, test_file, feature_cols):
-    """Train XGBoost model using external memory"""
+    """Train XGBoost model using external memory with detailed logging"""
     print("Training XGBoost with external memory...")
     print(f"XGBoost version: {xgb.__version__}")
     log_memory_usage("Before external memory training")
+    
+    # Initialize training history tracking
+    training_history = {
+        'iteration': [],
+        'train_rmse': [],
+        'test_rmse': [],
+        'train_mae': [],
+        'test_mae': [],
+        'train_r2': [],
+        'test_r2': [],
+        'memory_usage': [],
+        'time_per_iteration': []
+    }
+    
+    # Custom callback to capture training metrics
+    class TrainingCallback:
+        def __init__(self, history_dict):
+            self.history = history_dict
+            self.start_time = None
+            self.last_time = None
+        
+        def __call__(self, env):
+            iteration = env.iteration
+            
+            # Get evaluation results
+            eval_results = env.evaluation_result_list
+            train_rmse = eval_results[0][1]  # First eval set (train)
+            test_rmse = eval_results[1][1]   # Second eval set (test)
+            
+            # Calculate additional metrics if we have predictions
+            if hasattr(env, 'model') and env.model is not None:
+                # Get predictions for current iteration
+                y_pred_train = env.model.predict(env.model.DMatrix(train_file))
+                y_pred_test = env.model.predict(env.model.DMatrix(test_file))
+                
+                # Load actual values (only once, reuse)
+                if not hasattr(self, 'y_train_actual'):
+                    self.y_train_actual = extract_targets_memory_efficient(train_file)
+                    self.y_test_actual = extract_targets_memory_efficient(test_file)
+                
+                # Calculate additional metrics
+                train_mae = mean_absolute_error(self.y_train_actual, y_pred_train)
+                test_mae = mean_absolute_error(self.y_test_actual, y_pred_test)
+                train_r2 = r2_score(self.y_train_actual, y_pred_train)
+                test_r2 = r2_score(self.y_test_actual, y_pred_test)
+            else:
+                # Fallback to RMSE only
+                train_mae = test_mae = train_r2 = test_r2 = 0.0
+            
+            # Track timing
+            current_time = time.time()
+            if self.start_time is None:
+                self.start_time = current_time
+                self.last_time = current_time
+                time_per_iter = 0.0
+            else:
+                time_per_iter = current_time - self.last_time
+                self.last_time = current_time
+            
+            # Get memory usage
+            memory_gb = psutil.virtual_memory().used / (1024**3)
+            
+            # Store in history
+            self.history['iteration'].append(iteration)
+            self.history['train_rmse'].append(train_rmse)
+            self.history['test_rmse'].append(test_rmse)
+            self.history['train_mae'].append(train_mae)
+            self.history['test_mae'].append(test_mae)
+            self.history['train_r2'].append(train_r2)
+            self.history['test_r2'].append(test_r2)
+            self.history['memory_usage'].append(memory_gb)
+            self.history['time_per_iteration'].append(time_per_iter)
+            
+            # Print progress every 10 iterations
+            if iteration % 10 == 0:
+                print(f"Iteration {iteration:3d}: Train R²={train_r2:.4f}, Test R²={test_r2:.4f}, "
+                      f"Train RMSE={train_rmse:.4f}, Test RMSE={test_rmse:.4f}, "
+                      f"Memory={memory_gb:.1f}GB, Time={time_per_iter:.2f}s")
+    
+    # Initialize callback
+    training_callback = TrainingCallback(training_history)
     
     # Validate libsvm format
     if not validate_libsvm_format(train_file):
@@ -585,9 +666,12 @@ def train_external_memory_xgboost(train_file, test_file, feature_cols):
     
     print(f"XGBoost parameters: {params}")
     
-    # Train model
+    # Train model with callback
     print("Starting external memory training...")
     evals = [(dtrain, 'train'), (dtest, 'test')]
+    
+    import time
+    start_time = time.time()
     
     model = xgb.train(
         params,
@@ -595,30 +679,35 @@ def train_external_memory_xgboost(train_file, test_file, feature_cols):
         num_boost_round=200,     # Can train longer with external memory
         evals=evals,
         early_stopping_rounds=20,
-        verbose_eval=10
+        verbose_eval=10,
+        callbacks=[training_callback]
     )
     
+    total_training_time = time.time() - start_time
     log_memory_usage("After training")
     print("External memory training completed!")
     
-    # Make predictions
-    print("Making predictions...")
+    # Make final predictions
+    print("Making final predictions...")
     y_pred_train = model.predict(dtrain)
     y_pred_test = model.predict(dtest)
     
-    # Load actual values for metrics (this loads into memory, but just targets)
-    print("Loading actual values for metrics...")
+    # Load actual values for final metrics
+    print("Loading actual values for final metrics...")
     y_train_actual = extract_targets_memory_efficient(train_file)
     y_test_actual = extract_targets_memory_efficient(test_file)
     
-    # Calculate metrics
+    # Calculate final metrics
     metrics = {
         'train_rmse': np.sqrt(mean_squared_error(y_train_actual, y_pred_train)),
         'test_rmse': np.sqrt(mean_squared_error(y_test_actual, y_pred_test)),
         'train_mae': mean_absolute_error(y_train_actual, y_pred_train),
         'test_mae': mean_absolute_error(y_test_actual, y_pred_test),
         'train_r2': r2_score(y_train_actual, y_pred_train),
-        'test_r2': r2_score(y_test_actual, y_pred_test)
+        'test_r2': r2_score(y_test_actual, y_pred_test),
+        'total_training_time': total_training_time,
+        'best_iteration': model.best_iteration if hasattr(model, 'best_iteration') else len(training_history['iteration']),
+        'training_history': training_history
     }
     
     print(f"\nExternal Memory Model Performance:")
@@ -628,6 +717,8 @@ def train_external_memory_xgboost(train_file, test_file, feature_cols):
     print(f"  Test RMSE: {metrics['test_rmse']:.4f}")
     print(f"  Train samples: {len(y_train_actual):,}")
     print(f"  Test samples: {len(y_test_actual):,}")
+    print(f"  Total training time: {total_training_time:.1f} seconds")
+    print(f"  Best iteration: {metrics['best_iteration']}")
     
     # Comprehensive cleanup
     del dtrain, dtest
@@ -715,6 +806,13 @@ def save_external_memory_results(model, metrics, feature_importance, feature_col
     feature_importance_path = f"{output_dir}/sapfluxnet_external_memory_importance_{timestamp}.csv"
     enhanced_importance.to_csv(feature_importance_path, index=False)
     
+    # Save training history
+    if 'training_history' in metrics:
+        history_path = f"{output_dir}/sapfluxnet_external_memory_history_{timestamp}.csv"
+        history_df = pd.DataFrame(metrics['training_history'])
+        history_df.to_csv(history_path, index=False)
+        print(f"  Training history: {history_path}")
+    
     # Save feature list
     feature_path = f"{output_dir}/sapfluxnet_external_memory_features_{timestamp}.txt"
     with open(feature_path, 'w') as f:
@@ -749,7 +847,24 @@ def save_external_memory_results(model, metrics, feature_importance, feature_col
         f.write("Model Performance:\n")
         f.write("-" * 20 + "\n")
         for key, value in metrics.items():
-            f.write(f"  {key}: {value:.4f}\n")
+            if key != 'training_history':  # Skip the history dict
+                if isinstance(value, float):
+                    f.write(f"  {key}: {value:.4f}\n")
+                else:
+                    f.write(f"  {key}: {value}\n")
+        
+        f.write("\nTraining Summary:\n")
+        f.write("-" * 18 + "\n")
+        if 'total_training_time' in metrics:
+            f.write(f"  Total training time: {metrics['total_training_time']:.1f} seconds\n")
+        if 'best_iteration' in metrics:
+            f.write(f"  Best iteration: {metrics['best_iteration']}\n")
+        if 'training_history' in metrics:
+            history = metrics['training_history']
+            f.write(f"  Total iterations: {len(history['iteration'])}\n")
+            if history['train_r2']:
+                f.write(f"  Final train R²: {history['train_r2'][-1]:.4f}\n")
+                f.write(f"  Final test R²: {history['test_r2'][-1]:.4f}\n")
         
         f.write("\nValidation Method:\n")
         f.write("-" * 18 + "\n")

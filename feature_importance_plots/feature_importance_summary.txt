@@ -1,0 +1,46 @@
+SAPFLUXNET Feature Importance Analysis Summary
+==================================================
+Analysis completed: 2025-07-16 03:06:11.643612
+Total features analyzed: 151
+
+KEY FINDINGS:
+---------------
+• 45 features explain 80% of model importance
+• 93 features explain 95% of model importance
+• Most important feature: longitude (importance: 1345187.5000)
+
+TOP 10 MOST IMPORTANT FEATURES:
+-----------------------------------
+ 1. longitude                      1345187.5000 (Other)
+ 2. mean_annual_precip             459724.2188 (Precipitation)
+ 3. latitude_abs                   304567.0312 (Other)
+ 4. temp_deviation                 239407.0000 (Air Temperature)
+ 5. tree_volume_index              223466.8750 (Other)
+ 6. ppfd_in                        203324.5938 (Light)
+ 7. measurement_timestep           179637.5312 (Hour)
+ 8. stand_age                      179475.6562 (Air Temperature)
+ 9. n_trees                        166185.0312 (Other)
+10. latitude                       147688.3906 (Other)
+
+FEATURE CATEGORY RANKINGS:
+---------------------------
+ 5. Other                Total: 3391057.895, Avg: 99736.9969, Count: 34
+ 1. Air Temperature      Total: 958630.400, Avg: 36870.4000, Count: 26
+ 6. Precipitation        Total: 593667.555, Avg: 74208.4443, Count: 8
+10. VPD                  Total: 495889.864, Avg: 26099.4665, Count: 19
+ 9. Solar Radiation      Total: 470221.993, Avg: 23511.0997, Count: 20
+ 3. Humidity             Total: 425784.494, Avg: 22409.7102, Count: 19
+ 4. Light                Total: 366863.085, Avg: 52409.0122, Count: 7
+ 2. Hour                 Total: 264741.690, Avg: 88247.2301, Count: 3
+ 8. Soil Moisture        Total: 188018.724, Avg: 26859.8177, Count: 7
+11. Wind Speed           Total: 69904.584, Avg: 9986.3691, Count: 7
+ 7. Site Location        Total: 53022.273, Avg: 53022.2734, Count: 1
+
+INSIGHTS FOR MODEL INTERPRETATION:
+-----------------------------------
+• Environmental variables account for 49.0% of total importance
+• Temporal features account for 3.6% of total importance
+• Lag and rolling window features account for 0.0% of total importance
+
+This analysis helps understand which environmental and temporal factors
+are most critical for predicting sap flow in the SAPFLUXNET dataset.
