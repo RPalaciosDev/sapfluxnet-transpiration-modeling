@@ -63,69 +63,112 @@ def load_feature_mapping(data_dir):
         print(f"❌ Error loading feature mapping: {e}")
         return None
 
-def load_libsvm_as_dataframe(file_path, feature_mapping=None):
-    """Load libsvm file back to DataFrame for site-based sampling"""
+def load_libsvm_as_dataframe(file_path, feature_mapping=None, max_rows=None):
+    """Load libsvm file back to DataFrame for site-based sampling (memory optimized)"""
     print(f"Loading libsvm data from: {file_path}")
     
-    # Read file line by line to build DataFrame
-    data_rows = []
-    targets = []
+    # For very large datasets, we need to be more memory efficient
+    # We'll use chunked processing and only keep essential data in memory
     
+    print("Using memory-optimized loading for large dataset...")
+    
+    # First pass: determine data structure and optionally limit rows
+    n_features = 0
+    valid_line_count = 0
+    
+    print("First pass: analyzing data structure...")
     with open(file_path, 'r') as f:
         for i, line in enumerate(f):
-            if i % 100000 == 0 and i > 0:
-                print(f"  Processed {i:,} lines...")
+            if i % 500000 == 0 and i > 0:
+                print(f"  Analyzed {i:,} lines...")
             
             line = line.strip()
             if line and not line.startswith('#'):
                 parts = line.split()
                 if len(parts) >= 1:
                     try:
+                        float(parts[0])  # Validate target
+                        valid_line_count += 1
+                        
+                        # Track max feature index
+                        for part in parts[1:]:
+                            if ':' in part:
+                                idx = int(part.split(':')[0])
+                                n_features = max(n_features, idx + 1)
+                                
+                        # Limit rows if specified
+                        if max_rows and valid_line_count >= max_rows:
+                            print(f"  Limiting to {max_rows:,} rows for memory efficiency")
+                            break
+                            
+                    except ValueError:
+                        continue
+    
+    # Use feature mapping if available
+    if feature_mapping and 'feature_count' in feature_mapping:
+        n_features = feature_mapping['feature_count']
+    
+    print(f"  Data structure: {valid_line_count:,} valid samples, {n_features} features")
+    
+    # Second pass: load data efficiently
+    print("Second pass: loading data...")
+    
+    # Pre-allocate arrays for better memory efficiency
+    data_matrix = np.zeros((valid_line_count, n_features), dtype=np.float32)
+    targets = np.zeros(valid_line_count, dtype=np.float32)
+    
+    row_idx = 0
+    with open(file_path, 'r') as f:
+        for i, line in enumerate(f):
+            if i % 500000 == 0 and i > 0:
+                print(f"  Loaded {i:,} lines...")
+            
+            line = line.strip()
+            if line and not line.startswith('#'):
+                parts = line.split()
+                if len(parts) >= 1 and row_idx < valid_line_count:
+                    try:
                         # Extract target
-                        target = float(parts[0])
-                        targets.append(target)
+                        targets[row_idx] = float(parts[0])
                         
-                        # Extract features - initialize with zeros
-                        if feature_mapping:
-                            n_features = feature_mapping['feature_count']
-                        else:
-                            # Estimate features from data
-                            max_feature_idx = 0
-                            for part in parts[1:]:
-                                if ':' in part:
-                                    idx = int(part.split(':')[0])
-                                    max_feature_idx = max(max_feature_idx, idx)
-                            n_features = max_feature_idx + 1
-                        
-                        feature_row = [0.0] * n_features
-                        
-                        # Fill in actual feature values
+                        # Extract features
                         for part in parts[1:]:
                             if ':' in part:
                                 idx_str, value_str = part.split(':', 1)
                                 idx = int(idx_str)
                                 value = float(value_str)
                                 if idx < n_features:
-                                    feature_row[idx] = value
+                                    data_matrix[row_idx, idx] = value
                         
-                        data_rows.append(feature_row)
+                        row_idx += 1
                         
+                        # Stop if we've loaded enough rows
+                        if max_rows and row_idx >= max_rows:
+                            break
+                            
                     except ValueError:
                         continue
     
-    print(f"  Loaded {len(data_rows):,} samples with {len(feature_row) if data_rows else 0} features")
+    print(f"  Loaded {row_idx:,} samples with {n_features} features")
     
-    # Convert to DataFrame
+    # Convert to DataFrame efficiently
     if feature_mapping and 'feature_names' in feature_mapping:
-        feature_cols = feature_mapping['feature_names']
+        feature_cols = feature_mapping['feature_names'][:n_features]
     else:
-        feature_cols = [f'f{i}' for i in range(len(feature_row) if data_rows else 0)]
+        feature_cols = [f'f{i}' for i in range(n_features)]
     
     target_col = feature_mapping.get('target_column', 'sap_flow') if feature_mapping else 'sap_flow'
     
-    # Create DataFrame
-    df = pd.DataFrame(data_rows, columns=feature_cols)
+    # Create DataFrame from pre-allocated arrays
+    df = pd.DataFrame(data_matrix, columns=feature_cols)
     df[target_col] = targets
+    
+    # Add dummy site column for spatial validation (we'll need to extract this from actual data)
+    # For now, create artificial site groupings based on row blocks
+    rows_per_site = 3000  # Approximate rows per site
+    df['site'] = df.index // rows_per_site
+    
+    print(f"  Created {df['site'].nunique()} artificial site groups")
     
     return df, feature_cols, target_col
 

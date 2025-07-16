@@ -155,32 +155,33 @@ def add_temporal_features_for_k_fold(df):
     """
     print("Adding temporal features for k-fold temporal analysis...")
     
-    # Create synthetic timestamp based on row order
-    # Use 6-hour intervals to avoid overflow with large datasets
-    start_date = datetime(2020, 1, 1)
-    
-    # Calculate reasonable time intervals for large datasets
-    total_hours = len(df) * 6  # 6-hour intervals
-    total_days = total_hours / 24
+    # For very large datasets (8M+ rows), use simple integer-based temporal simulation
+    # This avoids pandas date_range overflow issues
     
     print(f"Dataset size: {len(df):,} rows")
-    print(f"Simulating {total_days:.1f} days of data with 6-hour intervals")
+    print("Using integer-based temporal simulation to avoid overflow")
     
-    # Create date range with 6-hour frequency to avoid overflow
-    try:
-        df['TIMESTAMP'] = pd.date_range(start=start_date, periods=len(df), freq='6H')
-    except Exception as e:
-        print(f"Large dataset detected, using daily frequency: {e}")
-        # Fallback to daily frequency for very large datasets
-        df['TIMESTAMP'] = pd.date_range(start=start_date, periods=len(df), freq='D')
+    # Create simple temporal index (simulates days)
+    df['temporal_index'] = np.arange(len(df))
     
-    # Add temporal features for analysis
-    df['month'] = df['TIMESTAMP'].dt.month
-    df['day_of_year'] = df['TIMESTAMP'].dt.dayofyear
+    # Simulate temporal patterns using modular arithmetic
+    # Each "day" represents a data point, cycle through patterns
+    days_per_year = 365
+    days_per_month = 30
+    hours_per_day = 24
+    
+    # Calculate temporal features from index
+    df['day_of_year'] = (df['temporal_index'] % days_per_year) + 1
+    df['month'] = ((df['temporal_index'] // days_per_month) % 12) + 1
     df['season'] = df['month'].map({12:1, 1:1, 2:1, 3:2, 4:2, 5:2, 6:3, 7:3, 8:3, 9:4, 10:4, 11:4})
-    df['hour'] = df['TIMESTAMP'].dt.hour
+    df['hour'] = (df['temporal_index'] % hours_per_day)
     
-    print(f"Added temporal features. Data range: {df['TIMESTAMP'].min()} to {df['TIMESTAMP'].max()}")
+    # Create a simple timestamp for sorting (just use temporal_index)
+    df['TIMESTAMP'] = df['temporal_index']  # Simple integer timestamp
+    
+    print(f"Added temporal features using integer simulation")
+    print(f"Temporal range: 0 to {len(df)-1} (temporal units)")
+    print(f"Simulated time span: {len(df)/days_per_year:.1f} years")
     
     return df
 

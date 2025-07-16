@@ -155,32 +155,33 @@ def add_temporal_features_for_rolling_window(df):
     """
     print("Adding temporal features for rolling window analysis...")
     
-    # Create synthetic timestamp based on row order
-    # Use 6-hour intervals to avoid overflow with large datasets
-    start_date = datetime(2020, 1, 1)
-    
-    # Calculate reasonable time intervals for large datasets
-    total_hours = len(df) * 6  # 6-hour intervals
-    total_days = total_hours / 24
+    # For very large datasets (8M+ rows), use simple integer-based temporal simulation
+    # This avoids pandas date_range overflow issues
     
     print(f"Dataset size: {len(df):,} rows")
-    print(f"Simulating {total_days:.1f} days of data with 6-hour intervals")
+    print("Using integer-based temporal simulation to avoid overflow")
     
-    # Create date range with 6-hour frequency to avoid overflow
-    try:
-        df['TIMESTAMP'] = pd.date_range(start=start_date, periods=len(df), freq='6H')
-    except Exception as e:
-        print(f"Large dataset detected, using daily frequency: {e}")
-        # Fallback to daily frequency for very large datasets
-        df['TIMESTAMP'] = pd.date_range(start=start_date, periods=len(df), freq='D')
+    # Create simple temporal index (simulates days)
+    df['temporal_index'] = np.arange(len(df))
     
-    # Add temporal features for seasonal analysis
-    df['month'] = df['TIMESTAMP'].dt.month
-    df['day_of_year'] = df['TIMESTAMP'].dt.dayofyear
+    # Simulate temporal patterns using modular arithmetic
+    # Each "day" represents a data point, cycle through patterns
+    days_per_year = 365
+    days_per_month = 30
+    hours_per_day = 24
+    
+    # Calculate temporal features from index
+    df['day_of_year'] = (df['temporal_index'] % days_per_year) + 1
+    df['month'] = ((df['temporal_index'] // days_per_month) % 12) + 1
     df['season'] = df['month'].map({12:1, 1:1, 2:1, 3:2, 4:2, 5:2, 6:3, 7:3, 8:3, 9:4, 10:4, 11:4})
-    df['hour'] = df['TIMESTAMP'].dt.hour
+    df['hour'] = (df['temporal_index'] % hours_per_day)
     
-    print(f"Added temporal features. Data range: {df['TIMESTAMP'].min()} to {df['TIMESTAMP'].max()}")
+    # Create a simple timestamp for sorting (just use temporal_index)
+    df['TIMESTAMP'] = df['temporal_index']  # Simple integer timestamp
+    
+    print(f"Added temporal features using integer simulation")
+    print(f"Temporal range: 0 to {len(df)-1} (temporal units)")
+    print(f"Simulated time span: {len(df)/days_per_year:.1f} years")
     
     return df
 
@@ -196,19 +197,19 @@ def create_rolling_window_splits(df, feature_cols, target_col, window_size_days=
     # Sort by timestamp
     df = df.sort_values('TIMESTAMP').reset_index(drop=True)
     
-    # Get time range
-    start_date = df['TIMESTAMP'].min()
-    end_date = df['TIMESTAMP'].max()
-    total_days = (end_date - start_date).days
+    # Get time range (integer timestamps)
+    start_idx = df['TIMESTAMP'].min()
+    end_idx = df['TIMESTAMP'].max()
+    total_time_units = end_idx - start_idx
     
-    print(f"Data time range: {start_date.date()} to {end_date.date()} ({total_days} days)")
+    print(f"Data time range: {start_idx} to {end_idx} ({total_time_units} temporal units)")
     
-    # Calculate window spacing
+    # Calculate window spacing (using integer arithmetic)
     min_window_spacing = window_size_days + forecast_horizon_days
-    available_span = total_days - min_window_spacing
+    available_span = total_time_units - min_window_spacing
     
     if available_span <= 0:
-        raise ValueError(f"Insufficient data for rolling windows. Need at least {min_window_spacing} days.")
+        raise ValueError(f"Insufficient data for rolling windows. Need at least {min_window_spacing} units.")
     
     if n_windows > 1:
         window_spacing = available_span // (n_windows - 1)
@@ -216,7 +217,7 @@ def create_rolling_window_splits(df, feature_cols, target_col, window_size_days=
         window_spacing = 0
     
     window_spacing = max(window_spacing, min_window_spacing)
-    print(f"Window spacing: {window_spacing} days")
+    print(f"Window spacing: {window_spacing} temporal units")
     
     # Create rolling window splits
     rolling_splits = []
@@ -225,20 +226,20 @@ def create_rolling_window_splits(df, feature_cols, target_col, window_size_days=
     print(f"\nCreating {n_windows} rolling window splits...")
     
     for i in range(n_windows):
-        # Calculate window dates
-        window_start_date = start_date + timedelta(days=i * window_spacing)
-        train_end_date = window_start_date + timedelta(days=window_size_days)
-        test_start_date = train_end_date
-        test_end_date = test_start_date + timedelta(days=forecast_horizon_days)
+        # Calculate window indices (integer arithmetic)
+        window_start_idx = start_idx + i * window_spacing
+        train_end_idx = window_start_idx + window_size_days
+        test_start_idx = train_end_idx
+        test_end_idx = test_start_idx + forecast_horizon_days
         
         # Check if we have enough data
-        if test_end_date > end_date:
+        if test_end_idx > end_idx:
             print(f"  Window {i+1}: Skipped (insufficient future data)")
             break
         
         # Filter data for this window
-        train_mask = (df['TIMESTAMP'] >= window_start_date) & (df['TIMESTAMP'] < train_end_date)
-        test_mask = (df['TIMESTAMP'] >= test_start_date) & (df['TIMESTAMP'] < test_end_date)
+        train_mask = (df['TIMESTAMP'] >= window_start_idx) & (df['TIMESTAMP'] < train_end_idx)
+        test_mask = (df['TIMESTAMP'] >= test_start_idx) & (df['TIMESTAMP'] < test_end_idx)
         
         train_data = df[train_mask].copy()
         test_data = df[test_mask].copy()
@@ -253,18 +254,18 @@ def create_rolling_window_splits(df, feature_cols, target_col, window_size_days=
         train_month = train_data['month'].mode()[0] if len(train_data) > 0 else 0
         test_month = test_data['month'].mode()[0] if len(test_data) > 0 else 0
         
-        print(f"  Window {i+1}: Train {window_start_date.date()} to {train_end_date.date()}")
-        print(f"           Test {test_start_date.date()} to {test_end_date.date()}")
+        print(f"  Window {i+1}: Train {window_start_idx} to {train_end_idx}")
+        print(f"           Test {test_start_idx} to {test_end_idx}")
         print(f"           Train: {len(train_data):,} records (Season {train_season}, Month {train_month})")
         print(f"           Test:  {len(test_data):,} records (Season {test_season}, Month {test_month})")
         
         # Store seasonal information
         seasonal_info.append({
             'window': i + 1,
-            'train_start': window_start_date,
-            'train_end': train_end_date,
-            'test_start': test_start_date,
-            'test_end': test_end_date,
+            'train_start': window_start_idx,
+            'train_end': train_end_idx,
+            'test_start': test_start_idx,
+            'test_end': test_end_idx,
             'train_season': train_season,
             'test_season': test_season,
             'train_month': train_month,
