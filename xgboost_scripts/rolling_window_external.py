@@ -155,33 +155,38 @@ def add_temporal_features_for_rolling_window(df):
     """
     print("Adding temporal features for rolling window analysis...")
     
-    # For very large datasets (8M+ rows), use simple integer-based temporal simulation
-    # This avoids pandas date_range overflow issues
+    # For very large datasets (8M+ rows), use compressed temporal simulation
+    # Multiple rows share the same temporal unit to create reasonable time spans
     
     print(f"Dataset size: {len(df):,} rows")
-    print("Using integer-based temporal simulation to avoid overflow")
+    print("Using compressed temporal simulation for manageable time spans")
     
-    # Create simple temporal index (simulates days)
-    df['temporal_index'] = np.arange(len(df))
+    # Compress temporal scale: multiple rows per time unit
+    # This creates a more reasonable time span (e.g., 3-5 years instead of 23,000 years)
+    rows_per_day = 6000  # Approximately 6000 measurements per day
+    total_days = len(df) // rows_per_day
+    
+    # Create compressed temporal index
+    df['temporal_index'] = df.index // rows_per_day
     
     # Simulate temporal patterns using modular arithmetic
-    # Each "day" represents a data point, cycle through patterns
     days_per_year = 365
     days_per_month = 30
     hours_per_day = 24
     
-    # Calculate temporal features from index
+    # Calculate temporal features from compressed index
     df['day_of_year'] = (df['temporal_index'] % days_per_year) + 1
     df['month'] = ((df['temporal_index'] // days_per_month) % 12) + 1
     df['season'] = df['month'].map({12:1, 1:1, 2:1, 3:2, 4:2, 5:2, 6:3, 7:3, 8:3, 9:4, 10:4, 11:4})
     df['hour'] = (df['temporal_index'] % hours_per_day)
     
-    # Create a simple timestamp for sorting (just use temporal_index)
-    df['TIMESTAMP'] = df['temporal_index']  # Simple integer timestamp
+    # Create timestamp for sorting (use compressed temporal_index)
+    df['TIMESTAMP'] = df['temporal_index']
     
-    print(f"Added temporal features using integer simulation")
-    print(f"Temporal range: 0 to {len(df)-1} (temporal units)")
-    print(f"Simulated time span: {len(df)/days_per_year:.1f} years")
+    print(f"Added temporal features using compressed simulation")
+    print(f"Temporal range: 0 to {df['temporal_index'].max()} (days)")
+    print(f"Simulated time span: {total_days/days_per_year:.1f} years")
+    print(f"Rows per temporal unit: {rows_per_day}")
     
     return df
 
