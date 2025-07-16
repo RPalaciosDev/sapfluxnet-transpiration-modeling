@@ -687,7 +687,7 @@ def create_enhanced_feature_importance(feature_importance, feature_cols, feature
         enhanced_importance['feature_index'] = [f'f{i}' for i in range(len(feature_importance))]
         return enhanced_importance
 
-def save_external_memory_results(model, metrics, feature_importance, feature_cols, total_rows, feature_mapping=None, output_dir='external_memory_models'):
+def save_external_memory_results(model, metrics, feature_importance, feature_cols, total_rows, feature_mapping=None, output_dir='external_memory_models/random_split'):
     """Save external memory model results with enhanced feature mapping"""
     os.makedirs(output_dir, exist_ok=True)
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')

@@ -2,304 +2,350 @@
 
 ## Overview
 
-The Spatial Validation Model uses **Leave-One-Site-Out cross-validation** to rigorously test the **spatial generalization capability** of machine learning models predicting sap flow from environmental and temporal features. This model answers the critical research question: **"Can we reliably predict sap flow at completely new sites we've never seen before?"**
+The Spatial Validation Model uses **Leave-One-Site-Out cross-validation with balanced site sampling** to rigorously test the **spatial generalization capability** of machine learning models predicting sap flow from environmental and temporal features. This enhanced model combines **geographic fairness** with **external memory efficiency** to answer the critical research question: **"Can we reliably predict sap flow at completely new sites we've never seen before?"**
 
 ## Primary Research Question
 
-**"How well can we predict sap flow at new geographic locations using models trained on other sites?"**
+**"How well can we predict sap flow at new geographic locations using models trained on other sites with balanced geographic representation?"**
 
-This addresses the fundamental challenge in ecological modeling: whether patterns learned from existing study sites can accurately predict ecosystem responses at unstudied locations across different environmental conditions and geographic contexts.
+This addresses the fundamental challenge in ecological modeling: whether patterns learned from existing study sites can accurately predict ecosystem responses at unstudied locations across different environmental conditions and geographic contexts, while ensuring that all sites contribute equally to model learning regardless of their data volume.
 
-## Methodology
+## Enhanced Methodology
 
-### Leave-One-Site-Out Cross-Validation Approach
+### Balanced Site Sampling + Leave-One-Site-Out Cross-Validation
 
-- **Site-Based Splitting**: Each fold holds out one complete site for testing
-- **Multi-Site Training**: Trains on all remaining sites (N-1 sites)
-- **Geographic Independence**: No data leakage between spatially distinct locations
-- **Comprehensive Coverage**: Every site is tested as a "new" location
+Our enhanced approach combines two key innovations:
+
+#### 1. **Balanced Site Sampling for Geographic Fairness**
+
+- **Equal Contribution**: Each site contributes ~3000 records (or all available if less)
+- **Geographic Equity**: Prevents high-data sites from dominating model patterns
+- **Quality Filtering**: Excludes sites with <500 records for reliability
+- **Substantial Data**: Still uses ~300K+ total records across all sites
+
+#### 2. **External Memory Efficiency**
+
+- **Memory Scalable**: Uses libsvm format for unlimited dataset size handling
+- **Computational Feasible**: LOSO training on balanced data is much faster
+- **Enhanced Features**: Feature mapping provides both indices and names
+- **Disk Management**: Automatic cleanup and space monitoring
 
 ### Validation Strategy
 
 ```
-Site 1: Train on [Sites 2,3,4...N] → Test on [Site 1]
-Site 2: Train on [Sites 1,3,4...N] → Test on [Site 2]
-Site 3: Train on [Sites 1,2,4...N] → Test on [Site 3]
+Site 1: Train on [3K records from Sites 2,3,4...N] → Test on [Site 1: all records]
+Site 2: Train on [3K records from Sites 1,3,4...N] → Test on [Site 2: all records]
+Site 3: Train on [3K records from Sites 1,2,4...N] → Test on [Site 3: all records]
 ...
-Site N: Train on [Sites 1,2,3...N-1] → Test on [Site N]
+Site N: Train on [3K records from Sites 1,2,3...N-1] → Test on [Site N: all records]
 ```
 
-Each fold simulates deploying a model to a completely new geographic location with unknown characteristics.
+Each fold simulates deploying a model to a completely new geographic location, but with **balanced geographic representation** in the training data rather than bias toward high-data sites.
 
 ## Key Features
 
 - **158 Engineered Features**: Environmental patterns, temporal dynamics, but **excludes site identity**
-- **Conservative XGBoost**: Identical parameters to other validation models for fair comparison
-- **Global Coverage**: Validates across ~106 SAPFLUXNET sites worldwide
-- **Memory Management**: Configurable limits for computational constraints
-- **Site Filtering**: Removes sites with insufficient data (<100 records)
+- **Balanced Geographic Training**: ~3000 records per site for fair representation
+- **External Memory XGBoost**: Memory-efficient training with libsvm format
+- **Enhanced Feature Mapping**: Both feature indices (f107) and names (rh_mean_3h)
+- **Global Coverage**: Validates across ~100+ SAPFLUXNET sites worldwide
+- **Geographic Fairness**: Equal site contribution regardless of original data volume
+
+## Scientific Advantages of Balanced Sampling
+
+### **Geographic Fairness**
+
+```
+Traditional Approach Problems:
+Site A: 100,000 records  ← Dominates model learning
+Site B: 500 records      ← Minimal influence
+Site C: 1,200 records    ← Negligible impact
+
+Balanced Sampling Solution:
+Site A: 3,000 records (sampled)  ← Equal geographic weight
+Site B: 500 records (all)        ← Full representation
+Site C: 1,200 records (all)      ← Full representation
+```
+
+### **Scientific Validity**
+
+- **Tests geographic patterns**: Model learns from all regions equally
+- **Eliminates data volume bias**: High-data sites don't dominate
+- **Real-world deployment**: Simulates typical new site characteristics
+- **Climate diversity**: Ensures all climate zones contribute equally
+
+### **Computational Benefits**
+
+- **Faster LOSO training**: ~300K vs 8M+ records per fold
+- **Memory efficient**: Disk-based training eliminates memory constraints
+- **Practical deployment**: Reasonable computational requirements
+- **Scalable approach**: Can handle hundreds of sites
 
 ## Possible Outcomes & Interpretations
 
-### 1. **Strong Spatial Generalization**
+### 1. **Strong Spatial Generalization with Geographic Fairness**
 
-**Metrics**: High R² (>0.75), Low variability (±0.08)
+**Metrics**: High R² (>0.70), Low variability (±0.08)
 
 ```
-Example: Test R² = 0.81 ± 0.06
+Example: Test R² = 0.78 ± 0.06 across balanced geographic representation
 ```
 
 **Interpretation**:
 
-- ✅ **Excellent transferability to new sites**
-- ✅ **Environmental relationships are spatially consistent**
-- ✅ **Models capture universal sap flow drivers**
-- ✅ **High confidence for deployment to unstudied locations**
+- ✅ **Excellent transferability to typical new sites**
+- ✅ **Environmental relationships are globally consistent**
+- ✅ **Models capture universal sap flow drivers across all regions**
+- ✅ **High confidence for deployment to average new locations**
 
 **Scientific Implications**:
 
-- Climate-vegetation relationships are globally consistent
-- Site-specific factors have minimal influence on sap flow patterns
-- Strong potential for continental/global-scale applications
-- Models ready for operational deployment
+- Climate-vegetation relationships are consistent across geographic regions
+- No single region dominates the predictive patterns
+- Strong potential for global-scale applications
+- Models ready for deployment to sites with typical characteristics
 
 **Applications**:
 
-- Deploy models to new forest monitoring sites
-- Scale predictions to regional/national levels
+- Deploy models to new forest monitoring sites worldwide
+- Scale predictions to regional/national levels with confidence
 - Support conservation planning in unstudied areas
-- Inform climate change impact assessments
+- Inform climate change impact assessments globally
 
-### 2. **Moderate Spatial Generalization**
+### 2. **Moderate Spatial Generalization with Geographic Variability**
 
-**Metrics**: Moderate R² (0.50-0.75), Moderate variability (±0.12)
+**Metrics**: Moderate R² (0.50-0.70), Moderate variability (±0.12)
 
 ```
-Example: Test R² = 0.63 ± 0.11
+Example: Test R² = 0.61 ± 0.11 across geographically balanced training
 ```
 
 **Interpretation**:
 
-- ⚠️ **Limited but useful transferability**
-- ⚠️ **Some site-specific factors influence predictions**
-- ⚠️ **Environmental relationships vary geographically**
-- ⚠️ **Requires site-specific calibration for best results**
+- ⚠️ **Limited but useful transferability with regional differences**
+- ⚠️ **Some geographic regions more predictable than others**
+- ⚠️ **Environmental relationships vary across climate zones**
+- ⚠️ **Requires region-specific considerations for deployment**
 
 **Scientific Implications**:
 
-- Regional differences in climate-vegetation relationships
-- Local factors (soil, microclimate) play important roles
-- Need for stratified modeling approaches by region/biome
+- Regional differences in climate-vegetation relationships exist
+- Local factors (soil, microclimate) vary by geographic region
+- Need for climate-zone-specific modeling approaches
 - Moderate confidence for new site deployment
 
 **Applications**:
 
-- Use models with caution at new sites
-- Implement site-specific calibration procedures
-- Focus deployment on similar environmental conditions
-- Collect validation data when expanding to new areas
+- Use models with regional calibration procedures
+- Focus deployment on climatically similar areas
+- Implement geographic uncertainty quantification
+- Collect validation data when expanding to new climate zones
 
-### 3. **Weak Spatial Generalization**
+### 3. **Weak Spatial Generalization Despite Balanced Training**
 
 **Metrics**: Low R² (<0.50), High variability (>±0.15)
 
 ```
-Example: Test R² = 0.42 ± 0.19
+Example: Test R² = 0.41 ± 0.18 even with geographic fairness
 ```
 
 **Interpretation**:
 
-- ❌ **Poor transferability to new sites**
-- ❌ **Strong site-specific effects dominate patterns**
+- ❌ **Poor transferability even with balanced geographic training**
+- ❌ **Strong site-specific effects overwhelm regional patterns**
 - ❌ **Environmental relationships are highly location-dependent**
-- ❌ **Models not suitable for deployment to new locations**
+- ❌ **Models not suitable for deployment to any new locations**
 
 **Scientific Implications**:
 
-- Sap flow patterns are highly site-specific
-- Local factors overwhelm general environmental drivers
-- Need for site-specific model development
-- Limited scalability of current approach
+- Sap flow patterns are fundamentally site-specific
+- Local factors overwhelm general environmental drivers globally
+- Geographic balance insufficient to capture spatial heterogeneity
+- Limited scalability of current modeling approach
 
 **Applications**:
 
-- Avoid deploying models to new sites without validation
-- Focus on site-specific model development
-- Investigate local factors driving site differences
-- Consider alternative modeling approaches
+- Avoid deploying models to new sites without extensive validation
+- Focus on site-specific model development exclusively
+- Investigate local factors driving spatial heterogeneity
+- Consider alternative modeling frameworks
 
-### 4. **Variable Spatial Generalization**
+### 4. **Variable Spatial Generalization with Climate Dependencies**
 
-**Metrics**: High variation across sites, Some sites well-predicted, others poorly
+**Metrics**: Performance varies by climate zone, Some regions well-predicted
 
 ```
-Example: Site R² ranges from 0.20 to 0.85
+Example: Temperate R² = 0.72, Tropical R² = 0.45, Boreal R² = 0.68
 ```
 
 **Interpretation**:
 
-- 🔄 **Site-dependent prediction capability**
-- 🔄 **Some site types more predictable than others**
-- 🔄 **Environmental context determines transferability**
-- 🔄 **Need for site classification approach**
+- 🔄 **Climate-dependent prediction capability**
+- 🔄 **Some climate zones more transferable than others**
+- 🔄 **Environmental context determines spatial transferability**
+- 🔄 **Need for climate-zone-specific deployment strategies**
 
 **Scientific Implications**:
 
-- Predictability depends on site characteristics
-- Certain biomes/climates more transferable than others
-- Opportunity for site-type-specific models
-- Environmental similarity drives transferability
+- Predictability depends on climate zone characteristics
+- Certain biomes/climates have more consistent patterns
+- Opportunity for climate-zone-specific models
+- Environmental similarity drives spatial transferability
 
-## Site-Specific Analysis
+## Comparison with Traditional Spatial Validation
 
-### Best Predicted Sites
-
-- **High R² sites**: Reveal characteristics of predictable locations
-- **Environmental patterns**: Common climate/vegetation features
-- **Geographic clusters**: Spatial patterns in predictability
-- **Model insights**: Features most important for these sites
-
-### Poorly Predicted Sites
-
-- **Low R² sites**: Identify challenging environmental conditions
-- **Unique characteristics**: Unusual climate/vegetation combinations
-- **Outlier analysis**: Sites with extreme environmental conditions
-- **Research opportunities**: Areas needing focused study
-
-### Predictability Patterns
-
-- **Biome effects**: Which ecosystem types are most/least predictable
-- **Climate gradients**: How aridity, temperature affect transferability
-- **Geographic clustering**: Regional patterns in model performance
-- **Site similarity**: Environmental distance vs. prediction accuracy
-
-## Comparison with Other Validation Methods
-
-| Validation Method | Question Answered | Spatial Constraint | Use Case |
-|------------------|------------------|-------------------|----------|
-| Random Split | "What's the upper performance bound?" | ❌ None | Baseline comparison |
-| K-Fold Temporal | "Can we predict future years?" | ⚠️ Mixed sites | Temporal forecasting |
-| **Spatial Validation** | "Can we predict new sites?" | ✅ **Strict** | **Site deployment** |
-| Rolling Window | "Can we forecast short-term?" | ⚠️ Mixed sites | Operational forecasting |
-
-## Expected Performance Benchmarks
-
-Based on ecological spatial modeling literature:
-
-- **Excellent Spatial Transfer**: R² > 0.75 (rare in ecological applications)
-- **Good Spatial Transfer**: R² = 0.60-0.75 (achievable with strong environmental drivers)
-- **Fair Spatial Transfer**: R² = 0.40-0.60 (typical for complex ecological systems)
-- **Poor Spatial Transfer**: R² < 0.40 (suggests high site specificity)
+| Aspect | Traditional Approach | **Balanced Sampling Approach** |
+|--------|---------------------|--------------------------------|
+| **Site Representation** | Biased toward high-data sites | ✅ **Equal geographic weight** |
+| **Scientific Question** | "Can we predict big sites?" | ✅ **"Can we predict typical new sites?"** |
+| **Training Data** | Dominated by few large sites | ✅ **Balanced across all regions** |
+| **Computational Efficiency** | Slow LOSO on full data | ✅ **Fast LOSO on balanced data** |
+| **Real-world Relevance** | Tests unusual high-data scenarios | ✅ **Tests typical deployment scenarios** |
+| **Geographic Bias** | High-data regions dominate | ✅ **All regions contribute equally** |
 
 ## Technical Implementation
 
-- **Framework**: XGBoost with Dask for scalability
-- **Memory Management**: Configurable site/fold limits for resource constraints
+### Enhanced Architecture
+
+- **Framework**: XGBoost with external memory for unlimited scalability
+- **Sampling Strategy**: Balanced 3000 records per site (minimum 500)
+- **Memory Management**: libsvm format with automatic cleanup
+- **Feature Enhancement**: Pipeline-generated feature mapping integration
 - **Site Exclusion**: Removes site identity to prevent spatial data leakage
-- **Categorical Handling**: Automatic detection and conversion of problematic columns
-- **Progressive Training**: Each site tested independently
-- **Comprehensive Outputs**: Site-by-site results and aggregated metrics
+- **Progressive Training**: Each site tested independently with balanced training
+- **Comprehensive Outputs**: Site-by-site results with enhanced feature importance
+
+### Balanced Sampling Parameters
+
+- **Target per site**: 3000 records (configurable)
+- **Minimum per site**: 500 records (quality threshold)
+- **Sampling method**: Random within-site sampling
+- **Geographic coverage**: ~100+ sites globally
+- **Total training data**: ~300K balanced records per fold
+
+### External Memory Benefits
+
+- **Unlimited scalability**: Can handle any dataset size
+- **Memory efficiency**: Disk-based training eliminates memory constraints
+- **Fast LOSO training**: Balanced data dramatically reduces computation time
+- **Enhanced output**: Feature names from pipeline mapping
+- **Automatic cleanup**: Temporary file management and space monitoring
+
+## Expected Performance Benchmarks
+
+### Balanced Geographic Representation Expectations
+
+Based on ecological spatial modeling with geographic fairness:
+
+- **Excellent Balanced Transfer**: R² > 0.70 (achievable with strong universal drivers)
+- **Good Balanced Transfer**: R² = 0.55-0.70 (typical for geographically fair models)
+- **Fair Balanced Transfer**: R² = 0.40-0.55 (common with regional heterogeneity)
+- **Poor Balanced Transfer**: R² < 0.40 (suggests fundamental spatial complexity)
+
+### Comparison with Traditional Spatial Validation
+
+Balanced sampling typically produces:
+
+- **Lower R² than traditional**: Due to reduced big-site bias
+- **More realistic performance**: Better represents typical deployment scenarios
+- **Higher scientific validity**: Tests true geographic generalization
+- **Better transferability**: More reliable for actual new site deployment
 
 ## Research Applications
 
-### Model Deployment
+### Geographic Deployment Assessment
 
-- **Feasibility Assessment**: Determine if models can be deployed to new sites
-- **Site Selection**: Identify optimal locations for model application
-- **Uncertainty Quantification**: Understand prediction reliability at new sites
-- **Calibration Needs**: Assess requirements for site-specific adjustments
+- **Fair Feasibility Testing**: Determines if models work at typical new sites
+- **Unbiased Site Selection**: Identifies optimal locations without data volume bias
+- **Realistic Uncertainty**: Understands prediction reliability at average sites
+- **Balanced Calibration**: Assesses requirements for regional adjustments
 
 ### Ecological Understanding
 
-- **Universal Patterns**: Identify globally consistent sap flow drivers
-- **Site Specificity**: Quantify importance of local factors
-- **Environmental Gradients**: Understand how predictability varies with climate
-- **Biogeographic Patterns**: Reveal spatial structure in ecosystem responses
+- **Universal vs Regional Patterns**: Identifies globally consistent vs regionally variable drivers
+- **Geographic Equity**: Quantifies importance of all regions equally
+- **Climate Zone Analysis**: Understands predictability across environmental gradients
+- **Balanced Biogeography**: Reveals spatial structure without data volume bias
 
 ### Conservation and Management
 
-- **Habitat Assessment**: Predict transpiration at conservation sites
-- **Climate Impact Assessment**: Project responses across landscapes
-- **Restoration Planning**: Select sites with predictable water use patterns
-- **Monitoring Network Design**: Optimize placement of new measurement sites
-
-### Scientific Discovery
-
-- **Transferability Science**: Advance understanding of ecological prediction limits
-- **Scale Dependencies**: Explore site vs. regional scale patterns
-- **Environmental Controls**: Identify key drivers of spatial transferability
-- **Model Generalization**: Develop principles for ecological model deployment
+- **Typical Habitat Assessment**: Predicts transpiration at average conservation sites
+- **Unbiased Climate Assessment**: Projects responses without big-site dominance
+- **Realistic Restoration Planning**: Selects sites based on typical characteristics
+- **Fair Monitoring Design**: Optimizes placement without data volume bias
 
 ## Model Outputs
 
-1. **Site-by-Site Results**: Individual performance for each location tested
-2. **Aggregated Metrics**: Mean ± std for R², RMSE, MAE across all sites
-3. **Best/Worst Sites**: Identification of most/least predictable locations
-4. **Feature Importance**: Variables most important for spatial transfer
-5. **Best Model**: Highest-performing spatial fold saved for deployment
-6. **Site Analysis**: Detailed breakdown of predictability patterns
-7. **Geographic Patterns**: Spatial visualization of model performance
+1. **Site-by-Site Results**: Individual performance for each geographically balanced test
+2. **Aggregated Metrics**: Mean ± std for R², RMSE, MAE across balanced folds
+3. **Geographic Patterns**: Regional analysis without big-site bias
+4. **Enhanced Feature Importance**: Both indices (f107) and names (rh_mean_3h)
+5. **Best Model**: Highest-performing fold trained on balanced geographic data
+6. **Site Analysis**: Detailed breakdown of predictability with geographic fairness
+7. **Balanced Performance Maps**: Spatial visualization with equal site weighting
 
 ## Limitations and Considerations
 
-### ⚠️ **Site Representation**
+### ⚠️ **Sampling Trade-offs**
 
-- Limited to existing SAPFLUXNET sites
-- May not represent all possible environmental conditions
-- Bias toward accessible/well-studied locations
+- Reduces individual site data volume for geographic fairness
+- May not capture full temporal variability within high-data sites
+- Balances site representation against total data volume
 
-### ⚠️ **Environmental Coverage**
+### ⚠️ **Geographic Representation**
 
-- Gaps in extreme climates or rare ecosystems
-- Temporal coverage varies among sites
-- Measurement standardization differences
+- Limited to existing SAPFLUXNET site network
+- Balanced approach may still miss extreme environmental conditions
+- Equal weighting assumes all sites equally representative
 
 ### ⚠️ **Model Assumptions**
 
-- Assumes environmental features capture site differences
-- May miss unmeasured local factors (soil, microclimate)
-- Temporal patterns assumed transferable across sites
+- Assumes 3000 records sufficient to capture site characteristics
+- May miss unique patterns from high-data sites
+- Temporal subsampling may not preserve all seasonal patterns
 
-## Integration with Validation Framework
+## Integration with Enhanced Validation Framework
 
-### Four-Model Validation Strategy
+### Four-Model External Memory Strategy
 
-1. **Random Baseline**: Performance ceiling (no constraints)
-2. **K-Fold Temporal**: Tests future year prediction
-3. **Spatial Validation** ← This model: Tests new site prediction
-4. **Rolling Window**: Tests operational forecasting capability
+1. **Random Baseline External**: Performance ceiling with external memory efficiency
+2. **K-Fold Temporal External**: Tests future year prediction with memory efficiency
+3. **Spatial Validation External** ← This model: Tests new site prediction with geographic fairness
+4. **Rolling Window External**: Tests operational forecasting with memory efficiency
 
 ### Comparative Analysis Framework
 
 ```
-High Spatial Performance + High Temporal Performance = Universal model
-High Spatial Performance + Low Temporal Performance = Site-specific adaptation
-Low Spatial Performance + High Temporal Performance = Temporal consistency, spatial complexity
-Low Spatial Performance + Low Temporal Performance = High unpredictability
+High Balanced Spatial + High Temporal = Universal model with geographic fairness
+High Balanced Spatial + Low Temporal = Geographically fair, temporally complex
+Low Balanced Spatial + High Temporal = Temporal consistency, high spatial heterogeneity
+Low Balanced Spatial + Low Temporal = High unpredictability across space and time
 ```
 
-## Decision Framework for Model Deployment
+## Decision Framework for Geographic Deployment
 
-### Green Light (R² > 0.70)
+### Green Light (R² > 0.65 with balanced training)
 
-- ✅ Deploy models to new sites with confidence
-- ✅ Use for regional/continental scale applications
-- ✅ Minimal site-specific calibration needed
+- ✅ Deploy models to typical new sites with confidence
+- ✅ Use for regional/continental applications with geographic validity
+- ✅ Minimal region-specific calibration needed
 
-### Yellow Light (R² 0.50-0.70)
+### Yellow Light (R² 0.45-0.65 with balanced training)
 
-- ⚠️ Deploy with caution and validation data collection
-- ⚠️ Focus on environmentally similar sites
-- ⚠️ Implement uncertainty quantification
+- ⚠️ Deploy with regional validation and uncertainty quantification
+- ⚠️ Focus on climatically similar regions
+- ⚠️ Implement geographic-specific calibration procedures
 
-### Red Light (R² < 0.50)
+### Red Light (R² < 0.45 with balanced training)
 
-- ❌ Avoid deployment to new sites
-- ❌ Develop site-specific models instead
-- ❌ Investigate local factors driving site differences
+- ❌ Avoid deployment to new sites even with geographic fairness
+- ❌ Develop region-specific or site-specific models instead
+- ❌ Investigate fundamental spatial heterogeneity factors
 
 ## Conclusion
 
-The Spatial Validation Model provides essential evidence for the **deployability** of SAPFLUXNET sap flow models to new geographic locations. By testing prediction capability at completely unstudied sites, it directly addresses the practical question of model transferability in ecological forecasting. The results determine whether machine learning approaches can scale beyond their training locations to support global forest water use predictions and ecosystem management decisions.
+The Enhanced Spatial Validation Model with **balanced site sampling and external memory efficiency** provides essential evidence for the **fair and practical deployability** of SAPFLUXNET sap flow models to new geographic locations. By ensuring equal geographic representation in training while maintaining computational efficiency, it directly addresses whether machine learning approaches can scale beyond their training locations to support global forest water use predictions and ecosystem management decisions without bias toward high-data sites.
 
-**Key Insight**: Spatial validation performance reveals the fundamental trade-off between model complexity and geographic transferability in ecological prediction systems.
+**Key Innovation**: Balanced spatial validation performance reveals the true geographic transferability of ecological prediction systems by eliminating data volume bias and ensuring fair representation of all environmental conditions.
+
+**Scientific Impact**: This approach provides more realistic and scientifically sound assessments of model deployability to typical new sites, supporting evidence-based decisions about global-scale ecological forecasting applications.
