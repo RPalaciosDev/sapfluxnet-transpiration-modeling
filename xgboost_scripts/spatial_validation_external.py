@@ -648,19 +648,108 @@ def save_spatial_external_results(model, all_metrics, avg_metrics, feature_impor
     
     return model_path
 
+def load_parquet_for_site_sampling(parquet_dir, feature_mapping=None):
+    """Load parquet files for site-based sampling (hybrid approach)"""
+    print(f"Loading parquet data from: {parquet_dir}")
+    
+    # Get all parquet files
+    parquet_files = [f for f in os.listdir(parquet_dir) if f.endswith('.parquet')]
+    print(f"Found {len(parquet_files)} parquet files")
+    
+    if len(parquet_files) == 0:
+        raise FileNotFoundError(f"No parquet files found in {parquet_dir}")
+    
+    # Load first file to check structure
+    first_file = os.path.join(parquet_dir, parquet_files[0])
+    sample_df = pd.read_parquet(first_file, nrows=1000)
+    
+    print(f"Sample columns: {list(sample_df.columns)}")
+    
+    # Check if site column exists
+    if 'site' not in sample_df.columns:
+        raise ValueError("Site column not found in parquet files. Cannot perform spatial validation.")
+    
+    # Prepare feature columns
+    exclude_cols = ['TIMESTAMP', 'solar_TIMESTAMP', 'site', 'plant_id', 'Unnamed: 0']
+    target_col = 'sap_flow'
+    
+    if target_col not in sample_df.columns:
+        raise ValueError(f"Target column '{target_col}' not found in parquet files")
+    
+    feature_cols = [col for col in sample_df.columns 
+                   if col not in exclude_cols + [target_col]
+                   and not col.endswith('_flags')
+                   and not col.endswith('_md')]
+    
+    print(f"Features: {len(feature_cols)} columns")
+    print(f"Target: {target_col}")
+    
+    # Load all parquet files
+    dfs = []
+    total_rows = 0
+    
+    for i, parquet_file in enumerate(parquet_files):
+        print(f"Loading file {i+1}/{len(parquet_files)}: {parquet_file}")
+        
+        file_path = os.path.join(parquet_dir, parquet_file)
+        df_chunk = pd.read_parquet(file_path, columns=['site', target_col] + feature_cols)
+        
+        # Clean data
+        df_chunk = df_chunk.dropna(subset=[target_col])
+        df_chunk = df_chunk.fillna(0)  # Fill feature NaNs with 0
+        
+        dfs.append(df_chunk)
+        total_rows += len(df_chunk)
+        
+        print(f"  Loaded {len(df_chunk):,} rows")
+        
+        # Memory management
+        if i % 5 == 0:
+            gc.collect()
+    
+    # Combine all dataframes
+    print(f"Combining {len(dfs)} dataframes...")
+    df = pd.concat(dfs, ignore_index=True)
+    del dfs
+    gc.collect()
+    
+    print(f"Total combined data: {len(df):,} rows from {df['site'].nunique()} sites")
+    
+    return df, feature_cols, target_col, total_rows
+
+def convert_balanced_sample_to_libsvm(balanced_df, feature_cols, target_col, temp_dir):
+    """Convert balanced sample to libsvm format for external memory training"""
+    print("Converting balanced sample to libsvm format...")
+    
+    # Create libsvm file
+    libsvm_file = os.path.join(temp_dir, 'balanced_sample.svm')
+    
+    # Extract features and target
+    X = balanced_df[feature_cols].values
+    y = balanced_df[target_col].values
+    
+    # Convert to libsvm format
+    dump_svmlight_file(X, y, libsvm_file)
+    
+    print(f"Saved balanced sample to: {libsvm_file}")
+    print(f"Data: {len(y):,} samples, {len(feature_cols)} features")
+    
+    return libsvm_file
+
 def main():
-    """Main spatial external memory training pipeline"""
-    print("SAPFLUXNET Spatial External Memory XGBoost Training")
+    """Main spatial external memory training pipeline (hybrid approach)"""
+    print("SAPFLUXNET Spatial External Memory XGBoost Training (Hybrid Approach)")
     print("=" * 70)
     print(f"Started at: {datetime.now()}")
-    print("Method: Leave-One-Site-Out with balanced sampling + external memory")
-    print("Purpose: Fair spatial generalization testing with memory efficiency")
+    print("Method: Parquet → Site Sampling → libsvm → External Memory Training")
+    print("Purpose: True spatial generalization with real site information")
     
     # Check system resources
     available_memory = get_available_memory_gb()
     print(f"Available memory: {available_memory:.1f}GB")
     
     # Set up directories
+    parquet_dir = '../processed_parquet'
     libsvm_dir = '../processed_libsvm'
     
     # Choose temp directory with most space
@@ -688,39 +777,17 @@ def main():
     os.makedirs(temp_dir, exist_ok=True)
     
     try:
-        # Check if libsvm data is available
-        if not os.path.exists(libsvm_dir):
-            raise FileNotFoundError(f"libsvm directory not found: {libsvm_dir}")
-        
-        libsvm_files = [f for f in os.listdir(libsvm_dir) if f.endswith('.svm') or f.endswith('.svm.gz')]
-        if len(libsvm_files) == 0:
-            raise FileNotFoundError(f"No libsvm files found in {libsvm_dir}")
-        
-        print(f"\n✅ Found {len(libsvm_files)} libsvm files")
-        
         # Load feature mapping
         feature_mapping = load_feature_mapping(libsvm_dir)
         
-        # Step 1: Combine libsvm files
+        # Step 1: Load parquet data for site sampling
         print("\n" + "="*70)
-        print("COMBINING LIBSVM FILES")
+        print("LOADING PARQUET DATA FOR SITE ANALYSIS")
         print("="*70)
         
-        combined_file, total_rows = combine_libsvm_files(libsvm_dir, temp_dir)
+        df, feature_cols, target_col, total_rows = load_parquet_for_site_sampling(parquet_dir, feature_mapping)
         
-        # Step 2: Load as DataFrame for site-based processing
-        print("\n" + "="*70)
-        print("LOADING DATA FOR SITE ANALYSIS")
-        print("="*70)
-        
-        df, feature_cols, target_col = load_libsvm_as_dataframe(combined_file, feature_mapping)
-        
-        # Clean up combined file
-        if os.path.exists(combined_file):
-            os.remove(combined_file)
-            print("🧹 Cleaned up temporary combined file")
-        
-        # Step 3: Create balanced site sampling
+        # Step 2: Create balanced site sampling
         print("\n" + "="*70)
         print("CREATING BALANCED SITE SAMPLING")
         print("="*70)
@@ -731,6 +798,13 @@ def main():
         del df
         gc.collect()
         log_memory_usage("After balanced sampling")
+        
+        # Step 3: Convert balanced sample to libsvm format
+        print("\n" + "="*70)
+        print("CONVERTING TO LIBSVM FORMAT")
+        print("="*70)
+        
+        balanced_libsvm_file = convert_balanced_sample_to_libsvm(balanced_df, feature_cols, target_col, temp_dir)
         
         # Step 4: Create LOSO external memory splits
         print("\n" + "="*70)
@@ -765,11 +839,11 @@ def main():
         
         print(f"\n✅ Spatial external memory training completed successfully!")
         print(f"Average Test R²: {avg_metrics['test_r2_mean']:.4f} ± {avg_metrics['test_r2_std']:.4f}")
-        print(f"Sites tested: {len(valid_sites)}")
+        print(f"Real sites tested: {len(valid_sites)}")
         print(f"Successful folds: {len(all_metrics)}/{len(valid_sites)}")
         print(f"Model saved: {model_path}")
-        print(f"💡 This model tests fair spatial generalization with balanced site representation")
-        print(f"🚀 External memory approach for computational efficiency")
+        print(f"💡 This model tests true spatial generalization with real site information")
+        print(f"🚀 Hybrid approach: Parquet → Site sampling → External memory training")
         print(f"📊 Method: LOSO + balanced sampling + external memory")
         print(f"🎯 Purpose: True geographic generalization testing")
         
