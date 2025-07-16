@@ -484,13 +484,20 @@ def get_enhanced_feature_importance(model, feature_cols, feature_mapping=None):
         for idx in feature_importance['feature_index']:
             # Extract numeric index from feature string (e.g., 'f107' -> 107)
             if idx.startswith('f'):
-                numeric_idx = int(idx[1:])
-                if feature_mapping and 'features' in feature_mapping:
-                    feature_name = feature_mapping['features'].get(idx, f'feature_{numeric_idx}')
-                elif feature_cols and numeric_idx < len(feature_cols):
-                    feature_name = feature_cols[numeric_idx]
-                else:
-                    feature_name = f'feature_{numeric_idx}'
+                try:
+                    numeric_idx = int(idx[1:])
+                    
+                    # Try to get name from feature_cols first
+                    if feature_cols is not None and numeric_idx < len(feature_cols):
+                        feature_name = feature_cols[numeric_idx]
+                    # Fall back to feature mapping
+                    elif feature_mapping and 'features' in feature_mapping:
+                        feature_name = feature_mapping['features'].get(idx, f'feature_{numeric_idx}')
+                    else:
+                        feature_name = f'feature_{numeric_idx}'
+                        
+                except (ValueError, IndexError):
+                    feature_name = idx
             else:
                 feature_name = idx
             

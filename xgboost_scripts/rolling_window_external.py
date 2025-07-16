@@ -518,30 +518,41 @@ def get_feature_importance(models, feature_cols):
 
 def create_enhanced_feature_importance(feature_importance, feature_cols, feature_mapping=None):
     """Create enhanced feature importance with both indices and names"""
-    if feature_cols is not None:
-        # We have feature names directly
-        enhanced_importance = feature_importance.copy()
-        enhanced_importance['feature_name'] = feature_cols
-        enhanced_importance['feature_index'] = [f'f{i}' for i in range(len(feature_cols))]
-        return enhanced_importance
-    elif feature_mapping is not None:
-        # Use feature mapping to get names
-        enhanced_importance = feature_importance.copy()
-        feature_names = []
-        for i in range(len(feature_importance)):
-            feature_key = f'f{i}'
-            feature_name = feature_mapping.get('features', {}).get(feature_key, f'feature_{i}')
-            feature_names.append(feature_name)
+    enhanced_importance = feature_importance.copy()
+    
+    # Extract feature names based on the actual features in the importance DataFrame
+    feature_names = []
+    feature_indices = []
+    
+    for _, row in feature_importance.iterrows():
+        feature_key = row['feature']  # e.g., 'f0', 'f1', etc.
+        feature_indices.append(feature_key)
         
-        enhanced_importance['feature_name'] = feature_names
-        enhanced_importance['feature_index'] = [f'f{i}' for i in range(len(feature_importance))]
-        return enhanced_importance
-    else:
-        # Fallback - just use feature indices
-        enhanced_importance = feature_importance.copy()
-        enhanced_importance['feature_name'] = [f'f{i}' for i in range(len(feature_importance))]
-        enhanced_importance['feature_index'] = [f'f{i}' for i in range(len(feature_importance))]
-        return enhanced_importance
+        # Extract numeric index from feature key
+        if feature_key.startswith('f'):
+            try:
+                numeric_idx = int(feature_key[1:])
+                
+                # Try to get name from feature_cols first
+                if feature_cols is not None and numeric_idx < len(feature_cols):
+                    feature_name = feature_cols[numeric_idx]
+                # Fall back to feature mapping
+                elif feature_mapping is not None and 'features' in feature_mapping:
+                    feature_name = feature_mapping['features'].get(feature_key, f'feature_{numeric_idx}')
+                else:
+                    feature_name = f'feature_{numeric_idx}'
+                    
+            except (ValueError, IndexError):
+                feature_name = feature_key
+        else:
+            feature_name = feature_key
+        
+        feature_names.append(feature_name)
+    
+    enhanced_importance['feature_name'] = feature_names
+    enhanced_importance['feature_index'] = feature_indices
+    
+    return enhanced_importance
 
 def save_rolling_window_external_results(models, all_metrics, avg_metrics, feature_importance, seasonal_results, feature_cols, feature_mapping=None, output_dir='external_memory_models/rolling_window'):
     """Save rolling window external memory model results"""
