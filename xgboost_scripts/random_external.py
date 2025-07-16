@@ -522,39 +522,47 @@ def train_external_memory_xgboost(train_file, test_file, feature_cols):
     }
     
     # Custom callback to capture training metrics
-    class TrainingCallback:
-        def __init__(self, history_dict):
+    class TrainingCallback(xgb.callback.TrainingCallback):
+        def __init__(self, history_dict, train_file, test_file):
+            super().__init__()
             self.history = history_dict
+            self.train_file = train_file
+            self.test_file = test_file
             self.start_time = None
             self.last_time = None
+            self.y_train_actual = None
+            self.y_test_actual = None
         
-        def __call__(self, env):
-            iteration = env.iteration
+        def after_iteration(self, model, epoch, evals_log):
+            iteration = epoch
             
-            # Get evaluation results
-            eval_results = env.evaluation_result_list
-            train_rmse = eval_results[0][1]  # First eval set (train)
-            test_rmse = eval_results[1][1]   # Second eval set (test)
+            # Get evaluation results from evals_log
+            train_rmse = evals_log['train']['rmse'][-1] if 'train' in evals_log and 'rmse' in evals_log['train'] else 0.0
+            test_rmse = evals_log['test']['rmse'][-1] if 'test' in evals_log and 'rmse' in evals_log['test'] else 0.0
             
             # Calculate additional metrics if we have predictions
-            if hasattr(env, 'model') and env.model is not None:
+            try:
                 # Get predictions for current iteration
-                y_pred_train = env.model.predict(env.model.DMatrix(train_file))
-                y_pred_test = env.model.predict(env.model.DMatrix(test_file))
+                dtrain = xgb.DMatrix(f"{self.train_file}?format=libsvm")
+                dtest = xgb.DMatrix(f"{self.test_file}?format=libsvm")
+                
+                y_pred_train = model.predict(dtrain)
+                y_pred_test = model.predict(dtest)
                 
                 # Load actual values (only once, reuse)
-                if not hasattr(self, 'y_train_actual'):
-                    self.y_train_actual = extract_targets_memory_efficient(train_file)
-                    self.y_test_actual = extract_targets_memory_efficient(test_file)
+                if self.y_train_actual is None:
+                    self.y_train_actual = extract_targets_memory_efficient(self.train_file)
+                    self.y_test_actual = extract_targets_memory_efficient(self.test_file)
                 
                 # Calculate additional metrics
                 train_mae = mean_absolute_error(self.y_train_actual, y_pred_train)
                 test_mae = mean_absolute_error(self.y_test_actual, y_pred_test)
                 train_r2 = r2_score(self.y_train_actual, y_pred_train)
                 test_r2 = r2_score(self.y_test_actual, y_pred_test)
-            else:
-                # Fallback to RMSE only
+            except Exception as e:
+                # Fallback to RMSE only if prediction fails
                 train_mae = test_mae = train_r2 = test_r2 = 0.0
+                print(f"Warning: Could not calculate additional metrics: {e}")
             
             # Track timing
             current_time = time.time()
@@ -585,9 +593,11 @@ def train_external_memory_xgboost(train_file, test_file, feature_cols):
                 print(f"Iteration {iteration:3d}: Train R²={train_r2:.4f}, Test R²={test_r2:.4f}, "
                       f"Train RMSE={train_rmse:.4f}, Test RMSE={test_rmse:.4f}, "
                       f"Memory={memory_gb:.1f}GB, Time={time_per_iter:.2f}s")
+            
+            return False  # Continue training
     
     # Initialize callback
-    training_callback = TrainingCallback(training_history)
+    training_callback = TrainingCallback(training_history, train_file, test_file)
     
     # Validate libsvm format
     if not validate_libsvm_format(train_file):
