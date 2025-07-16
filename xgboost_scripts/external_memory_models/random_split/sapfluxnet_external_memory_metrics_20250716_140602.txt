@@ -1,6 +1,6 @@
 SAPFLUXNET External Memory Training Results
 ==================================================
-Training completed: 2025-07-16 06:27:41.692687
+Training completed: 2025-07-16 14:06:02.102994
 Method: External Memory XGBoost
 Dataset: Full dataset (no sampling)
 Total rows: 8,692,194
@@ -15,6 +15,16 @@ Model Performance:
   test_mae: 1.0115
   train_r2: 0.8225
   test_r2: 0.8202
+  total_training_time: 12729.2347
+  best_iteration: 199
+
+Training Summary:
+------------------
+  Total training time: 12729.2 seconds
+  Best iteration: 199
+  Total iterations: 200
+  Final train R²: 0.8225
+  Final test R²: 0.8202
 
 Validation Method:
 ------------------
