@@ -359,6 +359,7 @@ class MemoryEfficientSAPFLUXNETProcessor:
         """Save DataFrame in libsvm format for XGBoost external memory"""
         from sklearn.datasets import dump_svmlight_file
         import gzip
+        import json
         
         # Identify target column
         target_col = 'sap_flow'
@@ -376,6 +377,32 @@ class MemoryEfficientSAPFLUXNETProcessor:
                        if col not in exclude_cols
                        and not col.endswith('_flags')
                        and not col.endswith('_md')]
+        
+        # Save feature mapping (do this once per directory)
+        output_dir = os.path.dirname(output_file)
+        feature_mapping_file = os.path.join(output_dir, 'feature_mapping.json')
+        
+        if not os.path.exists(feature_mapping_file):
+            # Create comprehensive feature mapping
+            feature_mapping = {
+                'target_column': target_col,
+                'excluded_columns': exclude_cols,
+                'feature_count': len(feature_cols),
+                'features': {
+                    # Map feature index to feature name
+                    f'f{i}': feature_name for i, feature_name in enumerate(feature_cols)
+                },
+                'feature_names': feature_cols,  # List of feature names in order
+                'created_by': 'comprehensive_processing_pipeline.py',
+                'created_at': pd.Timestamp.now().isoformat(),
+                'format': 'libsvm'
+            }
+            
+            # Save feature mapping to JSON file
+            with open(feature_mapping_file, 'w') as f:
+                json.dump(feature_mapping, f, indent=2)
+            
+            print(f"    🗂️  Feature mapping saved: {feature_mapping_file}")
         
         # Prepare data
         df_clean = df.dropna(subset=[target_col])

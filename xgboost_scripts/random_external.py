@@ -130,6 +130,30 @@ def log_memory_usage(step_name):
     print(f"   Used: {memory.used / (1024**3):.1f}GB ({memory.percent:.1f}%)")
     print(f"   Total: {memory.total / (1024**3):.1f}GB")
 
+def load_feature_mapping(data_dir):
+    """
+    Load feature mapping from JSON file created by the data processing pipeline
+    """
+    feature_mapping_file = os.path.join(data_dir, 'feature_mapping.json')
+    
+    if not os.path.exists(feature_mapping_file):
+        print(f"⚠️  No feature mapping found at {feature_mapping_file}")
+        return None
+        
+    try:
+        with open(feature_mapping_file, 'r') as f:
+            feature_mapping = json.load(f)
+        
+        print(f"✅ Loaded feature mapping: {feature_mapping['feature_count']} features")
+        print(f"   Created by: {feature_mapping.get('created_by', 'unknown')}")
+        print(f"   Created at: {feature_mapping.get('created_at', 'unknown')}")
+        
+        return feature_mapping
+        
+    except Exception as e:
+        print(f"❌ Error loading feature mapping: {e}")
+        return None
+
 def load_and_convert_to_external_format(data_dir, output_dir, chunk_size=50000):
     """
     Load parquet files and convert to external memory format (libsvm)
@@ -636,8 +660,35 @@ def get_feature_importance(model, feature_cols):
             # Return empty DataFrame when feature_cols is None
             return pd.DataFrame({'feature': [], 'importance': []})
 
-def save_external_memory_results(model, metrics, feature_importance, feature_cols, total_rows, output_dir='external_memory_models'):
-    """Save external memory model results"""
+def create_enhanced_feature_importance(feature_importance, feature_cols, feature_mapping=None):
+    """Create enhanced feature importance with both indices and names"""
+    if feature_cols is not None:
+        # We have feature names directly
+        enhanced_importance = feature_importance.copy()
+        enhanced_importance['feature_name'] = feature_cols
+        enhanced_importance['feature_index'] = [f'f{i}' for i in range(len(feature_cols))]
+        return enhanced_importance
+    elif feature_mapping is not None:
+        # Use feature mapping to get names
+        enhanced_importance = feature_importance.copy()
+        feature_names = []
+        for i in range(len(feature_importance)):
+            feature_key = f'f{i}'
+            feature_name = feature_mapping.get('features', {}).get(feature_key, f'feature_{i}')
+            feature_names.append(feature_name)
+        
+        enhanced_importance['feature_name'] = feature_names
+        enhanced_importance['feature_index'] = [f'f{i}' for i in range(len(feature_importance))]
+        return enhanced_importance
+    else:
+        # Fallback - just use feature indices
+        enhanced_importance = feature_importance.copy()
+        enhanced_importance['feature_name'] = [f'f{i}' for i in range(len(feature_importance))]
+        enhanced_importance['feature_index'] = [f'f{i}' for i in range(len(feature_importance))]
+        return enhanced_importance
+
+def save_external_memory_results(model, metrics, feature_importance, feature_cols, total_rows, feature_mapping=None, output_dir='external_memory_models'):
+    """Save external memory model results with enhanced feature mapping"""
     os.makedirs(output_dir, exist_ok=True)
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
     
@@ -645,9 +696,12 @@ def save_external_memory_results(model, metrics, feature_importance, feature_col
     model_path = f"{output_dir}/sapfluxnet_external_memory_{timestamp}.json"
     model.save_model(model_path)
     
+    # Create enhanced feature importance
+    enhanced_importance = create_enhanced_feature_importance(feature_importance, feature_cols, feature_mapping)
+    
     # Save feature importance
     feature_importance_path = f"{output_dir}/sapfluxnet_external_memory_importance_{timestamp}.csv"
-    feature_importance.to_csv(feature_importance_path, index=False)
+    enhanced_importance.to_csv(feature_importance_path, index=False)
     
     # Save feature list
     feature_path = f"{output_dir}/sapfluxnet_external_memory_features_{timestamp}.txt"
@@ -658,9 +712,11 @@ def save_external_memory_results(model, metrics, feature_importance, feature_col
         f.write(f"Total rows: {total_rows:,}\n")
         f.write("Purpose: Full dataset baseline with memory efficiency\n\n")
         
-        if feature_cols is not None:
-            for i, feature in enumerate(feature_cols):
-                f.write(f"{i+1:3d}. {feature}\n")
+        if feature_cols is not None or feature_mapping is not None:
+            f.write("Feature Index | Feature Name\n")
+            f.write("-" * 50 + "\n")
+            for i, row in enhanced_importance.iterrows():
+                f.write(f"{row['feature_index']:>12} | {row['feature_name']}\n")
         else:
             f.write("Features: Used existing libsvm format files\n")
             f.write("Feature names not available when using pre-processed libsvm files\n")
@@ -792,14 +848,24 @@ def main():
             print(f"\n✅ Found libsvm format data in {libsvm_dir}")
             print("Using direct libsvm files from pipeline - no conversion needed!")
             
+            # Load feature mapping from pipeline
+            feature_mapping = load_feature_mapping(libsvm_dir)
+            
             # Step 1: Combine existing libsvm files
             print("\n" + "="*60)
             print("COMBINING EXISTING LIBSVM FILES")
             print("="*60)
             
             all_data_file, total_rows = combine_libsvm_files(libsvm_dir, temp_dir)
-            feature_cols = None  # Not needed for libsvm files
-            target_col = None    # Not needed for libsvm files
+            
+            # Extract feature information from mapping
+            if feature_mapping:
+                feature_cols = feature_mapping['feature_names']
+                target_col = feature_mapping['target_column']
+                print(f"✅ Using feature mapping: {len(feature_cols)} features")
+            else:
+                feature_cols = None  # Fallback to None if no mapping
+                target_col = None    # Fallback to None if no mapping
             
         else:
             print(f"\n⚠️  No libsvm format found in {libsvm_dir}")
@@ -813,6 +879,9 @@ def main():
             all_data_file, feature_cols, target_col, total_rows = load_and_convert_to_external_format(
                 parquet_dir, temp_dir
             )
+            
+            # No feature mapping when converting from parquet
+            feature_mapping = None
         
         # Step 2: Create random split
         print("\n" + "="*60)
@@ -870,7 +939,7 @@ def main():
         
         # Step 5: Save results
         model_path = save_external_memory_results(
-            model, metrics, feature_importance, feature_cols, total_rows
+            model, metrics, feature_importance, feature_cols, total_rows, feature_mapping
         )
         
         print(f"\n✅ External memory training completed successfully!")
