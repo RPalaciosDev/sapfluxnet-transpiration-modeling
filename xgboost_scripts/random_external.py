@@ -10,6 +10,8 @@ import xgboost as xgb
 from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
 from sklearn.datasets import dump_svmlight_file, load_svmlight_file
 import os
+import sys
+import time
 from datetime import datetime
 import warnings
 import gc
@@ -502,10 +504,18 @@ def extract_targets_memory_efficient(file_path):
     print(f"  Extracted {len(targets):,} target values")
     return np.array(targets)
 
-def train_external_memory_xgboost(train_file, test_file, feature_cols):
-    """Train XGBoost model using external memory"""
+def train_external_memory_xgboost(train_file, test_file, feature_cols, track_metrics=False):
+    """Train XGBoost model using external memory
+    
+    Args:
+        train_file: Path to training data file
+        test_file: Path to test data file  
+        feature_cols: List of feature column names
+        track_metrics: If True, track detailed metrics during training (slower but provides history)
+    """
     print("Training XGBoost with external memory...")
     print(f"XGBoost version: {xgb.__version__}")
+    print(f"Detailed metric tracking: {'Enabled' if track_metrics else 'Disabled'}")
     log_memory_usage("Before external memory training")
     
     # Validate libsvm format
@@ -585,9 +595,78 @@ def train_external_memory_xgboost(train_file, test_file, feature_cols):
     
     print(f"XGBoost parameters: {params}")
     
+    # Custom callback for detailed metric tracking (optional)
+    class DetailedMetricsCallback(xgb.callback.TrainingCallback):
+        def __init__(self, dtrain, dtest, y_train_actual, y_test_actual):
+            self.dtrain = dtrain
+            self.dtest = dtest
+            self.y_train_actual = y_train_actual
+            self.y_test_actual = y_test_actual
+            self.metrics_history = {
+                'iteration': [],
+                'train_r2': [], 'test_r2': [],
+                'train_rmse': [], 'test_rmse': [],
+                'train_mae': [], 'test_mae': [],
+                'memory_usage_gb': [], 'timestamp': []
+            }
+        
+        def after_iteration(self, model, epoch, evals_log):
+            """Called after each iteration to track detailed metrics"""
+            try:
+                # Make predictions
+                y_pred_train = model.predict(self.dtrain)
+                y_pred_test = model.predict(self.dtest)
+                
+                # Calculate metrics
+                train_r2 = r2_score(self.y_train_actual, y_pred_train)
+                test_r2 = r2_score(self.y_test_actual, y_pred_test)
+                train_rmse = np.sqrt(mean_squared_error(self.y_train_actual, y_pred_train))
+                test_rmse = np.sqrt(mean_squared_error(self.y_test_actual, y_pred_test))
+                train_mae = mean_absolute_error(self.y_train_actual, y_pred_train)
+                test_mae = mean_absolute_error(self.y_test_actual, y_pred_test)
+                
+                # Get memory usage
+                memory_gb = psutil.virtual_memory().used / (1024**3)
+                
+                # Store metrics
+                self.metrics_history['iteration'].append(epoch)
+                self.metrics_history['train_r2'].append(train_r2)
+                self.metrics_history['test_r2'].append(test_r2)
+                self.metrics_history['train_rmse'].append(train_rmse)
+                self.metrics_history['test_rmse'].append(test_rmse)
+                self.metrics_history['train_mae'].append(train_mae)
+                self.metrics_history['test_mae'].append(test_mae)
+                self.metrics_history['memory_usage_gb'].append(memory_gb)
+                self.metrics_history['timestamp'].append(time.time())
+                
+                # Print progress every 10 iterations
+                if epoch % 10 == 0:
+                    print(f"Iteration {epoch:3d}: Train R²={train_r2:.4f}, Test R²={test_r2:.4f}, "
+                          f"Train RMSE={train_rmse:.4f}, Test RMSE={test_rmse:.4f}, "
+                          f"Memory={memory_gb:.2f}GB")
+                
+            except Exception as e:
+                print(f"Error in metric tracking callback: {e}")
+            
+            return False  # Continue training
+    
     # Train model
     print("Starting external memory training...")
     evals = [(dtrain, 'train'), (dtest, 'test')]
+    
+    # Load actual values for metrics if tracking is enabled
+    y_train_actual = None
+    y_test_actual = None
+    metrics_callback = None
+    
+    if track_metrics:
+        print("Loading actual values for detailed metric tracking...")
+        y_train_actual = extract_targets_memory_efficient(train_file)
+        y_test_actual = extract_targets_memory_efficient(test_file)
+        metrics_callback = DetailedMetricsCallback(dtrain, dtest, y_train_actual, y_test_actual)
+        callbacks = [metrics_callback]
+    else:
+        callbacks = []
     
     model = xgb.train(
         params,
@@ -595,7 +674,8 @@ def train_external_memory_xgboost(train_file, test_file, feature_cols):
         num_boost_round=200,     # Can train longer with external memory
         evals=evals,
         early_stopping_rounds=20,
-        verbose_eval=10
+        verbose_eval=10,
+        callbacks=callbacks
     )
     
     log_memory_usage("After training")
@@ -607,9 +687,13 @@ def train_external_memory_xgboost(train_file, test_file, feature_cols):
     y_pred_test = model.predict(dtest)
     
     # Load actual values for metrics (this loads into memory, but just targets)
-    print("Loading actual values for metrics...")
-    y_train_actual = extract_targets_memory_efficient(train_file)
-    y_test_actual = extract_targets_memory_efficient(test_file)
+    # Skip if already loaded for tracking
+    if not track_metrics:
+        print("Loading actual values for metrics...")
+        y_train_actual = extract_targets_memory_efficient(train_file)
+        y_test_actual = extract_targets_memory_efficient(test_file)
+    else:
+        print("Using already loaded actual values from metric tracking...")
     
     # Calculate metrics
     metrics = {
@@ -636,7 +720,11 @@ def train_external_memory_xgboost(train_file, test_file, feature_cols):
     gc.collect()
     log_memory_usage("After cleanup")
     
-    return model, metrics
+    # Return metrics history if tracking was enabled
+    if track_metrics and metrics_callback is not None:
+        return model, metrics, metrics_callback.metrics_history
+    else:
+        return model, metrics
 
 def get_feature_importance(model, feature_cols):
     """Get feature importance"""
@@ -930,7 +1018,16 @@ def main():
         print("TRAINING EXTERNAL MEMORY MODEL")
         print("="*60)
         
-        model, metrics = train_external_memory_xgboost(train_file, test_file, feature_cols)
+        # Check if metric tracking is requested via command line argument
+        track_metrics = '--track-metrics' in sys.argv
+        if track_metrics:
+            print("📊 Metric tracking enabled - will collect detailed training history")
+            print("⚠️  This will slow down training but provide detailed analysis data")
+        
+        model, metrics, *extra = train_external_memory_xgboost(train_file, test_file, feature_cols, track_metrics=track_metrics)
+        
+        # Extract metrics history if available
+        metrics_history = extra[0] if extra else None
         
         # Step 4: Get feature importance
         feature_importance = get_feature_importance(model, feature_cols)
@@ -953,6 +1050,24 @@ def main():
         model_path = save_external_memory_results(
             model, metrics, feature_importance, feature_cols, total_rows, feature_mapping
         )
+        
+        # Save metrics history if available
+        if metrics_history is not None:
+            print("\n📊 Saving detailed metrics history...")
+            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+            metrics_history_path = f"external_memory_models/random_split/sapfluxnet_external_memory_metrics_history_{timestamp}.json"
+            
+            # Convert to DataFrame for easier analysis
+            metrics_df = pd.DataFrame(metrics_history)
+            metrics_df.to_csv(metrics_history_path.replace('.json', '.csv'), index=False)
+            
+            # Also save as JSON for compatibility
+            with open(metrics_history_path, 'w') as f:
+                json.dump(metrics_history, f, indent=2)
+            
+            print(f"  Metrics history saved: {metrics_history_path}")
+            print(f"  CSV format: {metrics_history_path.replace('.json', '.csv')}")
+            print(f"  📈 {len(metrics_history['iteration'])} training iterations tracked")
         
         print(f"\n✅ External memory training completed successfully!")
         print(f"Final Test R²: {metrics['test_r2']:.4f}")

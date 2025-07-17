@@ -163,12 +163,12 @@ def load_libsvm_as_dataframe(file_path, feature_mapping=None, max_rows=None):
     df = pd.DataFrame(data_matrix, columns=feature_cols)
     df[target_col] = targets
     
-    # Add dummy site column for spatial validation (we'll need to extract this from actual data)
-    # For now, create artificial site groupings based on row blocks
-    rows_per_site = 3000  # Approximate rows per site
-    df['site'] = df.index // rows_per_site
+    # NOTE: This function is for libsvm files that don't contain site information
+    # For spatial validation, we should use load_parquet_for_site_sampling() instead
+    # which loads real site information from parquet files
     
-    print(f"  Created {df['site'].nunique()} artificial site groups")
+    print(f"  ⚠️  WARNING: No real site information available in libsvm format")
+    print(f"  ⚠️  For spatial validation, use parquet files with site column")
     
     return df, feature_cols, target_col
 
@@ -743,6 +743,8 @@ def main():
     print(f"Started at: {datetime.now()}")
     print("Method: Parquet → Site Sampling → libsvm → External Memory Training")
     print("Purpose: True spatial generalization with real site information")
+    print("⚠️  IMPORTANT: This approach requires parquet files with 'site' column")
+    print("⚠️  Libsvm files alone cannot provide real site information for spatial validation")
     
     # Check system resources
     available_memory = get_available_memory_gb()

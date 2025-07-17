@@ -16,7 +16,7 @@ from datetime import datetime
 plt.style.use('default')
 sns.set_palette("husl")
 
-def find_latest_importance_file(results_dir='xgboost_scripts/external_memory_models/random_split'):
+def find_latest_importance_file(results_dir='external_memory_models/random_split'):
     """Find the most recent feature importance file"""
     if not os.path.exists(results_dir):
         raise FileNotFoundError(f"Results directory not found: {results_dir}")
