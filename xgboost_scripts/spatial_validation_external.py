@@ -771,21 +771,22 @@ def load_parquet_for_site_sampling(parquet_dir, feature_mapping=None, use_memory
         'mean_annual_temp', 'measurement_timestep', 'elevation', 'pl_bark_thick',
         'tree_density', 'pl_sapw_depth', 'pl_sapw_area', 'pl_dbh', 'basal_area',
         'sand_percentage', 'clay_percentage', 'pl_age', 'pl_leaf_area',
-        
         # Plant-specific constants
         'pl_species', 'pl_genus', 'pl_family', 'pl_order', 'pl_class',
-        
         # Site metadata constants
         'site_name', 'site_description', 'site_type', 'site_notes',
-        
         # Geographic constants
         'continent', 'biome', 'ecosystem_type', 'vegetation_type',
-        
         # Management constants
         'management_type', 'disturbance_type', 'disturbance_year',
-        
         # Instrument constants
-        'instrument_type', 'instrument_model', 'instrument_manufacturer'
+        'instrument_type', 'instrument_model', 'instrument_manufacturer',
+        # Additional site constants found in latest run
+        'tree_age_class_code', 'biome_code', 'tree_size_class_code', 'measurement_frequency',
+        # Any other potential site constants
+        'site_code', 'site_id', 'location_code', 'station_code', 'plot_code',
+        'treatment_code', 'management_code', 'disturbance_code', 'vegetation_code',
+        'soil_type', 'soil_class', 'climate_class', 'biome_class', 'ecosystem_class'
     ]
     
     # Combine all features to exclude
@@ -936,6 +937,7 @@ def main():
     print("⚠️  IMPORTANT: This approach requires parquet files with 'site' column")
     print("⚠️  Libsvm files alone cannot provide real site information for spatial validation")
     print("🔧 MODIFICATION: Excluding ALL site-specific constants for true generalization")
+    print("💾 APPROACH: External memory for optimal performance with large datasets")
     
     # Define geographic proxies to exclude (for reporting)
     geographic_proxies = [
@@ -953,21 +955,22 @@ def main():
         'mean_annual_temp', 'measurement_timestep', 'elevation', 'pl_bark_thick',
         'tree_density', 'pl_sapw_depth', 'pl_sapw_area', 'pl_dbh', 'basal_area',
         'sand_percentage', 'clay_percentage', 'pl_age', 'pl_leaf_area',
-        
         # Plant-specific constants
         'pl_species', 'pl_genus', 'pl_family', 'pl_order', 'pl_class',
-        
         # Site metadata constants
         'site_name', 'site_description', 'site_type', 'site_notes',
-        
         # Geographic constants
         'continent', 'biome', 'ecosystem_type', 'vegetation_type',
-        
         # Management constants
         'management_type', 'disturbance_type', 'disturbance_year',
-        
         # Instrument constants
-        'instrument_type', 'instrument_model', 'instrument_manufacturer'
+        'instrument_type', 'instrument_model', 'instrument_manufacturer',
+        # Additional site constants found in latest run
+        'tree_age_class_code', 'biome_code', 'tree_size_class_code', 'measurement_frequency',
+        # Any other potential site constants
+        'site_code', 'site_id', 'location_code', 'station_code', 'plot_code',
+        'treatment_code', 'management_code', 'disturbance_code', 'vegetation_code',
+        'soil_type', 'soil_class', 'climate_class', 'biome_class', 'ecosystem_class'
     ]
     
     all_excluded_features = geographic_proxies + site_specific_constants
@@ -1013,7 +1016,7 @@ def main():
         print("LOADING PARQUET DATA FOR SITE ANALYSIS")
         print("="*70)
         
-        df, feature_cols, target_col, total_rows = load_parquet_for_site_sampling(parquet_dir, feature_mapping, use_memory_optimization=True)
+        df, feature_cols, target_col, total_rows = load_parquet_for_site_sampling(parquet_dir, feature_mapping, use_memory_optimization=False)
         
         # Step 2: Create balanced site sampling
         print("\n" + "="*70)
