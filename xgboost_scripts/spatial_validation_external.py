@@ -565,7 +565,7 @@ def get_enhanced_feature_importance(model, feature_cols, feature_mapping=None):
 
 def save_spatial_external_results(model, all_metrics, avg_metrics, feature_importance, site_results, 
                                  feature_cols, total_original_rows, balanced_rows, n_sites, feature_mapping=None,
-                                 output_dir='external_memory_models/spatial_validation'):
+                                 output_dir='external_memory_models/spatial_validation_no_proxies'):
     """Save spatial external memory model results"""
     os.makedirs(output_dir, exist_ok=True)
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
@@ -589,12 +589,13 @@ def save_spatial_external_results(model, all_metrics, avg_metrics, feature_impor
     # Save feature list
     feature_path = f"{output_dir}/sapfluxnet_spatial_external_features_{timestamp}.txt"
     with open(feature_path, 'w') as f:
-        f.write("Features used in spatial external memory training:\n")
+        f.write("Features used in spatial external memory training (NO GEOGRAPHIC PROXIES):\n")
         f.write("Method: Leave-One-Site-Out with balanced site sampling\n")
-        f.write("Approach: External memory + geographic fairness\n")
+        f.write("Approach: External memory + geographic fairness + universal features only\n")
         f.write(f"Original data: {total_original_rows:,} rows\n")
         f.write(f"Balanced data: {balanced_rows:,} rows from {n_sites} sites\n")
-        f.write("Purpose: Fair spatial generalization testing\n\n")
+        f.write("Purpose: Test universal environmental feature generalization\n")
+        f.write("Modification: Excluded geographic proxy features (timezone, country, etc.)\n\n")
         
         f.write("Feature Index | Feature Name\n")
         f.write("-" * 50 + "\n")
@@ -604,14 +605,15 @@ def save_spatial_external_results(model, all_metrics, avg_metrics, feature_impor
     # Save comprehensive metrics
     metrics_path = f"{output_dir}/sapfluxnet_spatial_external_metrics_{timestamp}.txt"
     with open(metrics_path, 'w') as f:
-        f.write("SAPFLUXNET Spatial External Memory Training Results\n")
-        f.write("=" * 60 + "\n")
+        f.write("SAPFLUXNET Spatial External Memory Training Results (NO GEOGRAPHIC PROXIES)\n")
+        f.write("=" * 70 + "\n")
         f.write(f"Training completed: {datetime.now()}\n")
         f.write("Method: Leave-One-Site-Out with balanced sampling + external memory\n")
-        f.write("Approach: Fair spatial generalization with memory efficiency\n")
+        f.write("Approach: Fair spatial generalization WITHOUT geographic proxy features\n")
         f.write(f"Original dataset: {total_original_rows:,} rows\n")
         f.write(f"Balanced dataset: {balanced_rows:,} rows from {n_sites} sites\n")
-        f.write("Geographic fairness: Equal contribution from each site\n\n")
+        f.write("Geographic fairness: Equal contribution from each site\n")
+        f.write("Feature modification: Excluded geographic proxies to test universal generalization\n\n")
         
         f.write("Average Performance Across Sites:\n")
         f.write("-" * 35 + "\n")
@@ -671,17 +673,35 @@ def load_parquet_for_site_sampling(parquet_dir, feature_mapping=None):
     if 'site' not in sample_df.columns:
         raise ValueError("Site column not found in parquet files. Cannot perform spatial validation.")
     
-    # Prepare feature columns
+    # Prepare feature columns - EXCLUDE GEOGRAPHIC PROXIES
     exclude_cols = ['TIMESTAMP', 'solar_TIMESTAMP', 'site', 'plant_id', 'Unnamed: 0']
+    
+    # Define geographic proxy features to exclude
+    geographic_proxies = [
+        'timezone_offset', 'country_code', 'latitude_abs', 'longitude', 'latitude',
+        'igbp_class_code', 'igbp_code', 'social_status_code', 'leaf_habit_code',
+        'growth_condition_code', 'pl_species_code'
+    ]
+    
     target_col = 'sap_flow'
     
     if target_col not in sample_df.columns:
         raise ValueError(f"Target column '{target_col}' not found in parquet files")
     
-    feature_cols = [col for col in sample_df.columns 
+    # Get all potential features
+    all_features = [col for col in sample_df.columns 
                    if col not in exclude_cols + [target_col]
                    and not col.endswith('_flags')
                    and not col.endswith('_md')]
+    
+    # Remove geographic proxies
+    feature_cols = [col for col in all_features if col not in geographic_proxies]
+    
+    print(f"📊 Feature selection:")
+    print(f"  Total potential features: {len(all_features)}")
+    print(f"  Geographic proxies excluded: {len(geographic_proxies)}")
+    print(f"  Final features: {len(feature_cols)}")
+    print(f"  Excluded proxies: {geographic_proxies}")
     
     print(f"Features: {len(feature_cols)} columns")
     print(f"Target: {target_col}")
@@ -745,13 +765,21 @@ def convert_balanced_sample_to_libsvm(balanced_df, feature_cols, target_col, tem
 
 def main():
     """Main spatial external memory training pipeline (hybrid approach)"""
-    print("SAPFLUXNET Spatial External Memory XGBoost Training (Hybrid Approach)")
+    print("SAPFLUXNET Spatial External Memory XGBoost Training (NO GEOGRAPHIC PROXIES)")
     print("=" * 70)
     print(f"Started at: {datetime.now()}")
     print("Method: Parquet → Site Sampling → libsvm → External Memory Training")
-    print("Purpose: True spatial generalization with real site information")
+    print("Purpose: True spatial generalization WITHOUT geographic proxy features")
     print("⚠️  IMPORTANT: This approach requires parquet files with 'site' column")
     print("⚠️  Libsvm files alone cannot provide real site information for spatial validation")
+    print("🔧 MODIFICATION: Excluding geographic proxy features to test universal generalization")
+    
+    # Define geographic proxies to exclude (for reporting)
+    geographic_proxies = [
+        'timezone_offset', 'country_code', 'latitude_abs', 'longitude', 'latitude',
+        'igbp_class_code', 'igbp_code', 'social_status_code', 'leaf_habit_code',
+        'growth_condition_code', 'pl_species_code'
+    ]
     
     # Check system resources
     available_memory = get_available_memory_gb()
@@ -851,10 +879,11 @@ def main():
         print(f"Real sites tested: {len(valid_sites)}")
         print(f"Successful folds: {len(all_metrics)}/{len(valid_sites)}")
         print(f"Model saved: {model_path}")
-        print(f"💡 This model tests true spatial generalization with real site information")
+        print(f"💡 This model tests spatial generalization WITHOUT geographic proxy features")
         print(f"🚀 Hybrid approach: Parquet → Site sampling → External memory training")
-        print(f"📊 Method: LOSO + balanced sampling + external memory")
-        print(f"🎯 Purpose: True geographic generalization testing")
+        print(f"📊 Method: LOSO + balanced sampling + external memory + universal features")
+        print(f"🎯 Purpose: Test universal environmental feature generalization")
+        print(f"🔧 Modification: Excluded {len(geographic_proxies)} geographic proxy features")
         
     except Exception as e:
         print(f"\n❌ Spatial external memory training failed: {str(e)}")
