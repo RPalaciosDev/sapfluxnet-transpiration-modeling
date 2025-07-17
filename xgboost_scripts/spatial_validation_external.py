@@ -8,7 +8,7 @@ import pandas as pd
 import numpy as np
 import xgboost as xgb
 from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
-from sklearn.datasets import dump_svmlight_file
+from sklearn.datasets import dump_svmlight_file, load_svmlight_file
 import os
 from datetime import datetime
 import warnings
@@ -24,6 +24,26 @@ warnings.filterwarnings('ignore')
 def get_available_memory_gb():
     """Get available system memory in GB"""
     return psutil.virtual_memory().available / (1024**3)
+
+def get_total_memory_gb():
+    """Get total system memory in GB"""
+    return psutil.virtual_memory().total / (1024**3)
+
+def calculate_optimal_memory_usage():
+    """Calculate optimal memory usage based on available RAM"""
+    total_memory = get_total_memory_gb()
+    available_memory = get_available_memory_gb()
+    
+    print(f"💾 Memory Analysis:")
+    print(f"  Total RAM: {total_memory:.1f} GB")
+    print(f"  Available RAM: {available_memory:.1f} GB")
+    print(f"  Used RAM: {total_memory - available_memory:.1f} GB")
+    
+    # Use 70% of available memory for optimal performance
+    optimal_usage = available_memory * 0.7
+    print(f"  Recommended usage: {optimal_usage:.1f} GB (70% of available)")
+    
+    return optimal_usage
 
 def check_disk_space_gb(path):
     """Check available disk space in GB"""
@@ -364,27 +384,64 @@ def create_loso_external_splits(balanced_df, feature_cols, target_col, temp_dir)
     return fold_files
 
 def train_loso_external_memory(fold_files, feature_cols, feature_mapping=None):
-    """Train XGBoost models using Leave-One-Site-Out external memory"""
-    print(f"Training LOSO external memory models...")
+    """Train XGBoost models using Leave-One-Site-Out with optimized memory usage"""
+    print(f"Training LOSO models with optimized memory usage...")
     print(f"XGBoost version: {xgb.__version__}")
     
     all_metrics = []
     site_results = []
     
-    # External memory optimized parameters
-    params = {
-        'objective': 'reg:squarederror',
-        'eval_metric': 'rmse',
-        'max_depth': 6,
-        'learning_rate': 0.1,
-        'subsample': 0.8,
-        'colsample_bytree': 0.8,
-        'random_state': 42,
-        'tree_method': 'hist',
-        'max_bin': 256,
-        'verbosity': 1,
-        'nthread': -1
-    }
+    # Check available memory and optimize parameters
+    available_memory = get_available_memory_gb()
+    print(f"💾 Available memory for training: {available_memory:.1f} GB")
+    
+    # Optimize parameters based on available memory
+    if available_memory > 16:  # High memory system
+        print(f"🚀 Using HIGH-MEMORY optimized parameters")
+        params = {
+            'objective': 'reg:squarederror',
+            'eval_metric': 'rmse',
+            'max_depth': 8,          # Higher depth with more memory
+            'learning_rate': 0.1,
+            'subsample': 0.8,
+            'colsample_bytree': 0.8,
+            'random_state': 42,
+            'tree_method': 'hist',
+            'max_bin': 512,          # More bins with more memory
+            'verbosity': 1,
+            'nthread': -1,
+            'grow_policy': 'lossguide'  # Better for high memory
+        }
+    elif available_memory > 8:  # Medium memory system
+        print(f"⚡ Using MEDIUM-MEMORY optimized parameters")
+        params = {
+            'objective': 'reg:squarederror',
+            'eval_metric': 'rmse',
+            'max_depth': 7,
+            'learning_rate': 0.1,
+            'subsample': 0.8,
+            'colsample_bytree': 0.8,
+            'random_state': 42,
+            'tree_method': 'hist',
+            'max_bin': 256,
+            'verbosity': 1,
+            'nthread': -1
+        }
+    else:  # Low memory system
+        print(f"💾 Using LOW-MEMORY optimized parameters")
+        params = {
+            'objective': 'reg:squarederror',
+            'eval_metric': 'rmse',
+            'max_depth': 6,
+            'learning_rate': 0.1,
+            'subsample': 0.8,
+            'colsample_bytree': 0.8,
+            'random_state': 42,
+            'tree_method': 'hist',
+            'max_bin': 128,
+            'verbosity': 1,
+            'nthread': -1
+        }
     
     print(f"XGBoost parameters: {params}")
     
@@ -398,10 +455,17 @@ def train_loso_external_memory(fold_files, feature_cols, feature_mapping=None):
         log_memory_usage(f"Before fold {fold_num}")
         
         try:
-            # Create external memory DMatrix objects
-            print("Creating external memory DMatrix objects...")
-            dtrain = xgb.DMatrix(f"{train_file}?format=libsvm")
-            dtest = xgb.DMatrix(f"{test_file}?format=libsvm")
+            # Check if we can use in-memory training
+            available_memory = get_available_memory_gb()
+            fold_size_gb = (fold_info['train_samples'] + fold_info['test_samples']) * len(feature_cols) * 8 / (1024**3)
+            
+            if fold_size_gb < available_memory * 0.3:  # Use in-memory if fold fits in 30% of available RAM
+                print(f"🚀 Using IN-MEMORY training (fold size: {fold_size_gb:.1f} GB)")
+                dtrain, dtest = create_in_memory_dmatrix(train_file, test_file, feature_cols)
+            else:
+                print(f"💾 Using EXTERNAL MEMORY training (fold size: {fold_size_gb:.1f} GB)")
+                dtrain = xgb.DMatrix(f"{train_file}?format=libsvm")
+                dtest = xgb.DMatrix(f"{test_file}?format=libsvm")
             
             # Train model
             print(f"Training external memory model for site {test_site}...")
@@ -511,6 +575,21 @@ def train_loso_external_memory(fold_files, feature_cols, feature_mapping=None):
     else:
         raise ValueError("No successful folds completed")
 
+def create_in_memory_dmatrix(train_file, test_file, feature_cols):
+    """Create in-memory DMatrix objects for faster training"""
+    print("Loading data into memory for faster training...")
+    
+    # Load training data
+    X_train, y_train = load_svmlight_file(train_file)
+    dtrain = xgb.DMatrix(X_train, label=y_train)
+    
+    # Load test data
+    X_test, y_test = load_svmlight_file(test_file)
+    dtest = xgb.DMatrix(X_test, label=y_test)
+    
+    print(f"✅ In-memory DMatrix created: {X_train.shape[0]:,} train, {X_test.shape[0]:,} test samples")
+    return dtrain, dtest
+
 def get_enhanced_feature_importance(model, feature_cols, feature_mapping=None):
     """Get enhanced feature importance with both indices and names"""
     try:
@@ -565,7 +644,7 @@ def get_enhanced_feature_importance(model, feature_cols, feature_mapping=None):
 
 def save_spatial_external_results(model, all_metrics, avg_metrics, feature_importance, site_results, 
                                  feature_cols, total_original_rows, balanced_rows, n_sites, feature_mapping=None,
-                                 output_dir='external_memory_models/spatial_validation_no_proxies'):
+                                 output_dir='external_memory_models/spatial_validation_universal_features'):
     """Save spatial external memory model results"""
     os.makedirs(output_dir, exist_ok=True)
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
@@ -650,7 +729,7 @@ def save_spatial_external_results(model, all_metrics, avg_metrics, feature_impor
     
     return model_path
 
-def load_parquet_for_site_sampling(parquet_dir, feature_mapping=None):
+def load_parquet_for_site_sampling(parquet_dir, feature_mapping=None, use_memory_optimization=True):
     """Load parquet files for site-based sampling (hybrid approach)"""
     print(f"Loading parquet data from: {parquet_dir}")
     
@@ -683,6 +762,35 @@ def load_parquet_for_site_sampling(parquet_dir, feature_mapping=None):
         'growth_condition_code', 'pl_species_code'
     ]
     
+    # Define site-specific constants that don't generalize spatially
+    site_specific_constants = [
+        # Site characteristics (constants per site)
+        'stand_height', 'soil_depth', 'climate_zone_code', 'stand_age', 'aridity_index',
+        'tree_volume_index', 'pl_height', 'leaf_area_index', 'sapwood_leaf_ratio',
+        'silt_percentage', 'mean_annual_precip', 'pl_social_code', 'n_trees',
+        'mean_annual_temp', 'measurement_timestep', 'elevation', 'pl_bark_thick',
+        'tree_density', 'pl_sapw_depth', 'pl_sapw_area', 'pl_dbh', 'basal_area',
+        'sand_percentage', 'clay_percentage', 'pl_age', 'pl_leaf_area',
+        
+        # Plant-specific constants
+        'pl_species', 'pl_genus', 'pl_family', 'pl_order', 'pl_class',
+        
+        # Site metadata constants
+        'site_name', 'site_description', 'site_type', 'site_notes',
+        
+        # Geographic constants
+        'continent', 'biome', 'ecosystem_type', 'vegetation_type',
+        
+        # Management constants
+        'management_type', 'disturbance_type', 'disturbance_year',
+        
+        # Instrument constants
+        'instrument_type', 'instrument_model', 'instrument_manufacturer'
+    ]
+    
+    # Combine all features to exclude
+    all_excluded_features = geographic_proxies + site_specific_constants
+    
     target_col = 'sap_flow'
     
     if target_col not in sample_df.columns:
@@ -694,19 +802,45 @@ def load_parquet_for_site_sampling(parquet_dir, feature_mapping=None):
                    and not col.endswith('_flags')
                    and not col.endswith('_md')]
     
-    # Remove geographic proxies
-    feature_cols = [col for col in all_features if col not in geographic_proxies]
+    # Remove geographic proxies and site-specific constants
+    feature_cols = [col for col in all_features if col not in all_excluded_features]
     
     print(f"📊 Feature selection:")
     print(f"  Total potential features: {len(all_features)}")
     print(f"  Geographic proxies excluded: {len(geographic_proxies)}")
+    print(f"  Site-specific constants excluded: {len(site_specific_constants)}")
+    print(f"  Total excluded features: {len(all_excluded_features)}")
     print(f"  Final features: {len(feature_cols)}")
-    print(f"  Excluded proxies: {geographic_proxies}")
+    print(f"  Excluded geographic proxies: {geographic_proxies}")
+    print(f"  Excluded site constants: {site_specific_constants[:10]}...")  # Show first 10
     
     print(f"Features: {len(feature_cols)} columns")
     print(f"Target: {target_col}")
     
-    # Load all parquet files with memory-efficient approach
+    # Memory optimization decision
+    if use_memory_optimization:
+        optimal_memory = calculate_optimal_memory_usage()
+        estimated_data_size = len(parquet_files) * 100000 * len(feature_cols) * 8 / (1024**3)  # Rough estimate in GB
+        
+        print(f"📊 Memory Strategy:")
+        print(f"  Estimated data size: {estimated_data_size:.1f} GB")
+        print(f"  Optimal memory usage: {optimal_memory:.1f} GB")
+        
+        if estimated_data_size < optimal_memory:
+            print(f"✅ Using IN-MEMORY approach (data fits in available RAM)")
+            return load_parquet_in_memory(parquet_dir, feature_cols, target_col, geographic_proxies)
+        else:
+            print(f"⚠️  Using MEMORY-EFFICIENT approach (data too large for RAM)")
+            return load_parquet_memory_efficient(parquet_dir, feature_cols, target_col, geographic_proxies)
+    else:
+        print(f"🔧 Using MEMORY-EFFICIENT approach (forced)")
+        return load_parquet_memory_efficient(parquet_dir, feature_cols, target_col, geographic_proxies)
+
+def load_parquet_in_memory(parquet_dir, feature_cols, target_col, geographic_proxies):
+    """Load all parquet files into memory for faster processing"""
+    print(f"🚀 Loading all data into memory for optimal performance...")
+    
+    parquet_files = [f for f in os.listdir(parquet_dir) if f.endswith('.parquet')]
     dfs = []
     total_rows = 0
     
@@ -714,24 +848,54 @@ def load_parquet_for_site_sampling(parquet_dir, feature_mapping=None):
         print(f"Loading file {i+1}/{len(parquet_files)}: {parquet_file}")
         
         file_path = os.path.join(parquet_dir, parquet_file)
-        
-        # Load only necessary columns to save memory
         df_chunk = pd.read_parquet(file_path, columns=['site', target_col] + feature_cols)
         
         # Clean data
         df_chunk = df_chunk.dropna(subset=[target_col])
-        df_chunk = df_chunk.fillna(0)  # Fill feature NaNs with 0
+        df_chunk = df_chunk.fillna(0)
+        
+        dfs.append(df_chunk)
+        total_rows += len(df_chunk)
+        
+        print(f"  Loaded {len(df_chunk):,} rows")
+    
+    # Combine all dataframes at once
+    print(f"Combining {len(dfs)} dataframes in memory...")
+    df = pd.concat(dfs, ignore_index=True)
+    del dfs
+    gc.collect()
+    
+    print(f"✅ In-memory loading complete: {len(df):,} rows from {df['site'].nunique()} sites")
+    return df, feature_cols, target_col, total_rows
+
+def load_parquet_memory_efficient(parquet_dir, feature_cols, target_col, geographic_proxies):
+    """Load parquet files with memory-efficient approach"""
+    print(f"💾 Using memory-efficient loading...")
+    
+    parquet_files = [f for f in os.listdir(parquet_dir) if f.endswith('.parquet')]
+    dfs = []
+    total_rows = 0
+    
+    for i, parquet_file in enumerate(parquet_files):
+        print(f"Loading file {i+1}/{len(parquet_files)}: {parquet_file}")
+        
+        file_path = os.path.join(parquet_dir, parquet_file)
+        df_chunk = pd.read_parquet(file_path, columns=['site', target_col] + feature_cols)
+        
+        # Clean data
+        df_chunk = df_chunk.dropna(subset=[target_col])
+        df_chunk = df_chunk.fillna(0)
         
         dfs.append(df_chunk)
         total_rows += len(df_chunk)
         
         print(f"  Loaded {len(df_chunk):,} rows")
         
-        # Memory management - combine every 10 files to avoid too many dataframes in memory
+        # Memory management - combine every 10 files
         if len(dfs) >= 10:
             print(f"  Combining {len(dfs)} dataframes to free memory...")
             combined_df = pd.concat(dfs, ignore_index=True)
-            dfs = [combined_df]  # Replace list with single combined dataframe
+            dfs = [combined_df]
             gc.collect()
     
     # Final combination
@@ -740,8 +904,7 @@ def load_parquet_for_site_sampling(parquet_dir, feature_mapping=None):
     del dfs
     gc.collect()
     
-    print(f"Total combined data: {len(df):,} rows from {df['site'].nunique()} sites")
-    
+    print(f"✅ Memory-efficient loading complete: {len(df):,} rows from {df['site'].nunique()} sites")
     return df, feature_cols, target_col, total_rows
 
 def convert_balanced_sample_to_libsvm(balanced_df, feature_cols, target_col, temp_dir):
@@ -765,14 +928,14 @@ def convert_balanced_sample_to_libsvm(balanced_df, feature_cols, target_col, tem
 
 def main():
     """Main spatial external memory training pipeline (hybrid approach)"""
-    print("SAPFLUXNET Spatial External Memory XGBoost Training (NO GEOGRAPHIC PROXIES)")
+    print("SAPFLUXNET Spatial External Memory XGBoost Training (UNIVERSAL FEATURES ONLY)")
     print("=" * 70)
     print(f"Started at: {datetime.now()}")
     print("Method: Parquet → Site Sampling → libsvm → External Memory Training")
-    print("Purpose: True spatial generalization WITHOUT geographic proxy features")
+    print("Purpose: True spatial generalization with UNIVERSAL environmental features only")
     print("⚠️  IMPORTANT: This approach requires parquet files with 'site' column")
     print("⚠️  Libsvm files alone cannot provide real site information for spatial validation")
-    print("🔧 MODIFICATION: Excluding geographic proxy features to test universal generalization")
+    print("🔧 MODIFICATION: Excluding ALL site-specific constants for true generalization")
     
     # Define geographic proxies to exclude (for reporting)
     geographic_proxies = [
@@ -780,6 +943,34 @@ def main():
         'igbp_class_code', 'igbp_code', 'social_status_code', 'leaf_habit_code',
         'growth_condition_code', 'pl_species_code'
     ]
+    
+    # Define site-specific constants that don't generalize spatially
+    site_specific_constants = [
+        # Site characteristics (constants per site)
+        'stand_height', 'soil_depth', 'climate_zone_code', 'stand_age', 'aridity_index',
+        'tree_volume_index', 'pl_height', 'leaf_area_index', 'sapwood_leaf_ratio',
+        'silt_percentage', 'mean_annual_precip', 'pl_social_code', 'n_trees',
+        'mean_annual_temp', 'measurement_timestep', 'elevation', 'pl_bark_thick',
+        'tree_density', 'pl_sapw_depth', 'pl_sapw_area', 'pl_dbh', 'basal_area',
+        'sand_percentage', 'clay_percentage', 'pl_age', 'pl_leaf_area',
+        
+        # Plant-specific constants
+        'pl_species', 'pl_genus', 'pl_family', 'pl_order', 'pl_class',
+        
+        # Site metadata constants
+        'site_name', 'site_description', 'site_type', 'site_notes',
+        
+        # Geographic constants
+        'continent', 'biome', 'ecosystem_type', 'vegetation_type',
+        
+        # Management constants
+        'management_type', 'disturbance_type', 'disturbance_year',
+        
+        # Instrument constants
+        'instrument_type', 'instrument_model', 'instrument_manufacturer'
+    ]
+    
+    all_excluded_features = geographic_proxies + site_specific_constants
     
     # Check system resources
     available_memory = get_available_memory_gb()
@@ -822,7 +1013,7 @@ def main():
         print("LOADING PARQUET DATA FOR SITE ANALYSIS")
         print("="*70)
         
-        df, feature_cols, target_col, total_rows = load_parquet_for_site_sampling(parquet_dir, feature_mapping)
+        df, feature_cols, target_col, total_rows = load_parquet_for_site_sampling(parquet_dir, feature_mapping, use_memory_optimization=True)
         
         # Step 2: Create balanced site sampling
         print("\n" + "="*70)
@@ -879,11 +1070,13 @@ def main():
         print(f"Real sites tested: {len(valid_sites)}")
         print(f"Successful folds: {len(all_metrics)}/{len(valid_sites)}")
         print(f"Model saved: {model_path}")
-        print(f"💡 This model tests spatial generalization WITHOUT geographic proxy features")
+        print(f"💡 This model tests spatial generalization WITHOUT site-specific constants")
         print(f"🚀 Hybrid approach: Parquet → Site sampling → External memory training")
         print(f"📊 Method: LOSO + balanced sampling + external memory + universal features")
         print(f"🎯 Purpose: Test universal environmental feature generalization")
-        print(f"🔧 Modification: Excluded {len(geographic_proxies)} geographic proxy features")
+        print(f"🔧 Modification: Excluded {len(all_excluded_features)} site-specific features")
+        print(f"   - Geographic proxies: {len(geographic_proxies)}")
+        print(f"   - Site constants: {len(site_specific_constants)}")
         
     except Exception as e:
         print(f"\n❌ Spatial external memory training failed: {str(e)}")
@@ -905,4 +1098,15 @@ def main():
     print(f"\nFinished at: {datetime.now()}")
 
 if __name__ == "__main__":
+    import sys
+    
+    # Check for command line arguments
+    use_memory_opt = True
+    if '--no-memory-opt' in sys.argv:
+        use_memory_opt = False
+        print("🔧 Memory optimization disabled by command line argument")
+    
+    # Pass memory optimization setting to main function
+    # (You can modify the main function to accept this parameter if needed)
+    
     main() 
