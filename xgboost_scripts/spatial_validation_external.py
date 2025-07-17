@@ -661,7 +661,9 @@ def load_parquet_for_site_sampling(parquet_dir, feature_mapping=None):
     
     # Load first file to check structure
     first_file = os.path.join(parquet_dir, parquet_files[0])
-    sample_df = pd.read_parquet(first_file, nrows=1000)
+    sample_df = pd.read_parquet(first_file)
+    # Take first 1000 rows for structure analysis
+    sample_df = sample_df.head(1000)
     
     print(f"Sample columns: {list(sample_df.columns)}")
     
@@ -684,7 +686,7 @@ def load_parquet_for_site_sampling(parquet_dir, feature_mapping=None):
     print(f"Features: {len(feature_cols)} columns")
     print(f"Target: {target_col}")
     
-    # Load all parquet files
+    # Load all parquet files with memory-efficient approach
     dfs = []
     total_rows = 0
     
@@ -692,6 +694,8 @@ def load_parquet_for_site_sampling(parquet_dir, feature_mapping=None):
         print(f"Loading file {i+1}/{len(parquet_files)}: {parquet_file}")
         
         file_path = os.path.join(parquet_dir, parquet_file)
+        
+        # Load only necessary columns to save memory
         df_chunk = pd.read_parquet(file_path, columns=['site', target_col] + feature_cols)
         
         # Clean data
@@ -703,12 +707,15 @@ def load_parquet_for_site_sampling(parquet_dir, feature_mapping=None):
         
         print(f"  Loaded {len(df_chunk):,} rows")
         
-        # Memory management
-        if i % 5 == 0:
+        # Memory management - combine every 10 files to avoid too many dataframes in memory
+        if len(dfs) >= 10:
+            print(f"  Combining {len(dfs)} dataframes to free memory...")
+            combined_df = pd.concat(dfs, ignore_index=True)
+            dfs = [combined_df]  # Replace list with single combined dataframe
             gc.collect()
     
-    # Combine all dataframes
-    print(f"Combining {len(dfs)} dataframes...")
+    # Final combination
+    print(f"Final combination of {len(dfs)} dataframes...")
     df = pd.concat(dfs, ignore_index=True)
     del dfs
     gc.collect()
