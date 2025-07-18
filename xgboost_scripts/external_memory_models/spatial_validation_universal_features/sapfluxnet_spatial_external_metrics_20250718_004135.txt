@@ -1,0 +1,44 @@
+SAPFLUXNET Spatial External Memory Training Results (NO GEOGRAPHIC PROXIES)
+======================================================================
+Training completed: 2025-07-18 00:41:35.519448
+Method: Leave-One-Site-Out with balanced sampling + external memory
+Approach: Fair spatial generalization WITHOUT geographic proxy features
+Original dataset: 8,692,194 rows
+Balanced dataset: 252,066 rows from 87 sites
+Geographic fairness: Equal contribution from each site
+Feature modification: Excluded geographic proxies to test universal generalization
+
+Average Performance Across Sites:
+-----------------------------------
+  train_rmse_mean: 5.4800
+  train_rmse_std: 0.3748
+  test_rmse_mean: 5.2020
+  test_rmse_std: 4.4395
+  train_mae_mean: 2.7204
+  train_mae_std: 0.2061
+  test_mae_mean: 3.5298
+  test_mae_std: 2.9271
+  train_r2_mean: 0.5201
+  train_r2_std: 0.0610
+  test_r2_mean: -612.6943
+  test_r2_std: 5654.6623
+
+Completed Folds: 87/87
+
+Validation Method:
+------------------
+- Leave-One-Site-Out spatial cross-validation
+- Balanced site sampling for geographic fairness
+- External memory for computational efficiency
+- Each site contributes equally to model learning
+- Tests true spatial generalization capability
+- No geographic bias from high-data sites
+
+Advantages of This Approach:
+------------------------------
+- Geographic fairness: Equal site representation
+- Substantial data: ~3000 records per site
+- Memory efficient: External memory processing
+- Scientifically sound: Tests NEW site prediction
+- Computationally feasible: Manageable fold sizes
+- Balanced evaluation: No big-site dominance
