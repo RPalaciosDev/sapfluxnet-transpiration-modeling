@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-Simple Temporal Validation for SAPFLUXNET Data
-K-FOLD TEMPORAL VALIDATION using parquet files directly
-Simplified approach that works with our existing data pipeline
+Temporal Validation with Daily Averages for SAPFLUXNET Data
+K-FOLD TEMPORAL VALIDATION using daily averaged data
+Realistic temporal patterns with manageable data size
 """
 
 import pandas as pd
@@ -18,98 +18,59 @@ from pathlib import Path
 
 warnings.filterwarnings('ignore')
 
-def load_parquet_data(parquet_dir, max_rows=None):
-    """Load parquet data for temporal validation"""
-    print(f"Loading parquet data from {parquet_dir}...")
+def load_daily_averages(daily_data_file):
+    """Load daily averages data"""
+    print(f"Loading daily averages from {daily_data_file}...")
     
-    parquet_files = [f for f in os.listdir(parquet_dir) if f.endswith('.parquet')]
-    print(f"Found {len(parquet_files)} parquet files")
+    df = pd.read_parquet(daily_data_file)
     
-    # Load first file as sample to understand structure
-    sample_file = os.path.join(parquet_dir, parquet_files[0])
-    sample_df = pd.read_parquet(sample_file).head(1000)
+    print(f"Loaded {len(df):,} daily records from {df['site'].nunique()} sites")
+    print(f"Date range: {df['TIMESTAMP'].min()} to {df['TIMESTAMP'].max()}")
+    print(f"Columns: {list(df.columns)}")
     
-    print(f"Sample data columns: {list(sample_df.columns)}")
-    print(f"Sample data shape: {sample_df.shape}")
+    return df
+
+def create_temporal_features(df):
+    """Create additional temporal features from daily data"""
+    print("Creating temporal features...")
     
-    # Define features to use (universal environmental features only)
-    exclude_cols = ['TIMESTAMP', 'solar_TIMESTAMP', 'site', 'plant_id', 'Unnamed: 0']
-    target_col = 'sap_flow'
+    # Basic temporal features (already added in daily averages script)
+    # year, month, day_of_year, season
     
-    # Universal environmental features
-    universal_features = [
-        'ta', 'rh', 'sw_in', 'ppfd_in', 'vpd', 'ext_rad', 'ws',
-        'swc_shallow', 'precip',
-        # Lagged features
-        'ta_lag_1h', 'ta_lag_3h', 'ta_lag_6h', 'ta_lag_12h', 'ta_lag_24h',
-        'rh_lag_1h', 'rh_lag_3h', 'rh_lag_6h', 'rh_lag_12h', 'rh_lag_24h',
-        'sw_in_lag_1h', 'sw_in_lag_3h', 'sw_in_lag_6h', 'sw_in_lag_12h', 'sw_in_lag_24h',
-        'vpd_lag_1h', 'vpd_lag_3h', 'vpd_lag_6h', 'vpd_lag_12h', 'vpd_lag_24h',
-        'ws_lag_1h', 'ws_lag_3h', 'ws_lag_6h', 'ws_lag_12h', 'ws_lag_24h',
-        'swc_shallow_lag_1h', 'swc_shallow_lag_3h', 'swc_shallow_lag_6h', 
-        'swc_shallow_lag_12h', 'swc_shallow_lag_24h',
-        'precip_lag_1h', 'precip_lag_3h', 'precip_lag_6h', 'precip_lag_12h', 'precip_lag_24h',
-        'ppfd_in_lag_1h', 'ppfd_in_lag_3h', 'ppfd_in_lag_6h', 'ppfd_in_lag_12h', 'ppfd_in_lag_24h'
-    ]
+    # Additional temporal features
+    df['day_of_week'] = df['TIMESTAMP'].dt.dayofweek
+    df['week_of_year'] = df['TIMESTAMP'].dt.isocalendar().week
+    df['quarter'] = df['TIMESTAMP'].dt.quarter
     
-    # Filter to available features
-    available_features = [f for f in universal_features if f in sample_df.columns]
-    print(f"Using {len(available_features)} universal environmental features")
+    # Cyclical encoding for seasonal patterns
+    df['month_sin'] = np.sin(2 * np.pi * df['month'] / 12)
+    df['month_cos'] = np.cos(2 * np.pi * df['month'] / 12)
+    df['day_of_year_sin'] = np.sin(2 * np.pi * df['day_of_year'] / 365)
+    df['day_of_year_cos'] = np.cos(2 * np.pi * df['day_of_year'] / 365)
     
-    # Load data in chunks to handle large datasets
-    dfs = []
-    total_rows = 0
+    # Lagged features (previous day values)
+    lag_features = ['sap_flow', 'ta', 'rh', 'sw_in', 'ppfd_in', 'vpd', 'ext_rad', 'ws', 'swc_shallow']
+    available_lag_features = [f for f in lag_features if f in df.columns]
     
-    for i, parquet_file in enumerate(parquet_files):
-        print(f"Loading file {i+1}/{len(parquet_files)}: {parquet_file}")
-        
-        file_path = os.path.join(parquet_dir, parquet_file)
-        
-        # Load with selected columns only
-        columns_to_load = ['site', target_col] + available_features
-        df_chunk = pd.read_parquet(file_path, columns=columns_to_load)
-        
-        # Clean data
-        df_chunk = df_chunk.dropna(subset=[target_col])
-        df_chunk = df_chunk.fillna(0)
-        
-        dfs.append(df_chunk)
-        total_rows += len(df_chunk)
-        
-        print(f"  Loaded {len(df_chunk):,} rows")
-        
-        # Limit total rows if specified
-        if max_rows and total_rows >= max_rows:
-            print(f"  Reached row limit of {max_rows:,}")
-            break
-        
-        # Memory management - combine every 5 files
-        if len(dfs) >= 5:
-            print(f"  Combining {len(dfs)} dataframes to free memory...")
-            combined_df = pd.concat(dfs, ignore_index=True)
-            dfs = [combined_df]
-            gc.collect()
+    for feature in available_lag_features:
+        df[f'{feature}_lag_1d'] = df.groupby('site')[feature].shift(1)
+        df[f'{feature}_lag_7d'] = df.groupby('site')[feature].shift(7)
     
-    # Final combination
-    print(f"Final combination of {len(dfs)} dataframes...")
-    df = pd.concat(dfs, ignore_index=True)
-    del dfs
-    gc.collect()
+    # Rolling averages (7-day and 30-day windows)
+    for feature in available_lag_features:
+        df[f'{feature}_rolling_7d'] = df.groupby('site')[feature].rolling(window=7, min_periods=1).mean().reset_index(0, drop=True)
+        df[f'{feature}_rolling_30d'] = df.groupby('site')[feature].rolling(window=30, min_periods=1).mean().reset_index(0, drop=True)
     
-    print(f"✅ Data loading complete: {len(df):,} rows from {df['site'].nunique()} sites")
-    return df, available_features, target_col
+    print(f"Added temporal features. Total features: {len(df.columns)}")
+    return df
 
 def create_temporal_splits(df, n_folds=5):
     """Create temporal splits for k-fold validation"""
     print(f"Creating {n_folds}-fold temporal splits...")
     
-    # Sort by site and create temporal index within each site
+    # Sort by site and timestamp
     df = df.sort_values(['site', 'TIMESTAMP']).reset_index(drop=True)
     
-    # Create temporal index within each site
-    df['temporal_index'] = df.groupby('site').cumcount()
-    
-    # Create folds based on temporal index
     splits = []
     
     for fold in range(n_folds):
@@ -118,49 +79,68 @@ def create_temporal_splits(df, n_folds=5):
         # For temporal validation, we want to predict future data
         # Each fold uses earlier data for training, later data for testing
         
-        # Calculate split points
-        fold_size = len(df) // n_folds
-        start_idx = fold * fold_size
-        end_idx = (fold + 1) * fold_size if fold < n_folds - 1 else len(df)
+        # Calculate split points based on time
+        total_days = (df['TIMESTAMP'].max() - df['TIMESTAMP'].min()).days
+        fold_size_days = total_days // n_folds
         
-        # Create temporal split: train on earlier data, test on later data
+        # Create temporal split
         if fold == 0:
-            # First fold: train on first 20%, test on next 20%
-            train_end = int(0.2 * len(df))
-            test_start = train_end
-            test_end = int(0.4 * len(df))
+            # First fold: train on first 20% of time, test on next 20%
+            train_end_date = df['TIMESTAMP'].min() + pd.Timedelta(days=int(0.2 * total_days))
+            test_start_date = train_end_date
+            test_end_date = df['TIMESTAMP'].min() + pd.Timedelta(days=int(0.4 * total_days))
         else:
             # Other folds: train on data up to fold, test on fold
-            train_end = end_idx
-            test_start = start_idx
-            test_end = end_idx
+            fold_start_date = df['TIMESTAMP'].min() + pd.Timedelta(days=fold * fold_size_days)
+            fold_end_date = df['TIMESTAMP'].min() + pd.Timedelta(days=(fold + 1) * fold_size_days)
+            
+            train_end_date = fold_start_date
+            test_start_date = fold_start_date
+            test_end_date = fold_end_date
         
-        train_mask = df.index < train_end
-        test_mask = (df.index >= test_start) & (df.index < test_end)
+        train_mask = df['TIMESTAMP'] < train_end_date
+        test_mask = (df['TIMESTAMP'] >= test_start_date) & (df['TIMESTAMP'] < test_end_date)
         
         train_data = df[train_mask].copy()
         test_data = df[test_mask].copy()
         
-        print(f"    Train: {len(train_data):,} rows")
-        print(f"    Test: {len(test_data):,} rows")
+        print(f"    Train period: {train_data['TIMESTAMP'].min()} to {train_data['TIMESTAMP'].max()}")
+        print(f"    Test period: {test_data['TIMESTAMP'].min()} to {test_data['TIMESTAMP'].max()}")
+        print(f"    Train: {len(train_data):,} records")
+        print(f"    Test: {len(test_data):,} records")
         
         splits.append((train_data, test_data))
     
     return splits
+
+def get_feature_columns(df):
+    """Get feature columns for modeling"""
+    # Exclude non-feature columns
+    exclude_cols = [
+        'site', 'date', 'TIMESTAMP', 'year', 'month', 'day_of_year', 'season',
+        'day_of_week', 'week_of_year', 'quarter'
+    ]
+    
+    # Get all columns except target and excluded
+    target_col = 'sap_flow'
+    feature_cols = [col for col in df.columns if col not in exclude_cols + [target_col]]
+    
+    print(f"Using {len(feature_cols)} features for modeling")
+    return feature_cols, target_col
 
 def train_temporal_model(train_data, test_data, feature_cols, target_col, fold_idx):
     """Train XGBoost model for temporal validation"""
     print(f"Training temporal model for fold {fold_idx + 1}...")
     
     # Prepare data
-    X_train = train_data[feature_cols]
+    X_train = train_data[feature_cols].fillna(0)
     y_train = train_data[target_col]
-    X_test = test_data[feature_cols]
+    X_test = test_data[feature_cols].fillna(0)
     y_test = test_data[target_col]
     
     # Train model
     model = xgb.XGBRegressor(
-        n_estimators=100,
+        n_estimators=200,
         max_depth=6,
         learning_rate=0.1,
         random_state=42,
@@ -197,10 +177,12 @@ def train_temporal_model(train_data, test_data, feature_cols, target_col, fold_i
         'test_mae': test_mae,
         'feature_importance': feature_importance,
         'train_samples': len(train_data),
-        'test_samples': len(test_data)
+        'test_samples': len(test_data),
+        'train_period': f"{train_data['TIMESTAMP'].min()} to {train_data['TIMESTAMP'].max()}",
+        'test_period': f"{test_data['TIMESTAMP'].min()} to {test_data['TIMESTAMP'].max()}"
     }
 
-def save_temporal_results(results, feature_cols, output_dir='temporal_validation_results'):
+def save_temporal_results(results, feature_cols, output_dir='temporal_validation_daily_results'):
     """Save temporal validation results"""
     os.makedirs(output_dir, exist_ok=True)
     
@@ -232,7 +214,9 @@ def save_temporal_results(results, feature_cols, output_dir='temporal_validation
             'train_mae': result['train_mae'],
             'test_mae': result['test_mae'],
             'train_samples': result['train_samples'],
-            'test_samples': result['test_samples']
+            'test_samples': result['test_samples'],
+            'train_period': result['train_period'],
+            'test_period': result['test_period']
         })
     
     results_df = pd.DataFrame(results_data)
@@ -240,8 +224,8 @@ def save_temporal_results(results, feature_cols, output_dir='temporal_validation
     
     # Save summary
     with open(os.path.join(output_dir, 'temporal_summary.txt'), 'w') as f:
-        f.write("Temporal Validation Results\n")
-        f.write("=" * 40 + "\n")
+        f.write("Temporal Validation Results (Daily Averages)\n")
+        f.write("=" * 50 + "\n")
         f.write(f"Generated: {datetime.now()}\n\n")
         
         f.write("Average Performance:\n")
@@ -259,6 +243,8 @@ def save_temporal_results(results, feature_cols, output_dir='temporal_validation
             f.write(f"Fold {i+1}:\n")
             f.write(f"  Train R²: {result['train_r2']:.4f}, Test R²: {result['test_r2']:.4f}\n")
             f.write(f"  Train RMSE: {result['train_rmse']:.4f}, Test RMSE: {result['test_rmse']:.4f}\n")
+            f.write(f"  Train period: {result['train_period']}\n")
+            f.write(f"  Test period: {result['test_period']}\n")
             f.write(f"  Train samples: {result['train_samples']:,}, Test samples: {result['test_samples']:,}\n\n")
     
     # Save feature importance
@@ -280,14 +266,26 @@ def save_temporal_results(results, feature_cols, output_dir='temporal_validation
 
 def main():
     """Main temporal validation pipeline"""
-    print("SAPFLUXNET Simple Temporal Validation")
-    print("=" * 40)
+    print("SAPFLUXNET Temporal Validation (Daily Averages)")
+    print("=" * 50)
     print(f"Started at: {datetime.now()}")
-    print("Approach: K-fold temporal validation using parquet files")
+    print("Approach: K-fold temporal validation using daily averaged data")
     
-    # Load data
-    parquet_dir = '../processed_parquet'
-    df, feature_cols, target_col = load_parquet_data(parquet_dir, max_rows=1000000)  # Limit for testing
+    # Load daily averages
+    daily_data_file = 'daily_averages/sapfluxnet_daily_averages.parquet'
+    
+    if not os.path.exists(daily_data_file):
+        print(f"❌ Daily averages file not found: {daily_data_file}")
+        print("Please run create_daily_averages.py first")
+        return
+    
+    df = load_daily_averages(daily_data_file)
+    
+    # Create temporal features
+    df = create_temporal_features(df)
+    
+    # Get feature columns
+    feature_cols, target_col = get_feature_columns(df)
     
     # Create temporal splits
     splits = create_temporal_splits(df, n_folds=5)

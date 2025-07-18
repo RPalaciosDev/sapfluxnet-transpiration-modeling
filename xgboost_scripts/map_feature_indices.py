@@ -171,7 +171,7 @@ def get_feature_mapping_from_processed_data():
         if sample_file.endswith('.csv'):
             df = pd.read_csv(sample_file, nrows=10)
         elif sample_file.endswith('.parquet'):
-            df = pd.read_parquet(sample_file, nrows=10)
+            df = pd.read_parquet(sample_file).head(10)
         else:
             print(f"❌ Unsupported file format: {sample_file}")
             return None

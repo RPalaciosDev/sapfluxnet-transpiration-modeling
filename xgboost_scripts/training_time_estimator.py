@@ -117,7 +117,7 @@ class TrainingTimeEstimator:
             
             try:
                 if file.endswith('.parquet'):
-                    df_sample = pd.read_parquet(file_path, nrows=1000)
+                    df_sample = pd.read_parquet(file_path).head(1000)
                 else:
                     df_sample = pd.read_csv(file_path, nrows=1000)
                 

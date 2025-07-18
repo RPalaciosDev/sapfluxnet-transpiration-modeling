@@ -30,7 +30,7 @@ def load_site_metadata(parquet_dir):
     
     for parquet_file in parquet_files[:5]:  # Sample first 5 files
         file_path = os.path.join(parquet_dir, parquet_file)
-        df_sample = pd.read_parquet(file_path, nrows=1000)
+        df_sample = pd.read_parquet(file_path).head(1000)
         
         if 'site' in df_sample.columns:
             for site in df_sample['site'].unique():
@@ -280,7 +280,7 @@ def main():
     
     # Load first file as sample
     sample_file = os.path.join(parquet_dir, parquet_files[0])
-    df = pd.read_parquet(sample_file, nrows=50000)  # Sample for testing
+    df = pd.read_parquet(sample_file).head(50000)  # Sample for testing
     
     # Define features (universal environmental features only)
     exclude_cols = ['TIMESTAMP', 'solar_TIMESTAMP', 'site', 'plant_id', 'Unnamed: 0']

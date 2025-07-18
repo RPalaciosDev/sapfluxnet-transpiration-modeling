@@ -174,7 +174,7 @@ def load_and_convert_to_external_format(data_dir, output_dir, chunk_size=50000):
     
     # Process first file to get feature information
     first_file = os.path.join(data_dir, parquet_files[0])
-    sample_df = pd.read_parquet(first_file, nrows=1000)
+    sample_df = pd.read_parquet(first_file).head(1000)
     
     # Prepare features
     feature_cols, target_col = prepare_features_from_sample(sample_df)
