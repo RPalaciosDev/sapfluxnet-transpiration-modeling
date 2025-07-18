@@ -1006,95 +1006,69 @@ class MemoryEfficientSAPFLUXNETProcessor:
         return features
     
     def create_rate_of_change_features(self, df):
-        """Create rate of change features for environmental variables"""
+        """Create rate of change features for environmental variables (memory-efficient)"""
         
         features = df.copy()
         
-        # Rate of change features (how quickly variables are changing)
-        env_cols = ['ta', 'rh', 'vpd', 'sw_in', 'ws', 'precip', 'swc_shallow', 'ppfd_in']
+        # Focus on the most important variables and key time periods
+        env_cols = ['rh', 'sw_in', 'vpd', 'ta']  # Top variables from feature importance
         
         for col in env_cols:
             if col in df.columns:
-                # Hourly rate of change
+                # Key rate of change periods
                 features[f'{col}_rate_1h'] = df[col].diff(1)
-                
-                # 3-hour rate of change
-                features[f'{col}_rate_3h'] = df[col].diff(3)
-                
-                # 6-hour rate of change
                 features[f'{col}_rate_6h'] = df[col].diff(6)
-                
-                # 12-hour rate of change
-                features[f'{col}_rate_12h'] = df[col].diff(12)
-                
-                # 24-hour rate of change
                 features[f'{col}_rate_24h'] = df[col].diff(24)
         
         return features
     
     def create_cumulative_features(self, df):
-        """Create cumulative features for precipitation and other variables"""
+        """Create cumulative features for precipitation and other variables (memory-efficient)"""
         
         features = df.copy()
         
-        # Cumulative precipitation over different periods
+        # Cumulative precipitation over key periods
         if 'precip' in df.columns:
-            # 3-hour cumulative precipitation
-            features['precip_cum_3h'] = df['precip'].rolling(3, min_periods=1).sum()
-            
-            # 6-hour cumulative precipitation
-            features['precip_cum_6h'] = df['precip'].rolling(6, min_periods=1).sum()
-            
-            # 12-hour cumulative precipitation
-            features['precip_cum_12h'] = df['precip'].rolling(12, min_periods=1).sum()
-            
-            # 24-hour cumulative precipitation
+            # Key cumulative periods
             features['precip_cum_24h'] = df['precip'].rolling(24, min_periods=1).sum()
-            
-            # 72-hour cumulative precipitation
             features['precip_cum_72h'] = df['precip'].rolling(72, min_periods=1).sum()
-            
-            # 168-hour (7-day) cumulative precipitation
             features['precip_cum_168h'] = df['precip'].rolling(168, min_periods=1).sum()
         
         # Cumulative radiation (important for energy balance)
         if 'sw_in' in df.columns:
-            features['sw_in_cum_3h'] = df['sw_in'].rolling(3, min_periods=1).sum()
-            features['sw_in_cum_6h'] = df['sw_in'].rolling(6, min_periods=1).sum()
-            features['sw_in_cum_12h'] = df['sw_in'].rolling(12, min_periods=1).sum()
             features['sw_in_cum_24h'] = df['sw_in'].rolling(24, min_periods=1).sum()
+            features['sw_in_cum_72h'] = df['sw_in'].rolling(72, min_periods=1).sum()
         
         return features
     
     def create_advanced_rolling_features(self, df):
-        """Create enhanced rolling features with additional statistics"""
+        """Create enhanced rolling features with additional statistics (memory-efficient)"""
         
         features = df.copy()
         
-        # Enhanced rolling windows based on feature importance analysis
-        windows = [3, 6, 12, 24, 48, 72, 168, 336, 720]  # Added 7-day, 14-day, 30-day
+        # Use a subset of the most important windows to reduce memory usage
+        # Focus on the windows that were most important in our analysis
+        windows = [72, 168, 336]  # 3-day, 7-day, 14-day (most important based on feature analysis)
         
-        # Core environmental variables for rolling features
-        env_cols = ['ta', 'rh', 'vpd', 'sw_in', 'ws', 'precip', 'swc_shallow', 'ppfd_in']
+        # Focus on the most important environmental variables
+        env_cols = ['rh', 'sw_in', 'vpd', 'ta']  # Top variables from feature importance
         
         for col in env_cols:
             if col in df.columns:
                 for window in windows:
-                    # Basic rolling statistics
+                    # Basic rolling statistics (most important)
                     features[f'{col}_mean_{window}h'] = df[col].rolling(window, min_periods=1).mean()
                     features[f'{col}_std_{window}h'] = df[col].rolling(window, min_periods=1).std()
                     
                     # Additional rolling statistics for longer windows
-                    if window >= 24:
+                    if window >= 72:
                         features[f'{col}_min_{window}h'] = df[col].rolling(window, min_periods=1).min()
                         features[f'{col}_max_{window}h'] = df[col].rolling(window, min_periods=1).max()
                         features[f'{col}_range_{window}h'] = features[f'{col}_max_{window}h'] - features[f'{col}_min_{window}h']
                     
-                    # Rolling percentiles for longer windows
-                    if window >= 72:
-                        features[f'{col}_p25_{window}h'] = df[col].rolling(window, min_periods=1).quantile(0.25)
-                        features[f'{col}_p75_{window}h'] = df[col].rolling(window, min_periods=1).quantile(0.75)
-                        features[f'{col}_iqr_{window}h'] = features[f'{col}_p75_{window}h'] - features[f'{col}_p25_{window}h']
+                    # Memory cleanup after each window
+                    if window == 336:  # After largest window
+                        gc.collect()
         
         return features
     
@@ -1878,26 +1852,82 @@ class MemoryEfficientSAPFLUXNETProcessor:
         merged = self.create_advanced_temporal_features(merged, timestamp_col)
         self.check_memory_usage()
         
-        # Stage 2: Advanced rolling features (enhanced with longer windows)
-        merged = self.create_advanced_rolling_features(merged)
+        # Stage 2: Basic rolling features (adaptive) - use existing function for memory efficiency
+        env_cols = ['ta', 'rh', 'vpd', 'sw_in', 'ws', 'precip', 'swc_shallow', 'ppfd_in']
+        merged = self.create_rolling_features_adaptive(merged, env_cols)
         self.check_memory_usage()
         
         # Stage 3: Lagged features (adaptive)
-        env_cols = ['ta', 'rh', 'vpd', 'sw_in', 'ws', 'precip', 'swc_shallow', 'ppfd_in']
         merged = self.create_lagged_features_adaptive(merged, env_cols)
         self.check_memory_usage()
         
-        # Stage 4: Rate of change features
-        merged = self.create_rate_of_change_features(merged)
-        self.check_memory_usage()
-        
-        # Stage 5: Cumulative features
-        merged = self.create_cumulative_features(merged)
-        self.check_memory_usage()
-        
-        # Stage 6: Interaction features
+        # Stage 4: Basic interaction features (memory-efficient subset)
         merged = self.create_interaction_features(merged)
         self.check_memory_usage()
+        
+        # Stage 5: Advanced features (ALL sites - with memory management)
+        available_memory_gb = psutil.virtual_memory().available / (1024**3)
+        dataset_size = len(merged)
+        
+        print(f"    🔧 Creating advanced features for {site} ({dataset_size:,} rows, {available_memory_gb:.1f}GB available)")
+        
+        try:
+            # Force memory cleanup before advanced features
+            gc.collect()
+            
+            # Advanced rolling features (enhanced with longer windows)
+            merged = self.create_advanced_rolling_features(merged)
+            self.check_memory_usage()
+            
+            # Rate of change features
+            merged = self.create_rate_of_change_features(merged)
+            self.check_memory_usage()
+            
+            # Cumulative features
+            merged = self.create_cumulative_features(merged)
+            self.check_memory_usage()
+            
+            print(f"    ✅ Advanced features created for {site} ({len(merged):,} rows)")
+            
+        except Exception as e:
+            print(f"    ❌ Advanced features failed for {site}: {e}")
+            print(f"    🔄 Retrying with streaming approach...")
+            
+            # If advanced features fail, try streaming approach for large sites
+            if dataset_size > 50000:
+                try:
+                    # Process in chunks for large sites
+                    chunk_size = min(10000, dataset_size // 10)
+                    advanced_features = []
+                    
+                    for i in range(0, dataset_size, chunk_size):
+                        chunk = merged.iloc[i:i+chunk_size].copy()
+                        
+                        # Create advanced features for chunk
+                        chunk = self.create_advanced_rolling_features(chunk)
+                        chunk = self.create_rate_of_change_features(chunk)
+                        chunk = self.create_cumulative_features(chunk)
+                        
+                        advanced_features.append(chunk)
+                        
+                        # Memory cleanup
+                        del chunk
+                        gc.collect()
+                    
+                    # Combine chunks
+                    merged = pd.concat(advanced_features, ignore_index=True)
+                    del advanced_features
+                    gc.collect()
+                    
+                    print(f"    ✅ Advanced features created via streaming for {site}")
+                    
+                except Exception as e2:
+                    print(f"    ❌ Streaming approach also failed for {site}: {e2}")
+                    print(f"    📊 Continuing with basic feature set only")
+                    gc.collect()
+            else:
+                print(f"    📊 Continuing with basic feature set only")
+                gc.collect()
         
         # Stage 5: Domain-specific features (adaptive)
         if self.adaptive_settings['create_domain_features']:
