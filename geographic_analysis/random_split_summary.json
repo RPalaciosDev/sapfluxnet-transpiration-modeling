@@ -1,0 +1,7 @@
+{
+  "validation_type": "random_split",
+  "run_name": "random_split",
+  "overall_r2": 0,
+  "overall_rmse": 0,
+  "note": "Random split - no site-specific results available"
+}

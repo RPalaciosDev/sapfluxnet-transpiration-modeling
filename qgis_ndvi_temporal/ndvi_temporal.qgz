@@ -1,0 +1,68 @@
+<!DOCTYPE qgis>
+<qgis version="3.28.0-Firenze" simplifyAlgorithm="0" simplifyMaxScale="1" simplifyDrawingHints="1" simplifyLocal="1" readOnly="0" styleCategories="AllStyleCategories" labelsEnabled="0" symbologyReferenceScale="-1" mapUnitsMMPerMapUnit="1000" minScale="100000000" maxScale="0" simplifyDrawingTol="1">
+  <flags>
+    <Identifiable>1</Identifiable>
+    <Removable>1</Removable>
+    <Searchable>1</Searchable>
+    <Private>0</Private>
+  </flags>
+  <temporal>
+    <fixedRange>
+      <start>1997-05-15</start>
+      <end>2018-04-25</end>
+    </fixedRange>
+  </temporal>
+  <renderer-v2 type="categorizedSymbol" forceraster="0" enableorderby="0" attr="ndvi_mean" symbollevels="0">
+    <categories>
+      <category symbol="0" value="-0.5" label="-0.5 to -0.1" render="true"/>
+      <category symbol="1" value="0.0" label="0.0 to 0.1" render="true"/>
+      <category symbol="2" value="0.1" label="0.1 to 0.2" render="true"/>
+      <category symbol="3" value="0.2" label="0.2 to 0.3" render="true"/>
+      <category symbol="4" value="0.3" label="0.3 to 0.4" render="true"/>
+      <category symbol="5" value="0.4" label="0.4 to 0.5" render="true"/>
+      <category symbol="6" value="0.5" label="0.5 to 1.0" render="true"/>
+    </categories>
+    <symbols>
+      <symbol type="marker" name="0" alpha="1" force_rhr="0" clip_to_extent="1">
+        <data_defined_properties>
+          <Option type="Map">
+            <Option type="QString" name="name" value=""/>
+            <Option name="properties"/>
+            <Option type="QString" name="type" value="collection"/>
+          </Option>
+        </data_defined_properties>
+        <layer class="SimpleMarker" locked="0" enabled="1" pass="0">
+          <Option type="Map">
+            <Option type="QString" name="angle" value="0"/>
+            <Option type="QString" name="cap_style" value="square"/>
+            <Option type="QString" name="color" value="0,0,255,255"/>
+            <Option type="QString" name="horizontal_anchor_point" value="1"/>
+            <Option type="QString" name="joinstyle" value="bevel"/>
+            <Option type="QString" name="name" value="circle"/>
+            <Option type="QString" name="offset" value="0,0"/>
+            <Option type="QString" name="offset_map_unit_scale" value="3x:0,0,0,0,0,0"/>
+            <Option type="QString" name="offset_unit" value="MM"/>
+            <Option type="QString" name="outline_color" value="35,35,35,255"/>
+            <Option type="QString" name="outline_style" value="solid"/>
+            <Option type="QString" name="outline_width" value="0"/>
+            <Option type="QString" name="outline_width_map_unit_scale" value="3x:0,0,0,0,0,0"/>
+            <Option type="QString" name="outline_width_unit" value="MM"/>
+            <Option type="QString" name="scale_method" value="diameter"/>
+            <Option type="QString" name="size" value="2"/>
+            <Option type="QString" name="size_map_unit_scale" value="3x:0,0,0,0,0,0"/>
+            <Option type="QString" name="size_unit" value="MM"/>
+            <Option type="QString" name="vertical_anchor_point" value="1"/>
+          </Option>
+          <data_defined_properties>
+            <Option type="Map">
+              <Option type="QString" name="name" value=""/>
+              <Option name="properties"/>
+              <Option type="QString" name="type" value="collection"/>
+            </Option>
+          </data_defined_properties>
+        </layer>
+      </symbol>
+    </symbols>
+  </renderer-v2>
+  <layerGeometryType>0</layerGeometryType>
+</qgis>
