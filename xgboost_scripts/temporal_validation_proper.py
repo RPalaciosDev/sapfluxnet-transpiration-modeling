@@ -166,8 +166,33 @@ def process_files_to_libsvm(file_list, output_file, feature_cols, target_col, ma
                         print(f"    Warning: {target_col} not found in {site_name}")
                         continue
                     
-                    # Prepare features and target
-                    X = df_subset[feature_cols].fillna(0).values
+                    # Convert TIMESTAMP to datetime if it's a string
+                    if 'TIMESTAMP' in df_subset.columns and df_subset['TIMESTAMP'].dtype == 'object':
+                        try:
+                            df_subset['TIMESTAMP'] = pd.to_datetime(df_subset['TIMESTAMP'])
+                            print(f"    Converted TIMESTAMP to datetime for {site_name}")
+                        except Exception as e:
+                            print(f"    Warning: Could not convert TIMESTAMP for {site_name}: {e}")
+                    
+                    # Prepare features and target - exclude TIMESTAMP and other non-numeric columns
+                    available_features = [col for col in feature_cols if col in df_subset.columns]
+                    
+                    # Filter out non-numeric columns (including TIMESTAMP)
+                    numeric_features = []
+                    for col in available_features:
+                        if df_subset[col].dtype in ['int64', 'float64', 'int32', 'float32']:
+                            numeric_features.append(col)
+                        else:
+                            print(f"    Skipping non-numeric column: {col} (dtype: {df_subset[col].dtype})")
+                    
+                    if len(numeric_features) == 0:
+                        print(f"    Error: No valid numeric features found in {site_name}")
+                        continue
+                    
+                    if len(numeric_features) != len(available_features):
+                        print(f"    Using {len(numeric_features)}/{len(available_features)} numeric features for {site_name}")
+                    
+                    X = df_subset[numeric_features].fillna(0).values
                     y = df_subset[target_col].values
                     
                     # Remove rows with NaN target
