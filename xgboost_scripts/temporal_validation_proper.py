@@ -201,8 +201,27 @@ def process_files_to_libsvm(file_list, output_file, feature_cols, target_col, ma
                     y = y[valid_mask]
                     
                     if len(y) > 0:
-                        # Save to libsvm format
-                        dump_svmlight_file(X, y, output, zero_based=False, multilabel=False)
+                        # Save to libsvm format - handle bytes vs string issue
+                        try:
+                            # Try direct dump first
+                            dump_svmlight_file(X, y, output, zero_based=False, multilabel=False)
+                        except TypeError as e:
+                            if "write() argument must be str, not bytes" in str(e):
+                                # Handle bytes issue by writing to temporary file first
+                                import tempfile
+                                with tempfile.NamedTemporaryFile(mode='wb', delete=False) as temp_file:
+                                    dump_svmlight_file(X, y, temp_file.name, zero_based=False, multilabel=False)
+                                
+                                # Read and write as text
+                                with open(temp_file.name, 'rb') as temp_read:
+                                    content = temp_read.read().decode('utf-8')
+                                    output.write(content)
+                                
+                                # Clean up temp file
+                                os.unlink(temp_file.name)
+                            else:
+                                raise e
+                        
                         total_rows += len(y)
                     
                     # Memory cleanup
