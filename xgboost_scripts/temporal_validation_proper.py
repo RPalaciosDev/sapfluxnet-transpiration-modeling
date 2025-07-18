@@ -151,17 +151,24 @@ def process_files_to_libsvm(file_list, output_file, feature_cols, target_col, ma
             
             try:
                 # Read file in chunks to manage memory
-                chunk_size = max(1000, int(max_memory_gb * 1000000 / len(feature_cols)))
+                # For parquet files, we need to read the whole file but process in memory-efficient chunks
+                df_chunk = pd.read_parquet(file_path)
                 
-                for chunk_idx, df_chunk in enumerate(pd.read_parquet(file_path, chunksize=chunk_size)):
+                # Process in chunks to manage memory
+                chunk_size = max(1000, int(max_memory_gb * 1000000 / len(feature_cols)))
+                total_rows_in_file = len(df_chunk)
+                
+                for chunk_start in range(0, total_rows_in_file, chunk_size):
+                    chunk_end = min(chunk_start + chunk_size, total_rows_in_file)
+                    df_subset = df_chunk.iloc[chunk_start:chunk_end]
                     # Ensure we have the required columns
-                    if target_col not in df_chunk.columns:
+                    if target_col not in df_subset.columns:
                         print(f"    Warning: {target_col} not found in {site_name}")
                         continue
                     
                     # Prepare features and target
-                    X = df_chunk[feature_cols].fillna(0).values
-                    y = df_chunk[target_col].values
+                    X = df_subset[feature_cols].fillna(0).values
+                    y = df_subset[target_col].values
                     
                     # Remove rows with NaN target
                     valid_mask = ~np.isnan(y)
@@ -174,15 +181,19 @@ def process_files_to_libsvm(file_list, output_file, feature_cols, target_col, ma
                         total_rows += len(y)
                     
                     # Memory cleanup
-                    del X, y, df_chunk
+                    del X, y, df_subset
                     gc.collect()
                     
                     # Check memory usage
                     if get_available_memory_gb() < 1.0:
-                        print(f"    Warning: Low memory, processed {chunk_idx + 1} chunks")
+                        print(f"    Warning: Low memory, processed chunk {chunk_start//chunk_size + 1}")
                         break
                 
                 print(f"    Completed: {site_name} -> {total_rows:,} total rows")
+                
+                # Clean up the main dataframe
+                del df_chunk
+                gc.collect()
                 
             except Exception as e:
                 print(f"    Error processing {site_name}: {e}")
@@ -397,7 +408,7 @@ def main():
         print("="*60)
         
         sample_file = parquet_files[0]
-        df_sample = pd.read_parquet(sample_file, nrows=100)
+        df_sample = pd.read_parquet(sample_file).head(100)
         
         # Identify feature columns (exclude metadata and target)
         exclude_cols = ['TIMESTAMP', 'site', 'plant_id', 'sap_flow']
