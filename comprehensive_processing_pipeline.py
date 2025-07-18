@@ -51,9 +51,13 @@ class ProcessingConfig:
     # Feature creation settings
     FEATURE_SETTINGS = {
         'max_lag_hours': 24,        # Maximum lag hours for all files
-        'rolling_windows': [3, 6, 12, 24, 48, 72],  # Rolling window sizes
+        'rolling_windows': [3, 6, 12, 24, 48, 72, 168, 336, 720],  # Enhanced rolling window sizes (added 7-day, 14-day, 30-day)
         'memory_percentage': 0.1,   # Target memory usage per chunk (10%)
         'estimated_memory_per_row_mb': 0.001,  # Estimated memory per row (1KB)
+        'advanced_temporal_features': True,  # Enable advanced temporal features
+        'interaction_features': True,  # Enable interaction features
+        'rate_of_change_features': True,  # Enable rate of change features
+        'cumulative_features': True,  # Enable cumulative features
     }
     
     # I/O optimization settings
@@ -886,7 +890,7 @@ class MemoryEfficientSAPFLUXNETProcessor:
             return data
     
     def create_advanced_temporal_features(self, df, timestamp_col):
-        """Create optimized temporal features using existing data"""
+        """Create enhanced temporal features based on feature importance analysis"""
         
         features = df.copy()
         
@@ -903,6 +907,19 @@ class MemoryEfficientSAPFLUXNETProcessor:
         features['year'] = dt.year
         features['day_of_week'] = dt.dayofweek
         
+        # Enhanced cyclical features for better temporal patterns
+        hour_rad = 2 * np.pi * features['hour'] / 24
+        features['hour_sin'] = np.sin(hour_rad)
+        features['hour_cos'] = np.cos(hour_rad)
+        
+        day_rad = 2 * np.pi * features['day_of_year'] / 365
+        features['day_sin'] = np.sin(day_rad)
+        features['day_cos'] = np.cos(day_rad)
+        
+        month_rad = 2 * np.pi * features['month'] / 12
+        features['month_sin'] = np.sin(month_rad)
+        features['month_cos'] = np.cos(month_rad)
+        
         # Use solar timestamp if available (more accurate than calculated features)
         if 'solar_TIMESTAMP' in df.columns:
             solar_dt = pd.to_datetime(df['solar_TIMESTAMP']).dt
@@ -918,13 +935,26 @@ class MemoryEfficientSAPFLUXNETProcessor:
             features['solar_day_sin'] = np.sin(solar_day_rad)
             features['solar_day_cos'] = np.cos(solar_day_rad)
         
-        # Simple boolean features (keep these - they're useful)
+        # Enhanced boolean features
         features['is_daylight'] = ((features['hour'] >= 6) & (features['hour'] <= 18)).astype(int)
         features['is_peak_sunlight'] = ((features['hour'] >= 10) & (features['hour'] <= 16)).astype(int)
         features['is_weekend'] = (features['day_of_week'] >= 5).astype(int)
+        features['is_morning'] = ((features['hour'] >= 6) & (features['hour'] <= 12)).astype(int)
+        features['is_afternoon'] = ((features['hour'] >= 12) & (features['hour'] <= 18)).astype(int)
+        features['is_night'] = ((features['hour'] < 6) | (features['hour'] > 18)).astype(int)
+        
+        # Seasonal features
+        features['is_spring'] = ((features['month'] >= 3) & (features['month'] <= 5)).astype(int)
+        features['is_summer'] = ((features['month'] >= 6) & (features['month'] <= 8)).astype(int)
+        features['is_autumn'] = ((features['month'] >= 9) & (features['month'] <= 11)).astype(int)
+        features['is_winter'] = ((features['month'] == 12) | (features['month'] <= 2)).astype(int)
+        
+        # Time since sunrise/sunset (approximate)
+        features['hours_since_sunrise'] = (features['hour'] - 6) % 24
+        features['hours_since_sunset'] = (features['hour'] - 18) % 24
         
         # Clean up intermediate variables
-        del dt
+        del dt, hour_rad, day_rad, month_rad
         if 'solar_TIMESTAMP' in df.columns:
             del solar_dt, solar_hour_rad, solar_day_rad
         
@@ -933,27 +963,138 @@ class MemoryEfficientSAPFLUXNETProcessor:
 
     
     def create_interaction_features(self, df):
-        """Create interaction features efficiently"""
+        """Create enhanced interaction features based on feature importance analysis"""
         
         features = df.copy()
         
-        # Note: All interaction features excluded - can be computed during training
-        # VPD and radiation interaction
-        # if 'vpd' in df.columns and 'ppfd_in' in df.columns:
-        #     features['vpd_ppfd_interaction'] = df['vpd'] * df['ppfd_in']
+        # VPD and radiation interaction (important for stomatal control)
+        if 'vpd' in df.columns and 'ppfd_in' in df.columns:
+            features['vpd_ppfd_interaction'] = df['vpd'] * df['ppfd_in']
+        
+        # VPD and temperature interaction
+        if 'vpd' in df.columns and 'ta' in df.columns:
+            features['vpd_ta_interaction'] = df['vpd'] * df['ta']
         
         # Temperature and humidity ratio
-        # if 'ta' in df.columns and 'vpd' in df.columns:
-        #     features['temp_humidity_ratio'] = df['ta'] / (df['vpd'] + 1e-6)
+        if 'ta' in df.columns and 'rh' in df.columns:
+            features['temp_humidity_ratio'] = df['ta'] / (df['rh'] + 1e-6)
         
-        # Water stress index
-        # if 'swc_shallow' in df.columns and 'vpd' in df.columns:
-        #     features['water_stress_index'] = df['swc_shallow'] / (df['vpd'] + 1e-6)
+        # Water stress index (soil moisture vs VPD)
+        if 'swc_shallow' in df.columns and 'vpd' in df.columns:
+            features['water_stress_index'] = df['swc_shallow'] / (df['vpd'] + 1e-6)
         
-        # Light efficiency
-        # if 'ppfd_in' in df.columns and 'sw_in' in df.columns:
-        #     features['light_efficiency'] = df['ppfd_in'] / (df['sw_in'] + 1e-6)
+        # Light efficiency (PPFD vs shortwave)
+        if 'ppfd_in' in df.columns and 'sw_in' in df.columns:
+            features['light_efficiency'] = df['ppfd_in'] / (df['sw_in'] + 1e-6)
         
+        # Temperature and soil moisture interaction
+        if 'ta' in df.columns and 'swc_shallow' in df.columns:
+            features['temp_soil_interaction'] = df['ta'] * df['swc_shallow']
+        
+        # Wind and VPD interaction (important for boundary layer effects)
+        if 'ws' in df.columns and 'vpd' in df.columns:
+            features['wind_vpd_interaction'] = df['ws'] * df['vpd']
+        
+        # Radiation and temperature interaction
+        if 'sw_in' in df.columns and 'ta' in df.columns:
+            features['radiation_temp_interaction'] = df['sw_in'] * df['ta']
+        
+        # Humidity and soil moisture interaction
+        if 'rh' in df.columns and 'swc_shallow' in df.columns:
+            features['humidity_soil_interaction'] = df['rh'] * df['swc_shallow']
+        
+        return features
+    
+    def create_rate_of_change_features(self, df):
+        """Create rate of change features for environmental variables"""
+        
+        features = df.copy()
+        
+        # Rate of change features (how quickly variables are changing)
+        env_cols = ['ta', 'rh', 'vpd', 'sw_in', 'ws', 'precip', 'swc_shallow', 'ppfd_in']
+        
+        for col in env_cols:
+            if col in df.columns:
+                # Hourly rate of change
+                features[f'{col}_rate_1h'] = df[col].diff(1)
+                
+                # 3-hour rate of change
+                features[f'{col}_rate_3h'] = df[col].diff(3)
+                
+                # 6-hour rate of change
+                features[f'{col}_rate_6h'] = df[col].diff(6)
+                
+                # 12-hour rate of change
+                features[f'{col}_rate_12h'] = df[col].diff(12)
+                
+                # 24-hour rate of change
+                features[f'{col}_rate_24h'] = df[col].diff(24)
+        
+        return features
+    
+    def create_cumulative_features(self, df):
+        """Create cumulative features for precipitation and other variables"""
+        
+        features = df.copy()
+        
+        # Cumulative precipitation over different periods
+        if 'precip' in df.columns:
+            # 3-hour cumulative precipitation
+            features['precip_cum_3h'] = df['precip'].rolling(3, min_periods=1).sum()
+            
+            # 6-hour cumulative precipitation
+            features['precip_cum_6h'] = df['precip'].rolling(6, min_periods=1).sum()
+            
+            # 12-hour cumulative precipitation
+            features['precip_cum_12h'] = df['precip'].rolling(12, min_periods=1).sum()
+            
+            # 24-hour cumulative precipitation
+            features['precip_cum_24h'] = df['precip'].rolling(24, min_periods=1).sum()
+            
+            # 72-hour cumulative precipitation
+            features['precip_cum_72h'] = df['precip'].rolling(72, min_periods=1).sum()
+            
+            # 168-hour (7-day) cumulative precipitation
+            features['precip_cum_168h'] = df['precip'].rolling(168, min_periods=1).sum()
+        
+        # Cumulative radiation (important for energy balance)
+        if 'sw_in' in df.columns:
+            features['sw_in_cum_3h'] = df['sw_in'].rolling(3, min_periods=1).sum()
+            features['sw_in_cum_6h'] = df['sw_in'].rolling(6, min_periods=1).sum()
+            features['sw_in_cum_12h'] = df['sw_in'].rolling(12, min_periods=1).sum()
+            features['sw_in_cum_24h'] = df['sw_in'].rolling(24, min_periods=1).sum()
+        
+        return features
+    
+    def create_advanced_rolling_features(self, df):
+        """Create enhanced rolling features with additional statistics"""
+        
+        features = df.copy()
+        
+        # Enhanced rolling windows based on feature importance analysis
+        windows = [3, 6, 12, 24, 48, 72, 168, 336, 720]  # Added 7-day, 14-day, 30-day
+        
+        # Core environmental variables for rolling features
+        env_cols = ['ta', 'rh', 'vpd', 'sw_in', 'ws', 'precip', 'swc_shallow', 'ppfd_in']
+        
+        for col in env_cols:
+            if col in df.columns:
+                for window in windows:
+                    # Basic rolling statistics
+                    features[f'{col}_mean_{window}h'] = df[col].rolling(window, min_periods=1).mean()
+                    features[f'{col}_std_{window}h'] = df[col].rolling(window, min_periods=1).std()
+                    
+                    # Additional rolling statistics for longer windows
+                    if window >= 24:
+                        features[f'{col}_min_{window}h'] = df[col].rolling(window, min_periods=1).min()
+                        features[f'{col}_max_{window}h'] = df[col].rolling(window, min_periods=1).max()
+                        features[f'{col}_range_{window}h'] = features[f'{col}_max_{window}h'] - features[f'{col}_min_{window}h']
+                    
+                    # Rolling percentiles for longer windows
+                    if window >= 72:
+                        features[f'{col}_p25_{window}h'] = df[col].rolling(window, min_periods=1).quantile(0.25)
+                        features[f'{col}_p75_{window}h'] = df[col].rolling(window, min_periods=1).quantile(0.75)
+                        features[f'{col}_iqr_{window}h'] = features[f'{col}_p75_{window}h'] - features[f'{col}_p25_{window}h']
         
         return features
     
@@ -1733,20 +1874,28 @@ class MemoryEfficientSAPFLUXNETProcessor:
         
         # Create features using adaptive settings
         
-        # Stage 1: Temporal features
-            merged = self.create_advanced_temporal_features(merged, timestamp_col)
+        # Stage 1: Enhanced temporal features
+        merged = self.create_advanced_temporal_features(merged, timestamp_col)
         self.check_memory_usage()
         
-        # Stage 2: Lagged features (adaptive)
+        # Stage 2: Advanced rolling features (enhanced with longer windows)
+        merged = self.create_advanced_rolling_features(merged)
+        self.check_memory_usage()
+        
+        # Stage 3: Lagged features (adaptive)
         env_cols = ['ta', 'rh', 'vpd', 'sw_in', 'ws', 'precip', 'swc_shallow', 'ppfd_in']
         merged = self.create_lagged_features_adaptive(merged, env_cols)
         self.check_memory_usage()
         
-        # Stage 3: Rolling features (adaptive)
-        merged = self.create_rolling_features_adaptive(merged, env_cols)
+        # Stage 4: Rate of change features
+        merged = self.create_rate_of_change_features(merged)
         self.check_memory_usage()
         
-        # Stage 4: Interaction features
+        # Stage 5: Cumulative features
+        merged = self.create_cumulative_features(merged)
+        self.check_memory_usage()
+        
+        # Stage 6: Interaction features
         merged = self.create_interaction_features(merged)
         self.check_memory_usage()
         
@@ -1905,8 +2054,15 @@ class MemoryEfficientSAPFLUXNETProcessor:
             if len(merged) == 0:
                 continue
             
-            # Create features (simplified for streaming)
-                merged = self.create_advanced_temporal_features(merged, timestamp_col)
+            # Create enhanced features (streaming-optimized)
+            merged = self.create_advanced_temporal_features(merged, timestamp_col)
+            
+            # Add basic rolling features for streaming
+            env_cols = ['ta', 'rh', 'vpd', 'sw_in', 'ws', 'precip', 'swc_shallow', 'ppfd_in']
+            merged = self.create_rolling_features_adaptive(merged, env_cols)
+            
+            # Add basic interaction features
+            merged = self.create_interaction_features(merged)
             
             # Add basic metadata features
             merged = self.create_metadata_features(merged, metadata)
