@@ -1,0 +1,69 @@
+Daily Averages Summary
+==============================
+Generated: 2025-07-17 20:32:04.765238
+
+Original data: 8,345 rows
+Daily averages: 62 records
+Unique sites: 3
+Date range: 2009-09-09 12:00:00 to 2009-12-01 12:00:00
+Compression ratio: 134.6x
+Features included: 56
+
+Features averaged:
+  - ta
+  - rh
+  - sw_in
+  - ppfd_in
+  - vpd
+  - ext_rad
+  - ws
+  - swc_shallow
+  - precip
+  - ta_lag_1h
+  - ta_lag_3h
+  - ta_lag_6h
+  - ta_lag_12h
+  - ta_lag_24h
+  - rh_lag_1h
+  - rh_lag_3h
+  - rh_lag_6h
+  - rh_lag_12h
+  - rh_lag_24h
+  - sw_in_lag_1h
+  - sw_in_lag_3h
+  - sw_in_lag_6h
+  - sw_in_lag_12h
+  - sw_in_lag_24h
+  - vpd_lag_1h
+  - vpd_lag_3h
+  - vpd_lag_6h
+  - vpd_lag_12h
+  - vpd_lag_24h
+  - ws_lag_1h
+  - ws_lag_3h
+  - ws_lag_6h
+  - ws_lag_12h
+  - ws_lag_24h
+  - swc_shallow_lag_1h
+  - swc_shallow_lag_3h
+  - swc_shallow_lag_6h
+  - swc_shallow_lag_12h
+  - swc_shallow_lag_24h
+  - precip_lag_1h
+  - precip_lag_3h
+  - precip_lag_6h
+  - precip_lag_12h
+  - precip_lag_24h
+  - ppfd_in_lag_1h
+  - ppfd_in_lag_3h
+  - ppfd_in_lag_6h
+  - ppfd_in_lag_12h
+  - ppfd_in_lag_24h
+
+Features summed:
+  - precip
+  - precip_lag_1h
+  - precip_lag_3h
+  - precip_lag_6h
+  - precip_lag_12h
+  - precip_lag_24h
