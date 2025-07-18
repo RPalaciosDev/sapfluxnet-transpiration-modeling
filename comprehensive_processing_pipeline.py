@@ -2255,13 +2255,14 @@ class MemoryEfficientSAPFLUXNETProcessor:
         problematic_columns = [
             'pl_name', 'swc_deep', 'netrad', 'seasonal_leaf_area', 'seasonal_leaf_area_code',
             'stand_name_code', 'stand_remarks_code', 'site_remarks_code', 'env_remarks_code',
-            'water_stress_index', 'moisture_availability', 'swc_shallow_depth',
+            'moisture_availability', 'swc_shallow_depth',
             # Redundant features (can be computed during training)
-            'wind_stress', 'wind_vpd_interaction', 'soil_texture_code', 'stand_soil_texture_code',
-            'light_efficiency', 'ppfd_efficiency', 'stomatal_conductance_proxy', 'stomatal_control_index',
-            'vpd_ppfd_interaction', 'precip_intensity', 'recent_precip_1h', 'recent_precip_6h', 
+            'wind_stress', 'soil_texture_code', 'stand_soil_texture_code',
+            'ppfd_efficiency', 'stomatal_conductance_proxy', 'stomatal_control_index',
+            'precip_intensity', 'recent_precip_1h', 'recent_precip_6h', 
             'recent_precip_24h', 'aspect_code', 'species_basal_area_perc', 'site_paper_code',
-            'terrain_code', 'temp_humidity_ratio', 'daylight_time'
+            'terrain_code', 'daylight_time'
+            # Note: Removed interaction features from problematic list to preserve our new features
         ]
         
         # Ensure inconsistent columns are properly handled for XGBoost
@@ -2294,6 +2295,18 @@ class MemoryEfficientSAPFLUXNETProcessor:
             # Solar timestamp features (useful when available)
             'solar_hour': np.nan, 'solar_day_of_year': np.nan, 'solar_hour_sin': np.nan,
             'solar_hour_cos': np.nan, 'solar_day_sin': np.nan, 'solar_day_cos': np.nan,
+            
+            # Enhanced temporal features (new)
+            'hour_sin': np.nan, 'hour_cos': np.nan, 'day_sin': np.nan, 'day_cos': np.nan,
+            'month_sin': np.nan, 'month_cos': np.nan,
+            'is_morning': np.nan, 'is_afternoon': np.nan, 'is_night': np.nan,
+            'is_spring': np.nan, 'is_summer': np.nan, 'is_autumn': np.nan, 'is_winter': np.nan,
+            'hours_since_sunrise': np.nan, 'hours_since_sunset': np.nan,
+            
+            # Interaction features (new)
+            'vpd_ppfd_interaction': np.nan, 'vpd_ta_interaction': np.nan, 'temp_humidity_ratio': np.nan,
+            'water_stress_index': np.nan, 'light_efficiency': np.nan, 'temp_soil_interaction': np.nan,
+            'wind_vpd_interaction': np.nan, 'radiation_temp_interaction': np.nan, 'humidity_soil_interaction': np.nan,
         }
         
         # Add missing columns with NA values
