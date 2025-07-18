@@ -131,7 +131,7 @@ def create_chronological_temporal_splits(all_temporal_info, global_start, global
     return fold_splits
 
 def process_files_for_temporal_period(file_list, output_file, feature_cols, target_col, 
-                                    period_start, period_end, max_memory_gb=2):
+                                    period_start, period_end, max_memory_gb=8):
     """
     Process files and extract data for a specific temporal period
     """
@@ -169,8 +169,12 @@ def process_files_for_temporal_period(file_list, output_file, feature_cols, targ
                 
                 print(f"    Found {len(df_period):,} measurements in period")
                 
-                # Process in chunks to manage memory
-                chunk_size = max(1000, int(max_memory_gb * 1000000 / len(feature_cols)))
+                # Process in chunks to manage memory - optimized for large datasets
+                # For large sites like ESP_TIL_MIX, use smaller chunks
+                if len(df_period) > 100000:  # Large site
+                    chunk_size = max(5000, int(max_memory_gb * 500000 / len(feature_cols)))
+                else:
+                    chunk_size = max(10000, int(max_memory_gb * 1000000 / len(feature_cols)))
                 total_rows_in_period = len(df_period)
                 
                 for chunk_start in range(0, total_rows_in_period, chunk_size):
@@ -240,9 +244,18 @@ def process_files_for_temporal_period(file_list, output_file, feature_cols, targ
                         
                         total_rows += len(y)
                     
-                    # Memory cleanup
+                    # Memory cleanup - more aggressive for large sites
                     del X, y, df_subset
                     gc.collect()
+                    
+                    # Additional cleanup for large sites
+                    if len(df_period) > 100000 and chunk_start % (chunk_size * 5) == 0:
+                        gc.collect()
+                        import psutil
+                        memory = psutil.virtual_memory()
+                        if memory.percent > 80:
+                            print(f"    ⚠️  High memory usage: {memory.percent:.1f}% - forcing cleanup")
+                            gc.collect()
                 
                 print(f"    Completed: {site_name} -> {total_rows:,} total rows in period")
                 
