@@ -1,0 +1,47 @@
+SAPFLUXNET Chronological Temporal Validation Results
+============================================================
+Training completed: 2025-07-18 07:29:51.568639
+Method: True chronological temporal cross-validation
+Approach: Global temporal splitting by time periods
+Memory: Chunked processing with external memory training
+
+Global Temporal Coverage:
+-------------------------
+  Start: 1996-03-01 06:46:15+00:00
+  End: 2018-05-17 17:10:08+00:00
+  Duration: 8112 days
+
+Average Performance Across Folds:
+-----------------------------------
+  train_rmse_mean: 3.0012
+  train_rmse_std: 0.5707
+  test_rmse_mean: 5.0018
+  test_rmse_std: 0.6032
+  train_mae_mean: 1.4500
+  train_mae_std: 0.2518
+  test_mae_mean: 2.6668
+  test_mae_std: 0.3457
+  train_r2_mean: 0.7074
+  train_r2_std: 0.0842
+  test_r2_mean: 0.1070
+  test_r2_std: 0.0802
+
+Best Model: Fold 5 (Test R²: 0.1719)
+
+Individual Fold Results:
+-------------------------
+Fold 2: Test R² = 0.1493, Test RMSE = 4.0963
+Fold 3: Test R² = 0.1372, Test RMSE = 5.6461
+Fold 4: Test R² = -0.0302, Test RMSE = 5.4376
+Fold 5: Test R² = 0.1719, Test RMSE = 4.8271
+
+Validation Method:
+------------------
+- True chronological temporal cross-validation
+- Global temporal splitting by time periods
+- Solar timestamp-based temporal ordering
+- Site-specific constants included
+- Chunked processing for memory efficiency
+- External memory training for large datasets
+- Strict temporal ordering maintained
+- No data leakage from future to past
