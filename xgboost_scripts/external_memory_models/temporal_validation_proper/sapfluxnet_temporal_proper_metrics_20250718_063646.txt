@@ -1,0 +1,39 @@
+SAPFLUXNET Proper Temporal Validation Results
+==================================================
+Training completed: 2025-07-18 06:36:46.870452
+Method: K-fold temporal cross-validation with real timestamps
+Approach: File-based temporal splitting using actual dates
+Memory: Chunked processing with external memory training
+
+Average Performance Across Folds:
+-----------------------------------
+  train_rmse_mean: 3.1448
+  train_rmse_std: 0.5957
+  test_rmse_mean: 5.5756
+  test_rmse_std: 0.5851
+  train_mae_mean: 1.4714
+  train_mae_std: 0.2597
+  test_mae_mean: 3.1847
+  test_mae_std: 0.4845
+  train_r2_mean: 0.6557
+  train_r2_std: 0.0648
+  test_r2_mean: -0.0935
+  test_r2_std: 0.2336
+
+Best Model: Fold 4 (Test R²: 0.1729)
+
+Individual Fold Results:
+-------------------------
+Fold 2: Test R² = 0.1045, Test RMSE = 6.3145
+Fold 3: Test R² = -0.3120, Test RMSE = 5.9673
+Fold 4: Test R² = 0.1729, Test RMSE = 4.8867
+Fold 5: Test R² = -0.3394, Test RMSE = 5.1337
+
+Validation Method:
+------------------
+- K-fold temporal cross-validation using real timestamps
+- File-based temporal splitting (no synthetic timestamps)
+- Chunked processing for memory efficiency
+- External memory training for large datasets
+- Strict temporal ordering maintained
+- No data leakage from future to past
