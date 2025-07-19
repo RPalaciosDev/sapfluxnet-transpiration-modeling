@@ -35,33 +35,28 @@ def log_memory_usage(step_name):
 
 def load_feature_mapping(data_dir):
     """
-    Load feature mapping from JSON file created by the data processing pipeline
+    Load feature mapping from CSV file created by the data processing pipeline
     """
-    feature_mapping_file = os.path.join(data_dir, 'feature_mapping.json')
+    feature_mapping_file = os.path.join(data_dir, 'feature_mapping.csv')
     
     if not os.path.exists(feature_mapping_file):
         print(f"⚠️  No feature mapping found at {feature_mapping_file}")
         return None
         
     try:
-        with open(feature_mapping_file, 'r') as f:
-            feature_mapping = json.load(f)
-        
-        print(f"✅ Loaded feature mapping: {feature_mapping['feature_count']} features")
-        print(f"   Created by: {feature_mapping.get('created_by', 'unknown')}")
-        print(f"   Created at: {feature_mapping.get('created_at', 'unknown')}")
-        
+        feature_mapping = pd.read_csv(feature_mapping_file)
+        print(f"✅ Loaded feature mapping: {len(feature_mapping)} features")
         return feature_mapping
         
     except Exception as e:
         print(f"❌ Error loading feature mapping: {e}")
         return None
 
-def combine_libsvm_files(libsvm_dir, output_dir):
+def load_and_combine_parquet_files(parquet_dir, output_dir):
     """
-    Combine existing libsvm files from pipeline into single file
+    Load and combine parquet files from pipeline into single DataFrame
     """
-    print(f"Combining libsvm files from {libsvm_dir}...")
+    print(f"Loading parquet files from {parquet_dir}...")
     
     # Check available disk space
     def check_space_gb(path):
@@ -74,183 +69,177 @@ def combine_libsvm_files(libsvm_dir, output_dir):
     available_space = check_space_gb(output_dir)
     print(f"💾 Available space in output directory: {available_space:.1f} GB")
     
-    # Get all libsvm files (including compressed)
-    libsvm_files = [f for f in os.listdir(libsvm_dir) if f.endswith('.svm') or f.endswith('.svm.gz')]
-    print(f"Found {len(libsvm_files)} libsvm files to combine")
+    # Get all parquet files
+    parquet_files = [f for f in os.listdir(parquet_dir) if f.endswith('.parquet')]
+    print(f"Found {len(parquet_files)} parquet files to combine")
     
-    # Combine all files
-    all_data_file = os.path.join(output_dir, 'all_data.svm')
+    # Load and combine files
+    all_dataframes = []
     total_rows = 0
     
     try:
-        with open(all_data_file, 'w') as output_file:
-            for i, libsvm_file in enumerate(libsvm_files):
-                print(f"Processing file {i+1}/{len(libsvm_files)}: {libsvm_file}")
-                
-                file_path = os.path.join(libsvm_dir, libsvm_file)
-                
-                # Handle compressed files
-                if libsvm_file.endswith('.gz'):
-                    import gzip
-                    with gzip.open(file_path, 'rt') as f:
-                        lines = f.readlines()
-                else:
-                    with open(file_path, 'r') as f:
-                        lines = f.readlines()
-                
-                # Write lines to combined file
-                output_file.writelines(lines)
-                total_rows += len(lines)
-                
-                print(f"  Added {len(lines)} rows from {libsvm_file}")
-                
-                # Explicit cleanup after processing each file
-                del lines
-                gc.collect()
+        for i, parquet_file in enumerate(parquet_files):
+            print(f"Processing file {i+1}/{len(parquet_files)}: {parquet_file}")
+            
+            file_path = os.path.join(parquet_dir, parquet_file)
+            
+            # Load parquet file
+            df = pd.read_parquet(file_path)
+            
+            # Add site identifier
+            site_name = parquet_file.replace('_comprehensive.parquet', '')
+            df['site'] = site_name
+            
+            all_dataframes.append(df)
+            total_rows += len(df)
+            
+            print(f"  Added {len(df):,} rows from {site_name}")
+            
+            # Memory cleanup
+            del df
+            gc.collect()
+        
+        # Combine all dataframes
+        print("Combining all dataframes...")
+        combined_df = pd.concat(all_dataframes, ignore_index=True)
+        del all_dataframes
+        gc.collect()
         
         print(f"Combination completed: {total_rows:,} total rows")
-        return all_data_file, total_rows
+        return combined_df, total_rows
         
     except Exception as e:
         print(f"❌ Error during file combination: {e}")
         raise
 
-def load_libsvm_as_dataframe(libsvm_file, feature_mapping):
+def prepare_dataframe_for_rolling_window(df, feature_mapping):
     """
-    Load libsvm file and convert to pandas DataFrame with proper column names
+    Prepare DataFrame for rolling window analysis with proper temporal features
     """
-    print(f"Loading libsvm file: {libsvm_file}")
+    print(f"Preparing DataFrame for rolling window analysis...")
+    print(f"DataFrame shape: {df.shape}")
     
-    # Load using sklearn
-    X, y = load_svmlight_file(libsvm_file)
+    # Convert timestamps to datetime
+    if 'TIMESTAMP' in df.columns:
+        df['TIMESTAMP'] = pd.to_datetime(df['TIMESTAMP'])
+    if 'solar_TIMESTAMP' in df.columns:
+        df['solar_TIMESTAMP'] = pd.to_datetime(df['solar_TIMESTAMP'])
     
-    # Convert sparse matrix to dense if needed
-    if hasattr(X, 'toarray'):
-        X = X.toarray()
-    
-    # Create DataFrame with proper column names
-    if feature_mapping:
-        feature_names = feature_mapping['feature_names']
-        # Ensure we have the right number of columns
-        if X.shape[1] <= len(feature_names):
-            column_names = feature_names[:X.shape[1]]
-        else:
-            # If we have more features than expected, use generic names
-            column_names = feature_names + [f'feature_{i}' for i in range(len(feature_names), X.shape[1])]
+    # Use solar_TIMESTAMP for temporal ordering if available
+    if 'solar_TIMESTAMP' in df.columns:
+        df = df.sort_values('solar_TIMESTAMP').reset_index(drop=True)
+        print(f"Sorted by solar_TIMESTAMP: {df['solar_TIMESTAMP'].min()} to {df['solar_TIMESTAMP'].max()}")
+    elif 'TIMESTAMP' in df.columns:
+        df = df.sort_values('TIMESTAMP').reset_index(drop=True)
+        print(f"Sorted by TIMESTAMP: {df['TIMESTAMP'].min()} to {df['TIMESTAMP'].max()}")
     else:
-        column_names = [f'feature_{i}' for i in range(X.shape[1])]
+        print("⚠️  No timestamp columns found, using index for temporal ordering")
+        df = df.reset_index(drop=True)
     
-    # Create DataFrame
-    df = pd.DataFrame(X, columns=column_names)
-    df['sap_flow'] = y
+    # Identify feature columns (exclude timestamps and metadata)
+    exclude_cols = ['TIMESTAMP', 'solar_TIMESTAMP', 'site', 'plant_id', 'sap_flow', 'is_inside_country']
+    feature_cols = [col for col in df.columns if col not in exclude_cols]
+    target_col = 'sap_flow'
     
-    print(f"Loaded {len(df):,} rows, {X.shape[1]} features")
+    print(f"Features: {len(feature_cols)} columns")
+    print(f"Target: {target_col}")
     
-    return df
+    return df, feature_cols, target_col
 
 def add_temporal_features_for_rolling_window(df):
     """
     Add temporal features needed for rolling window analysis
-    This simulates having timestamp information for window creation
+    Uses actual timestamps from the data
     """
     print("Adding temporal features for rolling window analysis...")
     
-    # For very large datasets (8M+ rows), use compressed temporal simulation
-    # Multiple rows share the same temporal unit to create reasonable time spans
+    # Use actual timestamps if available
+    if 'solar_TIMESTAMP' in df.columns:
+        timestamp_col = 'solar_TIMESTAMP'
+    elif 'TIMESTAMP' in df.columns:
+        timestamp_col = 'TIMESTAMP'
+    else:
+        print("⚠️  No timestamp columns found, using index-based temporal features")
+        # Fallback to index-based features
+        df['temporal_index'] = df.index
+        df['day_of_year'] = (df.index % 365) + 1
+        df['month'] = ((df.index // 30) % 12) + 1
+        df['season'] = df['month'].map({12:1, 1:1, 2:1, 3:2, 4:2, 5:2, 6:3, 7:3, 8:3, 9:4, 10:4, 11:4})
+        return df
     
-    print(f"Dataset size: {len(df):,} rows")
-    print("Using compressed temporal simulation for manageable time spans")
-    
-    # Compress temporal scale: multiple rows per time unit
-    # This creates a more reasonable time span (e.g., 3-5 years instead of 23,000 years)
-    rows_per_day = 6000  # Approximately 6000 measurements per day
-    total_days = len(df) // rows_per_day
-    
-    # Create compressed temporal index
-    df['temporal_index'] = df.index // rows_per_day
-    
-    # Simulate temporal patterns using modular arithmetic
-    days_per_year = 365
-    days_per_month = 30
-    hours_per_day = 24
-    
-    # Calculate temporal features from compressed index
-    df['day_of_year'] = (df['temporal_index'] % days_per_year) + 1
-    df['month'] = ((df['temporal_index'] // days_per_month) % 12) + 1
+    # Extract temporal features from actual timestamps
+    df['day_of_year'] = df[timestamp_col].dt.dayofyear
+    df['month'] = df[timestamp_col].dt.month
+    df['year'] = df[timestamp_col].dt.year
     df['season'] = df['month'].map({12:1, 1:1, 2:1, 3:2, 4:2, 5:2, 6:3, 7:3, 8:3, 9:4, 10:4, 11:4})
-    df['hour'] = (df['temporal_index'] % hours_per_day)
+    df['hour'] = df[timestamp_col].dt.hour
     
-    # Create timestamp for sorting (use compressed temporal_index)
-    df['TIMESTAMP'] = df['temporal_index']
+    # Create temporal index for rolling window calculations
+    df['temporal_index'] = (df[timestamp_col] - df[timestamp_col].min()).dt.days
     
-    print(f"Added temporal features using compressed simulation")
-    print(f"Temporal range: 0 to {df['temporal_index'].max()} (days)")
-    print(f"Simulated time span: {total_days/days_per_year:.1f} years")
-    print(f"Rows per temporal unit: {rows_per_day}")
+    print(f"Added temporal features using actual timestamps")
+    print(f"Temporal range: {df[timestamp_col].min()} to {df[timestamp_col].max()}")
+    print(f"Total days: {df['temporal_index'].max()}")
+    print(f"Years covered: {df['temporal_index'].max() / 365:.1f}")
     
     return df
 
-def create_rolling_window_splits(df, feature_cols, target_col, window_size_days=30, forecast_horizon_days=7, n_windows=10):
+def create_rolling_window_splits(df, feature_cols, target_col, train_window_days=730, test_window_days=180, step_size_days=180):
     """
     Create rolling window splits for time series validation
     Each window trains on historical data and predicts future periods
     """
     print(f"Creating rolling window validation splits...")
-    print(f"Window size: {window_size_days} days, Forecast horizon: {forecast_horizon_days} days")
-    print("Using rolling window method: short-term forecasting with seasonal analysis")
+    print(f"Train window: {train_window_days} days ({train_window_days/365:.1f} years)")
+    print(f"Test window: {test_window_days} days ({test_window_days/365:.1f} years)")
+    print(f"Step size: {step_size_days} days ({step_size_days/365:.1f} years)")
+    print("Using rolling window method: realistic forecasting with seasonal analysis")
     
-    # Sort by timestamp
-    df = df.sort_values('TIMESTAMP').reset_index(drop=True)
+    # Sort by temporal index
+    df = df.sort_values('temporal_index').reset_index(drop=True)
     
-    # Get time range (integer timestamps)
-    start_idx = df['TIMESTAMP'].min()
-    end_idx = df['TIMESTAMP'].max()
-    total_time_units = end_idx - start_idx
+    # Get time range
+    start_day = df['temporal_index'].min()
+    end_day = df['temporal_index'].max()
+    total_days = end_day - start_day
     
-    print(f"Data time range: {start_idx} to {end_idx} ({total_time_units} temporal units)")
+    print(f"Data time range: {start_day} to {end_day} days ({total_days/365:.1f} years)")
     
-    # Calculate window spacing (using integer arithmetic)
-    min_window_spacing = window_size_days + forecast_horizon_days
-    available_span = total_time_units - min_window_spacing
+    # Calculate number of possible windows
+    min_required_days = train_window_days + test_window_days
+    available_days = total_days - min_required_days
     
-    if available_span <= 0:
-        raise ValueError(f"Insufficient data for rolling windows. Need at least {min_window_spacing} units.")
+    if available_days <= 0:
+        raise ValueError(f"Insufficient data for rolling windows. Need at least {min_required_days} days.")
     
-    if n_windows > 1:
-        window_spacing = available_span // (n_windows - 1)
-    else:
-        window_spacing = 0
-    
-    window_spacing = max(window_spacing, min_window_spacing)
-    print(f"Window spacing: {window_spacing} temporal units")
+    n_windows = int(available_days / step_size_days) + 1
+    print(f"Creating {n_windows} rolling window splits...")
     
     # Create rolling window splits
     rolling_splits = []
     seasonal_info = []
     
-    print(f"\nCreating {n_windows} rolling window splits...")
-    
     for i in range(n_windows):
-        # Calculate window indices (integer arithmetic)
-        window_start_idx = start_idx + i * window_spacing
-        train_end_idx = window_start_idx + window_size_days
-        test_start_idx = train_end_idx
-        test_end_idx = test_start_idx + forecast_horizon_days
+        # Calculate window boundaries
+        train_start_day = start_day + i * step_size_days
+        train_end_day = train_start_day + train_window_days
+        test_start_day = train_end_day
+        test_end_day = test_start_day + test_window_days
         
         # Check if we have enough data
-        if test_end_idx > end_idx:
+        if test_end_day > end_day:
             print(f"  Window {i+1}: Skipped (insufficient future data)")
             break
         
         # Filter data for this window
-        train_mask = (df['TIMESTAMP'] >= window_start_idx) & (df['TIMESTAMP'] < train_end_idx)
-        test_mask = (df['TIMESTAMP'] >= test_start_idx) & (df['TIMESTAMP'] < test_end_idx)
+        train_mask = (df['temporal_index'] >= train_start_day) & (df['temporal_index'] < train_end_day)
+        test_mask = (df['temporal_index'] >= test_start_day) & (df['temporal_index'] < test_end_day)
         
         train_data = df[train_mask].copy()
         test_data = df[test_mask].copy()
         
-        if len(train_data) < 100 or len(test_data) < 10:
-            print(f"  Window {i+1}: Skipped (insufficient data)")
+        if len(train_data) < 1000 or len(test_data) < 100:
+            print(f"  Window {i+1}: Skipped (insufficient data: {len(train_data)} train, {len(test_data)} test)")
             continue
         
         # Seasonal analysis
@@ -259,18 +248,26 @@ def create_rolling_window_splits(df, feature_cols, target_col, window_size_days=
         train_month = train_data['month'].mode()[0] if len(train_data) > 0 else 0
         test_month = test_data['month'].mode()[0] if len(test_data) > 0 else 0
         
-        print(f"  Window {i+1}: Train {window_start_idx} to {train_end_idx}")
-        print(f"           Test {test_start_idx} to {test_end_idx}")
+        # Convert days to dates for display
+        if 'solar_TIMESTAMP' in df.columns:
+            train_start_date = df[df['temporal_index'] == train_start_day]['solar_TIMESTAMP'].iloc[0] if len(df[df['temporal_index'] == train_start_day]) > 0 else f"Day {train_start_day}"
+            test_start_date = df[df['temporal_index'] == test_start_day]['solar_TIMESTAMP'].iloc[0] if len(df[df['temporal_index'] == test_start_day]) > 0 else f"Day {test_start_day}"
+        else:
+            train_start_date = f"Day {train_start_day}"
+            test_start_date = f"Day {test_start_day}"
+        
+        print(f"  Window {i+1}: Train {train_start_date} to {train_start_date + pd.Timedelta(days=train_window_days)}")
+        print(f"           Test {test_start_date} to {test_start_date + pd.Timedelta(days=test_window_days)}")
         print(f"           Train: {len(train_data):,} records (Season {train_season}, Month {train_month})")
         print(f"           Test:  {len(test_data):,} records (Season {test_season}, Month {test_month})")
         
         # Store seasonal information
         seasonal_info.append({
             'window': i + 1,
-            'train_start': window_start_idx,
-            'train_end': train_end_idx,
-            'test_start': test_start_idx,
-            'test_end': test_end_idx,
+            'train_start': train_start_day,
+            'train_end': train_end_day,
+            'test_start': test_start_day,
+            'test_end': test_end_day,
             'train_season': train_season,
             'test_season': test_season,
             'train_month': train_month,
@@ -687,7 +684,7 @@ def main():
     print(f"Available memory: {available_memory:.1f}GB")
     
     # Set up directories
-    libsvm_dir = '../processed_libsvm'
+    parquet_dir = '../processed_parquet'
     
     # Set up temp directory
     temp_dir = 'temp_rolling_window_external'
@@ -695,31 +692,21 @@ def main():
     
     try:
         # Load feature mapping
-        feature_mapping = load_feature_mapping(libsvm_dir)
+        feature_mapping = load_feature_mapping(parquet_dir)
         
-        # Step 1: Combine libsvm files
+        # Step 1: Load and combine parquet files
         print("\n" + "="*60)
-        print("COMBINING LIBSVM FILES")
+        print("LOADING AND COMBINING PARQUET FILES")
         print("="*60)
         
-        all_data_file, total_rows = combine_libsvm_files(libsvm_dir, temp_dir)
+        df, total_rows = load_and_combine_parquet_files(parquet_dir, temp_dir)
         
-        # Extract feature information from mapping
-        if feature_mapping:
-            feature_cols = feature_mapping['feature_names']
-            target_col = feature_mapping['target_column']
-            print(f"✅ Using feature mapping: {len(feature_cols)} features")
-        else:
-            print("⚠️  No feature mapping available")
-            feature_cols = None
-            target_col = 'sap_flow'
-        
-        # Step 2: Load data as DataFrame for rolling window analysis
+        # Step 2: Prepare DataFrame for rolling window analysis
         print("\n" + "="*60)
-        print("LOADING DATA FOR ROLLING WINDOW ANALYSIS")
+        print("PREPARING DATA FOR ROLLING WINDOW ANALYSIS")
         print("="*60)
         
-        df = load_libsvm_as_dataframe(all_data_file, feature_mapping)
+        df, feature_cols, target_col = prepare_dataframe_for_rolling_window(df, feature_mapping)
         
         # Add temporal features for rolling window analysis
         df = add_temporal_features_for_rolling_window(df)
@@ -731,7 +718,7 @@ def main():
         
         rolling_splits, seasonal_info = create_rolling_window_splits(
             df, feature_cols, target_col, 
-            window_size_days=30, forecast_horizon_days=7, n_windows=10
+            train_window_days=730, test_window_days=180, step_size_days=180
         )
         
         # Step 4: Train rolling window models with external memory

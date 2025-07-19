@@ -474,7 +474,7 @@ def main():
         print("CREATING CHRONOLOGICAL TEMPORAL SPLITS")
         print("="*60)
         
-        fold_splits = create_chronological_temporal_splits(all_temporal_info, global_start, global_end, n_folds=5)
+        fold_splits = create_chronological_temporal_splits(all_temporal_info, global_start, global_end, n_folds=15)
         
         if len(fold_splits) == 0:
             print("❌ No valid temporal splits created")
