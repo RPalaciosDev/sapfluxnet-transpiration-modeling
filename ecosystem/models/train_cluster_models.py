@@ -282,8 +282,19 @@ class MemoryOptimizedClusterTrainer:
             if not all_features:
                 all_features.extend(feature_cols)
             
-            # Extract features and target
-            X = df_chunk[feature_cols].fillna(0).values
+            # Extract and clean features
+            X_df = df_chunk[feature_cols].copy()
+            
+            # Convert boolean columns to numeric (True=1, False=0)
+            for col in X_df.columns:
+                if X_df[col].dtype == bool:
+                    X_df[col] = X_df[col].astype(int)
+                elif X_df[col].dtype == 'object':
+                    # Try to convert object columns to numeric, fill non-numeric with 0
+                    X_df[col] = pd.to_numeric(X_df[col], errors='coerce').fillna(0)
+            
+            # Fill remaining NaN values with 0
+            X = X_df.fillna(0).values
             y = df_chunk[self.target_col].values
             
             # Convert to libsvm format and append to file
@@ -298,7 +309,7 @@ class MemoryOptimizedClusterTrainer:
             total_processed += chunk_processed
             
             # Clean up chunk
-            del df_chunk, X, y
+            del df_chunk, X_df, X, y
             gc.collect()
             
             if start_idx % (chunk_size * 5) == 0:  # Log every 5 chunks
@@ -333,8 +344,19 @@ class MemoryOptimizedClusterTrainer:
         if not all_features:
             all_features.extend(feature_cols)
         
-        # Extract features and target
-        X = df_site[feature_cols].fillna(0).values
+        # Extract and clean features
+        X_df = df_site[feature_cols].copy()
+        
+        # Convert boolean columns to numeric (True=1, False=0)
+        for col in X_df.columns:
+            if X_df[col].dtype == bool:
+                X_df[col] = X_df[col].astype(int)
+            elif X_df[col].dtype == 'object':
+                # Try to convert object columns to numeric, fill non-numeric with 0
+                X_df[col] = pd.to_numeric(X_df[col], errors='coerce').fillna(0)
+        
+        # Fill remaining NaN values with 0
+        X = X_df.fillna(0).values
         y = df_site[self.target_col].values
         
         # Convert to libsvm format and append to file
@@ -348,7 +370,7 @@ class MemoryOptimizedClusterTrainer:
         rows_processed = len(X)
         
         # Clean up
-        del df_site, X, y
+        del df_site, X_df, X, y
         gc.collect()
         
         return rows_processed
