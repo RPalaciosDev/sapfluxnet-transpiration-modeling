@@ -178,7 +178,7 @@ class MemoryOptimizedClusterTrainer:
         return cluster_info
     
     def prepare_cluster_data_external_memory(self, cluster_id, cluster_sites, temp_dir):
-        """Prepare cluster data in external memory format"""
+        """Prepare cluster data in external memory format with streaming processing"""
         print(f"\n🔧 Preparing external memory data for cluster {cluster_id}...")
         
         # Create temporary libsvm file for this cluster
@@ -186,9 +186,10 @@ class MemoryOptimizedClusterTrainer:
         
         all_features = []
         total_rows = 0
+        chunk_size = 50000  # Process sites in chunks to avoid memory issues
         
         with open(cluster_file, 'w') as output_file:
-            for site in cluster_sites:
+            for site_idx, site in enumerate(cluster_sites):
                 parquet_file = os.path.join(self.parquet_dir, f'{site}_comprehensive.parquet')
                 
                 if not os.path.exists(parquet_file):
@@ -196,44 +197,45 @@ class MemoryOptimizedClusterTrainer:
                     continue
                 
                 try:
-                    # Load site data
-                    df_site = pd.read_parquet(parquet_file)
+                    print(f"    🔄 Processing {site} ({site_idx+1}/{len(cluster_sites)})...")
                     
-                    # Filter for this cluster and valid target
-                    df_site = df_site[df_site[self.cluster_col] == cluster_id]
-                    df_site = df_site.dropna(subset=[self.target_col])
+                    # First, check how many rows this site has
+                    df_info = pd.read_parquet(parquet_file, columns=[self.cluster_col, self.target_col])
+                    df_info = df_info[df_info[self.cluster_col] == cluster_id]
+                    df_info = df_info.dropna(subset=[self.target_col])
+                    site_total_rows = len(df_info)
                     
-                    if len(df_site) == 0:
+                    if site_total_rows == 0:
+                        print(f"      ⚠️  No valid data for {site}")
+                        del df_info
+                        gc.collect()
                         continue
                     
-                    # Prepare features
-                    exclude_cols = ['TIMESTAMP', 'solar_TIMESTAMP', 'site', 'plant_id', 'Unnamed: 0', self.cluster_col]
-                    feature_cols = [col for col in df_site.columns 
-                                   if col not in exclude_cols + [self.target_col]
-                                   and not col.endswith('_flags')
-                                   and not col.endswith('_md')]
-                    
-                    if not all_features:
-                        all_features = feature_cols
-                        print(f"    📊 Using {len(all_features)} features")
-                    
-                    # Extract features and target
-                    X = df_site[feature_cols].fillna(0).values
-                    y = df_site[self.target_col].values
-                    
-                    # Convert to libsvm format and append to file
-                    for i in range(len(X)):
-                        line_parts = [str(y[i])]
-                        for j, value in enumerate(X[i]):
-                            if value != 0:  # Sparse format
-                                line_parts.append(f"{j}:{value}")
-                        output_file.write(' '.join(line_parts) + '\n')
-                    
-                    total_rows += len(X)
-                    print(f"    ✅ {site}: {len(X):,} rows")
-                    
-                    del df_site, X, y
+                    print(f"      📊 {site}: {site_total_rows:,} rows total")
+                    del df_info
                     gc.collect()
+                    
+                    # Determine if we need chunked processing
+                    if site_total_rows > chunk_size:
+                        print(f"      🔄 Using chunked processing ({chunk_size:,} rows per chunk)")
+                        site_rows_processed = self._process_site_chunked(
+                            parquet_file, cluster_id, output_file, chunk_size, all_features
+                        )
+                    else:
+                        print(f"      🔄 Loading site in memory (small dataset)")
+                        site_rows_processed = self._process_site_in_memory(
+                            parquet_file, cluster_id, output_file, all_features
+                        )
+                    
+                    total_rows += site_rows_processed
+                    print(f"      ✅ {site}: {site_rows_processed:,} rows processed")
+                    
+                    # Force garbage collection after each site
+                    gc.collect()
+                    
+                    # Log memory usage every 5 sites
+                    if (site_idx + 1) % 5 == 0:
+                        log_memory_usage(f"After {site_idx + 1} sites in cluster {cluster_id}")
                     
                 except Exception as e:
                     print(f"    ❌ Error processing {site}: {e}")
@@ -243,6 +245,113 @@ class MemoryOptimizedClusterTrainer:
         print(f"  📊 Total rows: {total_rows:,}, Features: {len(all_features)}")
         
         return cluster_file, all_features, total_rows
+    
+    def _process_site_chunked(self, parquet_file, cluster_id, output_file, chunk_size, all_features):
+        """Process a large site in chunks to avoid memory issues"""
+        total_processed = 0
+        
+        # Read parquet file in chunks using pyarrow for better memory control
+        import pyarrow.parquet as pq
+        
+        parquet_table = pq.read_table(parquet_file)
+        total_rows = len(parquet_table)
+        
+        # Process in chunks
+        for start_idx in range(0, total_rows, chunk_size):
+            end_idx = min(start_idx + chunk_size, total_rows)
+            
+            # Read chunk
+            chunk_table = parquet_table.slice(start_idx, end_idx - start_idx)
+            df_chunk = chunk_table.to_pandas()
+            
+            # Filter for this cluster and valid target
+            df_chunk = df_chunk[df_chunk[self.cluster_col] == cluster_id]
+            df_chunk = df_chunk.dropna(subset=[self.target_col])
+            
+            if len(df_chunk) == 0:
+                del df_chunk
+                continue
+            
+            # Prepare features
+            exclude_cols = ['TIMESTAMP', 'solar_TIMESTAMP', 'site', 'plant_id', 'Unnamed: 0', self.cluster_col]
+            feature_cols = [col for col in df_chunk.columns 
+                           if col not in exclude_cols + [self.target_col]
+                           and not col.endswith('_flags')
+                           and not col.endswith('_md')]
+            
+            if not all_features:
+                all_features.extend(feature_cols)
+            
+            # Extract features and target
+            X = df_chunk[feature_cols].fillna(0).values
+            y = df_chunk[self.target_col].values
+            
+            # Convert to libsvm format and append to file
+            for i in range(len(X)):
+                line_parts = [str(y[i])]
+                for j, value in enumerate(X[i]):
+                    if value != 0:  # Sparse format
+                        line_parts.append(f"{j}:{value}")
+                output_file.write(' '.join(line_parts) + '\n')
+            
+            chunk_processed = len(X)
+            total_processed += chunk_processed
+            
+            # Clean up chunk
+            del df_chunk, X, y
+            gc.collect()
+            
+            if start_idx % (chunk_size * 5) == 0:  # Log every 5 chunks
+                print(f"        📊 Processed {total_processed:,}/{total_rows:,} rows...")
+        
+        # Clean up parquet table
+        del parquet_table
+        gc.collect()
+        
+        return total_processed
+    
+    def _process_site_in_memory(self, parquet_file, cluster_id, output_file, all_features):
+        """Process a small site in memory"""
+        # Load site data
+        df_site = pd.read_parquet(parquet_file)
+        
+        # Filter for this cluster and valid target
+        df_site = df_site[df_site[self.cluster_col] == cluster_id]
+        df_site = df_site.dropna(subset=[self.target_col])
+        
+        if len(df_site) == 0:
+            del df_site
+            return 0
+        
+        # Prepare features
+        exclude_cols = ['TIMESTAMP', 'solar_TIMESTAMP', 'site', 'plant_id', 'Unnamed: 0', self.cluster_col]
+        feature_cols = [col for col in df_site.columns 
+                       if col not in exclude_cols + [self.target_col]
+                       and not col.endswith('_flags')
+                       and not col.endswith('_md')]
+        
+        if not all_features:
+            all_features.extend(feature_cols)
+        
+        # Extract features and target
+        X = df_site[feature_cols].fillna(0).values
+        y = df_site[self.target_col].values
+        
+        # Convert to libsvm format and append to file
+        for i in range(len(X)):
+            line_parts = [str(y[i])]
+            for j, value in enumerate(X[i]):
+                if value != 0:  # Sparse format
+                    line_parts.append(f"{j}:{value}")
+            output_file.write(' '.join(line_parts) + '\n')
+        
+        rows_processed = len(X)
+        
+        # Clean up
+        del df_site, X, y
+        gc.collect()
+        
+        return rows_processed
     
     def train_cluster_model_external_memory(self, cluster_id, cluster_file, feature_cols, total_rows):
         """Train XGBoost model using external memory"""
