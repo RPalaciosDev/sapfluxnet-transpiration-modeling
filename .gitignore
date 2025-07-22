@@ -299,7 +299,6 @@ secrets.json
 
 # Large output files
 output/
-results/
 exports/
 
 # Temporary training directories
