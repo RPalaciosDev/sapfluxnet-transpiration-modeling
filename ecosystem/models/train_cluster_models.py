@@ -292,15 +292,15 @@ class MemoryOptimizedClusterTrainer:
                     print(f"    ❌ Error processing {site}: {e}")
                     continue
         
-        # Save metadata
+        # Save metadata (convert numpy types to native Python types for JSON serialization)
         metadata = {
-            'cluster_id': cluster_id,
-            'total_rows': total_rows,
-            'feature_count': len(all_features),
-            'feature_names': all_features,
-            'sites': cluster_sites,
+            'cluster_id': int(cluster_id),  # Convert to native int
+            'total_rows': int(total_rows),  # Convert to native int
+            'feature_count': int(len(all_features)),  # Convert to native int
+            'feature_names': [str(feature) for feature in all_features],  # Convert to native strings
+            'sites': [str(site) for site in cluster_sites],  # Convert to native strings
             'created_at': datetime.now().isoformat(),
-            'chunk_size_used': self.chunk_size
+            'chunk_size_used': int(self.chunk_size)  # Convert to native int
         }
         
         with open(metadata_file, 'w') as f:
