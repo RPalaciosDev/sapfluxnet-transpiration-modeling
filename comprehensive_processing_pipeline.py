@@ -58,6 +58,7 @@ class ProcessingConfig:
         'interaction_features': True,  # Enable interaction features
         'rate_of_change_features': True,  # Enable rate of change features
         'cumulative_features': True,  # Enable cumulative features
+        'seasonality_features': True,  # Enable seasonal temperature/precipitation range features
     }
     
     # I/O optimization settings
@@ -1652,7 +1653,63 @@ class MemoryEfficientSAPFLUXNETProcessor:
         # Site-specific features removed for simplicity
         
         return features
-    
+
+    def create_seasonality_features(self, df):
+        """
+        Create seasonal temperature and precipitation range features for ecosystem clustering.
+        These are site-level features that capture intra-annual variability.
+        """
+        if not ProcessingConfig.get_feature_setting('seasonality_features'):
+            return df
+        
+        print("  🌡️  Creating seasonality features...")
+        
+        try:
+            # Ensure we have the required columns
+            required_cols = ['site', 'month', 'ta', 'precip']
+            missing_cols = [col for col in required_cols if col not in df.columns]
+            if missing_cols:
+                print(f"    ⚠️  Missing columns for seasonality features: {missing_cols}")
+                return df
+            
+            # Calculate seasonal ranges for each site
+            seasonality_data = []
+            
+            for site, site_group in df.groupby('site'):
+                # Calculate monthly means for temperature
+                monthly_temp = site_group.groupby('month')['ta'].mean()
+                temp_range = monthly_temp.max() - monthly_temp.min()
+                
+                # Calculate monthly means for precipitation
+                monthly_precip = site_group.groupby('month')['precip'].mean()
+                precip_range = monthly_precip.max() - monthly_precip.min()
+                
+                seasonality_data.append({
+                    'site': site,
+                    'seasonal_temp_range': temp_range,
+                    'seasonal_precip_range': precip_range
+                })
+            
+            # Create seasonality DataFrame
+            seasonality_df = pd.DataFrame(seasonality_data)
+            
+            # Merge back to main DataFrame (site-level features, so merge on 'site')
+            df = df.merge(seasonality_df, on='site', how='left')
+            
+            print(f"    ✅ Added seasonality features for {len(seasonality_df)} sites")
+            
+            # Show individual site values (since we're processing one site at a time)
+            for _, row in seasonality_df.iterrows():
+                site_name = row['site']
+                temp_range = row['seasonal_temp_range']
+                precip_range = row['seasonal_precip_range']
+                print(f"    🌡️  {site_name}: Temp range = {temp_range:.2f}°C, Precip range = {precip_range:.2f} mm")
+            
+            return df
+            
+        except Exception as e:
+            print(f"    ❌ Error creating seasonality features: {e}")
+            return df
 
     
     def process_all_sites(self):
@@ -1945,6 +2002,10 @@ class MemoryEfficientSAPFLUXNETProcessor:
         # Add site identifier
         merged['site'] = site
         
+        # Stage 7: Seasonality features (for ecosystem clustering) - after site is added
+        merged = self.create_seasonality_features(merged)
+        self.check_memory_usage()
+        
         # Ensure consistent schema across all sites
         merged = self.ensure_consistent_schema(merged)
         
@@ -2096,6 +2157,9 @@ class MemoryEfficientSAPFLUXNETProcessor:
             
             # Add basic metadata features
             merged = self.create_metadata_features(merged, metadata)
+            
+            # Note: Seasonality features not available in streaming mode
+            # (require site-level calculations that need full dataset)
             
             # Add site identifier
             merged['site'] = site
