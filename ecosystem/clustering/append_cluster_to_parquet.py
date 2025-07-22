@@ -4,7 +4,7 @@ import pandas as pd
 import pyarrow.parquet as pq
 import pyarrow as pa
 
-RESULTS_DIR = './results'
+RESULTS_DIR = '../evaluation/clustering_results'
 PARQUET_DIR = '../../processed_parquet'
 CLUSTER_COL = 'ecosystem_cluster'
 
