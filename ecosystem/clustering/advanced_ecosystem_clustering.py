@@ -25,6 +25,10 @@ import argparse
 
 warnings.filterwarnings('ignore')
 
+# Set global random seeds for reproducibility
+RANDOM_SEED = 42
+np.random.seed(RANDOM_SEED)
+
 class AdvancedEcosystemClusterer:
     """
     Advanced ecosystem clustering with multiple strategies for better balance
@@ -35,6 +39,7 @@ class AdvancedEcosystemClusterer:
         self.output_dir = output_dir
         self.timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
         self.feature_set = feature_set  # 'advanced', 'core', or 'hybrid'
+        self.random_seed = RANDOM_SEED  # Store random seed
         
         # Create output directory
         os.makedirs(output_dir, exist_ok=True)
@@ -83,13 +88,14 @@ class AdvancedEcosystemClusterer:
         print(f"🎯 Core features: {len(self.core_features)}")
         print(f"🔧 Advanced features: {len(self.advanced_features)}")
         print(f"🧬 Hybrid numeric: {len(self.hybrid_numeric)} | Hybrid categorical: {len(self.hybrid_categorical)}")
+        print(f"🎲 Random seed: {self.random_seed}")
     
     def load_site_data(self):
         """Load and combine site data from processed parquet files"""
         print("\n📊 Loading site data...")
         
         site_data = []
-        parquet_files = [f for f in os.listdir(self.data_dir) if f.endswith('.parquet')]
+        parquet_files = sorted([f for f in os.listdir(self.data_dir) if f.endswith('.parquet')])  # Sort for deterministic order
         
         for parquet_file in parquet_files:
             site_name = parquet_file.replace('_comprehensive.parquet', '')
@@ -349,7 +355,7 @@ class AdvancedEcosystemClusterer:
                 
                 # Try different numbers of clusters
                 for n_clusters in [3, 4, 5, 6, 7, 8]:
-                    kmeans = KMeans(n_clusters=n_clusters, random_state=42, n_init=10)
+                    kmeans = KMeans(n_clusters=n_clusters, random_state=self.random_seed, n_init=10)
                     labels = kmeans.fit_predict(X_scaled)
                     
                     # Calculate balance ratio
@@ -409,7 +415,7 @@ class AdvancedEcosystemClusterer:
         print("  🎲 Strategy 3: Gaussian Mixture Models")
         for n_clusters in [3, 4, 5, 6, 7, 8]:
             try:
-                gmm = GaussianMixture(n_components=n_clusters, random_state=42)
+                gmm = GaussianMixture(n_components=n_clusters, random_state=self.random_seed)
                 labels = gmm.fit_predict(X_scaled)
                 
                 cluster_counts = np.bincount(labels)
