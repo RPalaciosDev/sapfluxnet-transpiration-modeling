@@ -436,7 +436,8 @@ class ClusterSpatialValidator:
         
         # Get feature columns from first site
         first_site_file = list(site_info.values())[0]['file_path']
-        df_sample = pd.read_parquet(first_site_file, nrows=100)
+        df_sample = pd.read_parquet(first_site_file)
+        df_sample = df_sample.head(100)  # Take first 100 rows instead of nrows parameter
         _, _, feature_cols = self.prepare_features(df_sample)
         del df_sample
         gc.collect()
