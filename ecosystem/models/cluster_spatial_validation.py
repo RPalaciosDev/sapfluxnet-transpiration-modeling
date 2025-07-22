@@ -40,7 +40,8 @@ class ClusterSpatialValidator:
     
     def __init__(self, parquet_dir='../../processed_parquet', 
                  models_dir='./results/cluster_models',
-                 results_dir='./results/cluster_spatial_validation'):
+                 results_dir='./results/cluster_spatial_validation',
+                 force_streaming=False):
         self.parquet_dir = parquet_dir
         self.models_dir = models_dir
         self.results_dir = results_dir
@@ -49,6 +50,7 @@ class ClusterSpatialValidator:
         self.test_size = 0.2
         self.random_state = 42
         self.timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        self.force_streaming = force_streaming
         
         # Create results directory
         os.makedirs(results_dir, exist_ok=True)
@@ -57,6 +59,8 @@ class ClusterSpatialValidator:
         print(f"📁 Parquet directory: {parquet_dir}")
         print(f"🤖 Models directory: {models_dir}")
         print(f"📁 Results directory: {results_dir}")
+        if force_streaming:
+            print(f"⚠️  FORCED STREAMING MODE enabled")
     
     def load_cluster_assignments(self):
         """Load cluster assignments from the latest clustering results"""
@@ -159,17 +163,35 @@ class ClusterSpatialValidator:
         
         # Check if we should use in-memory or streaming approach
         available_memory = get_available_memory_gb()
-        estimated_memory_gb = total_estimated_rows * 100 * 8 / (1024**3)  # Rough estimate
+        # Much more conservative estimate: account for pandas overhead, feature processing, and XGBoost
+        estimated_memory_gb = total_estimated_rows * 200 * 8 / (1024**3)  # More realistic estimate
         
-        print(f"  💾 Estimated memory needed: {estimated_memory_gb:.1f} GB")
+        print(f"  💾 Estimated memory needed: {estimated_memory_gb:.1f} GB (conservative estimate)")
         print(f"  💾 Available memory: {available_memory:.1f} GB")
         
-        if estimated_memory_gb < available_memory * 0.3:  # Use in-memory if < 30% of RAM
-            print(f"  🚀 Using IN-MEMORY approach")
-            return self._load_cluster_data_in_memory(cluster_id, site_info)
-        else:
-            print(f"  💾 Using STREAMING approach")
+        # Much more aggressive threshold: use streaming if > 10% of RAM OR > 1M rows OR > 5GB estimated
+        use_streaming = (
+            self.force_streaming or
+            (estimated_memory_gb > available_memory * 0.1) or 
+            (total_estimated_rows > 1000000) or 
+            (estimated_memory_gb > 5.0)  # Force streaming if estimated > 5GB
+        )
+        
+        if use_streaming:
+            reason = []
+            if self.force_streaming:
+                reason.append("forced")
+            if estimated_memory_gb > available_memory * 0.1:
+                reason.append(f">{available_memory * 0.1:.1f}GB")
+            if total_estimated_rows > 1000000:
+                reason.append(">1M rows")
+            if estimated_memory_gb > 5.0:
+                reason.append(">5GB estimated")
+            print(f"  💾 Using STREAMING approach ({', '.join(reason)})")
             return self._prepare_cluster_data_streaming(cluster_id, site_info)
+        else:
+            print(f"  🚀 Using IN-MEMORY approach (small dataset)")
+            return self._load_cluster_data_in_memory(cluster_id, site_info)
     
     def _load_cluster_data_in_memory(self, cluster_id, site_info):
         """Load cluster data in memory (for smaller datasets)"""
@@ -639,6 +661,8 @@ def main():
                         help="Directory containing cluster models")
     parser.add_argument('--results-dir', default='./results/cluster_spatial_validation',
                         help="Directory to save validation results")
+    parser.add_argument('--force-streaming', action='store_true',
+                        help="Force streaming mode for all clusters (memory optimization)")
     
     args = parser.parse_args()
     
@@ -646,7 +670,8 @@ def main():
         validator = ClusterSpatialValidator(
             parquet_dir=args.parquet_dir,
             models_dir=args.models_dir,
-            results_dir=args.results_dir
+            results_dir=args.results_dir,
+            force_streaming=args.force_streaming
         )
         
         fold_results, cluster_summaries = validator.run_validation()
