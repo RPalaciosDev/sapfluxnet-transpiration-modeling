@@ -1,0 +1,6 @@
+SAPFLUXNET Cluster-Based Spatial Validation Report
+============================================================
+Generated: 2025-07-22 19:21:04.914946
+Method: Leave-One-Site-Out within each ecosystem cluster
+Purpose: Test spatial generalization of cluster-specific models
+
