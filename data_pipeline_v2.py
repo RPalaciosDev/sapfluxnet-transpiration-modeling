@@ -1462,13 +1462,18 @@ class MemoryEfficientSAPFLUXNETProcessor:
         IDENTITY_BLACKLIST = {
             'site_code', 'site_name', 'site_id', 'site_identifier',
             'plant_name', 'tree_name', 'tree_id', 'pl_name',
-            'species_name',  # Often site-specific, can cause overfitting
+            # Note: 'species_name' moved to functional group processing instead of blocking
             'study_id', 'plot_id', 'station_id'
         }
         
-        # ⚠️ Geographic proxy features - can hinder spatial generalization
-        GEOGRAPHIC_PROXY_FEATURES = {
-            'timezone', 'country', 'continent', 'region'
+        # ⚠️ Pure geographic identifiers - can hinder spatial generalization
+        PURE_GEOGRAPHIC_IDENTIFIERS = {
+            'timezone', 'country', 'continent', 'region', 'state', 'province'
+        }
+        
+        # ✅ Climate-based geographic features (ecological information) - allowed with caution
+        CLIMATE_GEOGRAPHIC_FEATURES = {
+            'climate_zone', 'biome_region', 'koppen_class', 'climate_classification'
         }
         
         # ✅ Approved ecological categorical variables (safe to encode)
@@ -1476,6 +1481,35 @@ class MemoryEfficientSAPFLUXNETProcessor:
             'biome', 'igbp_class', 'soil_texture', 'aspect', 'terrain', 
             'growth_condition', 'leaf_habit', 'pl_social', 'climate_zone',
             'tree_size_class', 'tree_age_class'
+        }
+        
+        # 🌿 Species functional group mapping (ecological traits instead of specific species)
+        # This prevents site-specific memorization while preserving ecological information
+        SPECIES_FUNCTIONAL_GROUPS = {
+            # Needleleaf Evergreen
+            'Abies': 'needleleaf_evergreen', 'Picea': 'needleleaf_evergreen', 'Pinus': 'needleleaf_evergreen',
+            'Pseudotsuga': 'needleleaf_evergreen', 'Tsuga': 'needleleaf_evergreen', 'Juniperus': 'needleleaf_evergreen',
+            'Cupressus': 'needleleaf_evergreen', 'Thuja': 'needleleaf_evergreen', 'Taxus': 'needleleaf_evergreen',
+            
+            # Needleleaf Deciduous  
+            'Larix': 'needleleaf_deciduous', 'Taxodium': 'needleleaf_deciduous',
+            
+            # Broadleaf Evergreen
+            'Quercus ilex': 'broadleaf_evergreen', 'Quercus suber': 'broadleaf_evergreen',
+            'Eucalyptus': 'broadleaf_evergreen', 'Acacia': 'broadleaf_evergreen',
+            'Olea': 'broadleaf_evergreen', 'Arbutus': 'broadleaf_evergreen',
+            'Ilex': 'broadleaf_evergreen', 'Magnolia': 'broadleaf_evergreen',
+            
+            # Broadleaf Deciduous Temperate
+            'Quercus': 'broadleaf_deciduous_temperate', 'Fagus': 'broadleaf_deciduous_temperate',
+            'Betula': 'broadleaf_deciduous_temperate', 'Acer': 'broadleaf_deciduous_temperate',
+            'Populus': 'broadleaf_deciduous_temperate', 'Tilia': 'broadleaf_deciduous_temperate',
+            'Fraxinus': 'broadleaf_deciduous_temperate', 'Castanea': 'broadleaf_deciduous_temperate',
+            'Juglans': 'broadleaf_deciduous_temperate', 'Platanus': 'broadleaf_deciduous_temperate',
+            
+            # Broadleaf Deciduous Tropical
+            'Cecropia': 'broadleaf_deciduous_tropical', 'Ficus': 'broadleaf_deciduous_tropical',
+            'Terminalia': 'broadleaf_deciduous_tropical', 'Bombax': 'broadleaf_deciduous_tropical',
         }
         
         # Define encoding mappings for approved ecological categorical variables
@@ -1534,8 +1568,43 @@ class MemoryEfficientSAPFLUXNETProcessor:
             },
             'tree_age_class': {
                 'Young': 0, 'Mature': 1, 'Old': 2, 'Very Old': 3, 'Ancient': 4
+            },
+            'species_functional_group': {
+                'needleleaf_evergreen': 1, 'needleleaf_deciduous': 2,
+                'broadleaf_evergreen': 3, 'broadleaf_deciduous_temperate': 4, 
+                'broadleaf_deciduous_tropical': 5, 'unknown': 0
             }
         }
+        
+        # 🌿 Process species names into functional groups (prevents site-specific memorization)
+        if 'species_name' in features.columns:
+            print(f"    🌿 Processing species names into functional groups...")
+            
+            def classify_species_functional_group(species_name):
+                if pd.isna(species_name):
+                    return 'unknown'
+                
+                species_str = str(species_name).strip()
+                
+                # Try exact match first
+                if species_str in SPECIES_FUNCTIONAL_GROUPS:
+                    return SPECIES_FUNCTIONAL_GROUPS[species_str]
+                
+                # Try genus-level matching (first word)
+                genus = species_str.split()[0] if ' ' in species_str else species_str
+                if genus in SPECIES_FUNCTIONAL_GROUPS:
+                    return SPECIES_FUNCTIONAL_GROUPS[genus]
+                
+                # Default for unmatched species
+                return 'unknown'
+            
+            features['species_functional_group'] = features['species_name'].apply(classify_species_functional_group)
+            features = features.drop('species_name', axis=1)  # Remove original species column
+            print(f"    ✅ Converted species names to functional groups")
+            
+            # Show functional group distribution
+            group_counts = features['species_functional_group'].value_counts()
+            print(f"    📊 Functional groups: {dict(group_counts)}")
         
         # Encode approved ecological categorical variables
         for col, mapping in encodings.items():
@@ -1565,7 +1634,8 @@ class MemoryEfficientSAPFLUXNETProcessor:
         # Track what we're doing for logging
         encoded_features = []
         skipped_identity_features = []
-        skipped_geographic_features = []
+        skipped_pure_geographic_features = []
+        allowed_climate_geographic_features = []
         dropped_features = []
         
         # Process each object column with enhanced safety checks
@@ -1581,12 +1651,19 @@ class MemoryEfficientSAPFLUXNETProcessor:
                 print(f"    🚨 BLOCKED identity feature: {col} (prevents site memorization)")
                 continue
                 
-            elif col in GEOGRAPHIC_PROXY_FEATURES:
-                # ⚠️ Skip geographic proxy features that hinder generalization
+            elif col in PURE_GEOGRAPHIC_IDENTIFIERS:
+                # ⚠️ Skip pure geographic identifiers that hinder generalization
                 features = features.drop(col, axis=1)
-                skipped_geographic_features.append(col)
-                print(f"    ⚠️  BLOCKED geographic proxy: {col} (prevents regional overfitting)")
+                skipped_pure_geographic_features.append(col)
+                print(f"    ⚠️  BLOCKED pure geographic identifier: {col} (prevents regional overfitting)")
                 continue
+                
+            elif col in CLIMATE_GEOGRAPHIC_FEATURES:
+                # ✅ Allow climate-based geographic features (ecological information)
+                allowed_climate_geographic_features.append(col)
+                print(f"    🌍 ALLOWED climate-geographic feature: {col} (ecological information)")
+                # Continue to normal categorical processing
+                pass
                 
             elif col in numeric_cols:
                 # Try to convert to numeric (continuous data)
@@ -1663,12 +1740,14 @@ class MemoryEfficientSAPFLUXNETProcessor:
             print(f"    ✅ Safely encoded features: {', '.join(encoded_features)}")
         if skipped_identity_features:
             print(f"    🚨 BLOCKED identity features: {', '.join(skipped_identity_features)}")
-        if skipped_geographic_features:
-            print(f"    ⚠️  BLOCKED geographic proxies: {', '.join(skipped_geographic_features)}")
+        if skipped_pure_geographic_features:
+            print(f"    ⚠️  BLOCKED pure geographic identifiers: {', '.join(skipped_pure_geographic_features)}")
+        if allowed_climate_geographic_features:
+            print(f"    🌍 ALLOWED climate-geographic features: {', '.join(allowed_climate_geographic_features)}")
         if dropped_features:
             print(f"    🗑️  Dropped other features: {', '.join(dropped_features)}")
         
-        print(f"    🛡️  Feature encoding completed with overfitting protection")
+        print(f"    🛡️  Feature encoding completed with selective geographic handling")
         
         return features
     
@@ -1681,10 +1760,10 @@ class MemoryEfficientSAPFLUXNETProcessor:
         # Note: water_stress_index excluded - VPD and swc_shallow are already available as individual features
         
         # Light features
-        # Note: ppfd_efficiency excluded - can be computed during training as ppfd_in / sw_in
-        # if 'ppfd_in' in df.columns and 'sw_in' in df.columns:
-        #     # PPFD efficiency relative to total shortwave radiation
-        #     features['ppfd_efficiency'] = df['ppfd_in'] / (df['sw_in'] + 1e-6)
+        # Re-enabled: ppfd_efficiency is scientifically important for transpiration modeling
+        if 'ppfd_in' in df.columns and 'sw_in' in df.columns:
+            # PPFD efficiency relative to total shortwave radiation
+            features['ppfd_efficiency'] = df['ppfd_in'] / (df['sw_in'] + 1e-6)
         
         # Temperature features
         if 'ta' in df.columns:
@@ -1692,23 +1771,23 @@ class MemoryEfficientSAPFLUXNETProcessor:
             features['temp_deviation'] = abs(df['ta'] - 25)
         
         # Physiological features
-        # Note: stomatal_conductance_proxy excluded - can be computed during training as ppfd_in / vpd
-        # if 'vpd' in df.columns and 'ppfd_in' in df.columns:
-        #     # Stomatal conductance proxy (key physiological control)
-        #     features['stomatal_conductance_proxy'] = df['ppfd_in'] / (df['vpd'] + 1e-6)
+        # Re-enabled: stomatal_conductance_proxy is crucial for physiological modeling
+        if 'vpd' in df.columns and 'ppfd_in' in df.columns:
+            # Stomatal conductance proxy (key physiological control)
+            features['stomatal_conductance_proxy'] = df['ppfd_in'] / (df['vpd'] + 1e-6)
             
         # Soil moisture features
         # Note: moisture_availability excluded - swc_shallow is already available as individual feature
         
         # Wind effects on transpiration
-        # Note: wind_stress and wind_vpd_interaction excluded - can be computed during training
-        # if 'ws' in df.columns:
-        #     # Wind stress (higher wind = more transpiration)
-        #     features['wind_stress'] = df['ws'] / (df['ws'].max() + 1e-6)
-        #     
-        #     # Wind × VPD interaction (wind enhances VPD effects)
-        #     if 'vpd' in df.columns:
-        #         features['wind_vpd_interaction'] = df['ws'] * df['vpd']
+        # Re-enabled: wind effects are important for boundary layer transpiration modeling
+        if 'ws' in df.columns:
+            # Wind stress (higher wind = more transpiration)
+            features['wind_stress'] = df['ws'] / (df['ws'].max() + 1e-6)
+            
+            # Wind × VPD interaction (wind enhances VPD effects)
+            if 'vpd' in df.columns:
+                features['wind_vpd_interaction'] = df['ws'] * df['vpd']
         
         # Precipitation effects
         # Note: recent_precip and precip_intensity excluded - can be computed during training
@@ -1725,20 +1804,20 @@ class MemoryEfficientSAPFLUXNETProcessor:
         
         # Seasonal water use patterns removed for simplicity
         
-        # Use existing data efficiently - avoid redundant calculations
+        # Use existing data efficiently with re-enabled key interactions
         # Note: netrad and swc_deep excluded due to inconsistency issues across sites
-        # Note: stomatal_control_index and light_efficiency excluded - can be computed during training
-        # if 'ext_rad' in df.columns:
-        #     # Extraterrestrial radiation is the perfect seasonal signal
-        #     # Use it directly instead of calculating seasonal features
-        #     
-        #     # Key interaction: VPD × PPFD × Solar potential (stomatal control)
-        #     if 'vpd' in df.columns and 'ppfd_in' in df.columns:
-        #         features['stomatal_control_index'] = df['vpd'] * df['ppfd_in'] * df['ext_rad']
-        #     
-        #     # Light efficiency relative to solar potential
-        #     if 'ppfd_in' in df.columns:
-        #         features['light_efficiency'] = df['ppfd_in'] / (df['ext_rad'] + 1e-6)
+        # Re-enabled: key interactions are scientifically important
+        if 'ext_rad' in df.columns:
+            # Extraterrestrial radiation is the perfect seasonal signal
+            # Use it directly instead of calculating seasonal features
+            
+            # Key interaction: VPD × PPFD × Solar potential (stomatal control)
+            if 'vpd' in df.columns and 'ppfd_in' in df.columns:
+                features['stomatal_control_index'] = df['vpd'] * df['ppfd_in'] * df['ext_rad']
+            
+            # Light efficiency relative to solar potential
+            if 'ppfd_in' in df.columns:
+                features['light_efficiency'] = df['ppfd_in'] / (df['ext_rad'] + 1e-6)
         
         # Tree-specific features (if available)
         if 'pl_dbh' in df.columns:
@@ -2456,12 +2535,13 @@ class MemoryEfficientSAPFLUXNETProcessor:
             'pl_name', 'swc_deep', 'netrad', 'seasonal_leaf_area', 'seasonal_leaf_area_code',
             'stand_name_code', 'stand_remarks_code', 'site_remarks_code', 'env_remarks_code',
             'moisture_availability', 'swc_shallow_depth',
-            # Redundant features (can be computed during training)
-            'wind_stress', 'soil_texture_code', 'stand_soil_texture_code',
-            'ppfd_efficiency', 'stomatal_conductance_proxy', 'stomatal_control_index',
-            'precip_intensity', 'recent_precip_1h', 'recent_precip_6h', 
-            'recent_precip_24h', 'aspect_code', 'species_basal_area_perc', 'site_paper_code',
-            'terrain_code', 'daylight_time'
+                    # Redundant features (can be computed during training)
+        'wind_stress', 'stand_soil_texture_code',
+        'ppfd_efficiency', 'stomatal_conductance_proxy', 'stomatal_control_index',
+        'precip_intensity', 'recent_precip_1h', 'recent_precip_6h', 
+        'recent_precip_24h', 'aspect_code', 'species_basal_area_perc', 'site_paper_code',
+        'daylight_time'
+        # Note: soil_texture_code and terrain_code are kept - these are legitimate ecological features
             # Note: Removed interaction features from problematic list to preserve our new features
         ]
         

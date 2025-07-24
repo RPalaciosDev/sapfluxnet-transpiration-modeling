@@ -1,0 +1,49 @@
+QGIS QUICK START - SAPFLUXNET Analysis
+=====================================
+
+📁 YOUR FILES ARE HERE:
+C:\Users\rpala\Downloads\0.1.5\0.1.5\csv\ecosystem\qgis_exports\
+
+🚀 IMMEDIATE STEPS:
+
+1. OPEN QGIS
+
+2. ADD THESE 3 LAYERS (in this order):
+
+   LAYER 1 - Performance Raster (background):
+   - File: performance_interpolation_20250724_014920.tif
+   - Layer → Add Layer → Add Raster Layer
+   - Style: Use "Spectral" color ramp, set transparency to 70%
+
+   LAYER 2 - Cluster Boundaries (polygons):
+   - File: cluster_boundaries_20250724_014920.shp  
+   - Layer → Add Layer → Add Vector Layer
+   - Style: No fill, thick outline, different color per cluster
+
+   LAYER 3 - Site Points (on top):
+   - File: sapflux_sites_20250724_014920.geojson
+   - Layer → Add Layer → Add Vector Layer
+   - Style: Color by "eco_clust" field, size by "spatial_r2" field
+
+3. RIGHT-CLICK each layer → "Open Attribute Table" to see the data
+
+4. USE IDENTIFY TOOL (i button) to click on features and see values
+
+🎯 WHAT YOU'LL SEE:
+- 87 sites across 5 ecosystem clusters
+- Model performance varies geographically  
+- Clusters have distinct climate characteristics
+- Some areas have better model performance than others
+
+📊 KEY ATTRIBUTES TO EXPLORE:
+- eco_clust: Ecosystem cluster (0-4)
+- spatial_r2: Model performance (higher = better)
+- temp_c: Mean annual temperature
+- precip_mm: Mean annual precipitation
+- elevation: Site elevation
+
+💡 QUICK ANALYSIS IDEAS:
+- Which cluster has the best model performance?
+- Do warmer/cooler sites perform differently?
+- Are there geographic patterns in performance?
+- Which individual sites are outliers? 

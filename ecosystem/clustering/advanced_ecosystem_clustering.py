@@ -73,7 +73,8 @@ class AdvancedEcosystemClusterer:
             'pl_sapw_depth', 'pl_sapw_area'
         ]
         self.hybrid_categorical = [
-            'climate_zone_code', 'biome_code', 'igbp_class_code', 'leaf_habit_code'
+            'climate_zone_code', 'biome_code', 'igbp_class_code', 'leaf_habit_code',
+            'soil_texture_code', 'terrain_code'
         ]
         print(f"🌍 Advanced Ecosystem Clusterer initialized (feature set: {self.feature_set})")
         print(f"📁 Data directory: {data_dir}")
