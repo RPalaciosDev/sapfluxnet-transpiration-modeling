@@ -8,18 +8,11 @@ import numpy as np
 import os
 import json
 from datetime import datetime
-from pathlib import Path
 import warnings
-from sklearn.cluster import KMeans, AgglomerativeClustering, DBSCAN, SpectralClustering
+from sklearn.cluster import KMeans, AgglomerativeClustering, DBSCAN
 from sklearn.preprocessing import StandardScaler, RobustScaler, MinMaxScaler, PowerTransformer
-from sklearn.decomposition import PCA
-from sklearn.metrics import silhouette_score, calinski_harabasz_score
-from sklearn.manifold import TSNE
-import matplotlib.pyplot as plt
-import seaborn as sns
-from scipy.cluster.hierarchy import dendrogram, linkage, fcluster
-from scipy.spatial.distance import pdist, squareform
-from scipy.stats import zscore, percentileofscore
+from sklearn.metrics import silhouette_score
+from scipy.stats import zscore
 from sklearn.mixture import GaussianMixture
 import argparse
 
@@ -755,7 +748,7 @@ def main():
     print("=" * 50)
     
     parser = argparse.ArgumentParser(description="Advanced Ecosystem Clustering")
-    parser.add_argument('--feature_set', type=str, default='advanced', choices=['core', 'advanced', 'hybrid'],
+    parser.add_argument('--feature-set', type=str, default='advanced', choices=['core', 'advanced', 'hybrid'],
                         help="Feature set to use for clustering: 'core', 'advanced', or 'hybrid'")
     args = parser.parse_args()
     feature_set = args.feature_set
