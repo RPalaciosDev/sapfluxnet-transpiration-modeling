@@ -195,6 +195,71 @@ class MemoryOptimizedClusterTrainer:
         
         return cluster_info
     
+    def load_preprocessed_files(self):
+        """Load information about existing preprocessed libsvm files"""
+        print("\n🔍 Loading preprocessed libsvm files...")
+        
+        if not os.path.exists(self.preprocessed_dir):
+            print(f"  ❌ Preprocessed directory not found: {self.preprocessed_dir}")
+            print(f"  💡 Run preprocessing first: python preprocess_cluster_data.py")
+            return {}
+        
+        preprocessed_files = {}
+        
+        # Find all libsvm files
+        libsvm_files = glob.glob(os.path.join(self.preprocessed_dir, 'cluster_*_clean.svm'))
+        
+        if not libsvm_files:
+            print(f"  ❌ No preprocessed libsvm files found in {self.preprocessed_dir}")
+            print(f"  💡 Run preprocessing first: python preprocess_cluster_data.py")
+            return {}
+        
+        for libsvm_file in sorted(libsvm_files):
+            # Extract cluster ID from filename
+            filename = os.path.basename(libsvm_file)
+            cluster_id = int(filename.replace('cluster_', '').replace('_clean.svm', ''))
+            
+            # Find corresponding metadata file
+            metadata_file = libsvm_file.replace('_clean.svm', '_metadata.json')
+            
+            if not os.path.exists(metadata_file):
+                print(f"  ⚠️  Missing metadata for cluster {cluster_id}")
+                continue
+            
+            try:
+                # Load metadata
+                with open(metadata_file, 'r') as f:
+                    metadata = json.load(f)
+                
+                # Get file size
+                file_size_mb = os.path.getsize(libsvm_file) / (1024**2)
+                
+                preprocessed_files[cluster_id] = {
+                    'libsvm_file': libsvm_file,
+                    'metadata': metadata,
+                    'size_mb': file_size_mb
+                }
+                
+                print(f"  ✅ Cluster {cluster_id}: {metadata['total_rows']:,} rows, {file_size_mb:.1f} MB")
+                print(f"     Sites: {', '.join(metadata['sites_processed'][:3])}{'...' if len(metadata['sites_processed']) > 3 else ''}")
+                
+            except Exception as e:
+                print(f"  ❌ Error loading metadata for cluster {cluster_id}: {e}")
+                continue
+        
+        if not preprocessed_files:
+            print(f"  ❌ No valid preprocessed files found!")
+            print(f"  💡 Run preprocessing first: python preprocess_cluster_data.py")
+        else:
+            total_size_mb = sum(info['size_mb'] for info in preprocessed_files.values())
+            total_rows = sum(info['metadata']['total_rows'] for info in preprocessed_files.values())
+            print(f"\n📊 Preprocessed data summary:")
+            print(f"   Clusters: {len(preprocessed_files)}")
+            print(f"   Total rows: {total_rows:,}")
+            print(f"   Total size: {total_size_mb:.1f} MB ({total_size_mb/1024:.1f} GB)")
+        
+        return preprocessed_files
+    
     def check_preprocessed_files_exist(self, cluster_info):
         """Check if preprocessed libsvm files already exist"""
         print("\n🔍 Checking for existing preprocessed files...")
@@ -794,18 +859,16 @@ class MemoryOptimizedClusterTrainer:
         print(f"📊 Estimated data size: {estimated_size_gb:.1f} GB")
         print(f"🧠 Optimal memory usage: {optimal_memory:.1f} GB")
         
-        # Load cluster information
-        cluster_info = self.load_cluster_info_memory_efficient()
+        # Load preprocessed files (NEW WORKFLOW: preprocessing done separately)
+        preprocessed_files = self.load_preprocessed_files()
         
-        if not cluster_info:
-            raise ValueError("No clusters found! Make sure parquet files have ecosystem_cluster column.")
+        if not preprocessed_files:
+            raise ValueError("No preprocessed libsvm files found! Run preprocessing first:\n" +
+                           "  python preprocess_cluster_data.py --cluster-csv path/to/clusters.csv")
         
         try:
-            # STAGE 1: Preprocess all clusters to clean libsvm format
-            preprocessed_files = self.preprocess_all_clusters(cluster_info, force_reprocess)
-            
-            if not preprocessed_files:
-                raise ValueError("No preprocessed files available for training!")
+            # Skip preprocessing stage - already done by preprocess_cluster_data.py
+            print(f"✅ Using {len(preprocessed_files)} preprocessed cluster files")
             
             # STAGE 2: Train models from preprocessed data
             print("\n🏋️  TRAINING STAGE: Training models from preprocessed data")
@@ -873,7 +936,7 @@ def main():
     """Main function to run memory-optimized cluster training"""
     parser = argparse.ArgumentParser(description="Memory-Optimized Cluster Model Training")
     parser.add_argument('--mode', choices=['preprocess', 'train', 'both'], default='both',
-                        help="Mode: 'preprocess' (convert to libsvm), 'train' (train from existing), 'both' (default)")
+                        help="Mode: 'preprocess' (DEPRECATED - use preprocess_cluster_data.py), 'train' (train from existing), 'both' (default)")
     parser.add_argument('--force-reprocess', action='store_true',
                         help="Force reprocessing of all clusters even if files exist")
     parser.add_argument('--parquet-dir', default='../../processed_parquet',
@@ -887,6 +950,11 @@ def main():
     print("=" * 60)
     print(f"Mode: {args.mode.upper()}")
     print(f"Started at: {datetime.now()}")
+    print()
+    print("📋 NEW WORKFLOW (Updated Jan 2025):")
+    print("   1. First run: python preprocess_cluster_data.py --cluster-csv path/to/clusters.csv")
+    print("   2. Then run:  python train_cluster_models.py [--mode train]")
+    print("   💡 Preprocessing is now separate for better balanced sampling!")
     
     try:
         # Initialize trainer
@@ -896,26 +964,33 @@ def main():
         )
         
         if args.mode == 'preprocess':
-            # Only preprocess to libsvm
-            print("\n🔧 PREPROCESSING MODE: Converting to libsvm format only")
-            cluster_info = trainer.load_cluster_info_memory_efficient()
-            preprocessed_files = trainer.preprocess_all_clusters(cluster_info, args.force_reprocess)
-            print(f"✅ Preprocessing completed! {len(preprocessed_files)} clusters processed")
+            # Preprocessing is now handled by separate script
+            print("\n🔧 PREPROCESSING MODE: Use separate preprocessing script")
+            print("❌ Preprocessing is now handled by a separate script for better control!")
+            print("\n💡 SOLUTION:")
+            print("   Run: python preprocess_cluster_data.py --cluster-csv path/to/clusters.csv")
+            print("   Or:  python preprocess_cluster_data.py --cluster-csv auto")
+            print("\n📋 This provides:")
+            print("   - Balanced sampling options")
+            print("   - Better memory management") 
+            print("   - Non-destructive workflow")
+            return
             
         elif args.mode == 'train':
             # Only train from existing libsvm files
             print("\n🏋️  TRAINING MODE: Training from existing preprocessed files")
-            cluster_info = trainer.load_cluster_info_memory_efficient()
-            existing_files, missing_clusters = trainer.check_preprocessed_files_exist(cluster_info)
+            preprocessed_files = trainer.load_preprocessed_files()
             
-            if missing_clusters:
-                print(f"❌ Missing preprocessed files for clusters: {missing_clusters}")
-                print("Run with --mode preprocess or --mode both first")
+            if not preprocessed_files:
+                print("❌ No preprocessed files found!")
+                print("\n💡 SOLUTION:")
+                print("   Run: python preprocess_cluster_data.py --cluster-csv path/to/clusters.csv")
+                print("   Or:  python preprocess_cluster_data.py --cluster-csv auto")
                 return
             
             # Train from existing files
             all_metrics = []
-            for cluster_id, preprocessed_info in sorted(existing_files.items()):
+            for cluster_id, preprocessed_info in sorted(preprocessed_files.items()):
                 print(f"\n{'='*60}")
                 print(f"TRAINING CLUSTER {cluster_id} MODEL")
                 print(f"{'='*60}")

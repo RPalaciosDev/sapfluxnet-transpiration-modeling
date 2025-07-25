@@ -815,8 +815,8 @@ def main():
     print("=" * 50)
     
     parser = argparse.ArgumentParser(description="Advanced Ecosystem Clustering")
-    parser.add_argument('--feature-set', type=str, default='advanced', choices=['core', 'advanced', 'hybrid'],
-                        help="Feature set to use for clustering: 'core', 'advanced', or 'hybrid'")
+    parser.add_argument('--feature-set', type=str, default='hybrid', choices=['core', 'advanced', 'hybrid'],
+                        help="Feature set to use for clustering: 'core', 'advanced', or 'hybrid' (recommended default)")
     args = parser.parse_args()
     feature_set = args.feature_set
     
