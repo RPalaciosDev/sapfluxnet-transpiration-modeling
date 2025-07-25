@@ -20,6 +20,7 @@ import warnings
 import gc
 import psutil
 import argparse
+import shutil
 
 warnings.filterwarnings('ignore')
 
@@ -114,12 +115,14 @@ class ParquetSpatialValidator:
         print(f"📊 Loaded {len(models)} cluster models")
         return models
     
-    def load_cluster_data_from_parquet(self, cluster_id, cluster_sites):
-        """Load cluster data directly from parquet files"""
-        print(f"📊 Loading raw parquet data for cluster {cluster_id} ({len(cluster_sites)} sites)...")
+    def analyze_cluster_size(self, cluster_id, cluster_sites):
+        """Analyze cluster data size to decide on memory strategy"""
+        print(f"📊 Analyzing cluster {cluster_id} data size ({len(cluster_sites)} sites)...")
         
-        cluster_data = []
+        total_rows = 0
+        total_size_mb = 0
         successful_sites = []
+        site_info = {}
         
         for site in cluster_sites:
             parquet_file = os.path.join(self.parquet_dir, f'{site}_comprehensive.parquet')
@@ -129,45 +132,122 @@ class ParquetSpatialValidator:
                 continue
             
             try:
-                print(f"  🔄 Loading {site}...")
-                df_site = pd.read_parquet(parquet_file)
+                # Get file size
+                file_size_mb = os.path.getsize(parquet_file) / (1024**2)
                 
-                # Filter for valid target values
+                # Sample first few rows to estimate data size
+                df_sample = pd.read_parquet(parquet_file, columns=[self.target_col])
+                df_sample = df_sample.dropna(subset=[self.target_col])
+                site_rows = len(df_sample)
+                
+                if site_rows == 0:
+                    print(f"    ⚠️  No valid data for {site}")
+                    del df_sample
+                    continue
+                
+                total_rows += site_rows
+                total_size_mb += file_size_mb
+                successful_sites.append(site)
+                
+                site_info[site] = {
+                    'file_path': parquet_file,
+                    'rows': site_rows,
+                    'size_mb': file_size_mb
+                }
+                
+                print(f"    ✅ {site}: {site_rows:,} rows, {file_size_mb:.1f} MB")
+                
+                del df_sample
+                gc.collect()
+                
+            except Exception as e:
+                print(f"    ❌ Error analyzing {site}: {e}")
+                continue
+        
+        if not successful_sites:
+            raise ValueError(f"No valid sites found for cluster {cluster_id}")
+        
+        print(f"  📊 Cluster {cluster_id} total: {total_rows:,} rows, {total_size_mb:.1f} MB")
+        
+        return successful_sites, site_info, total_rows, total_size_mb
+    
+    def load_cluster_data_from_parquet(self, cluster_id, cluster_sites):
+        """Load cluster data with memory-aware strategy"""
+        # First analyze the cluster size
+        successful_sites, site_info, total_rows, total_size_mb = self.analyze_cluster_size(cluster_id, cluster_sites)
+        
+        if len(successful_sites) < 3:
+            raise ValueError(f"Need at least 3 sites for validation, found {len(successful_sites)}")
+        
+        # Check available memory to decide strategy
+        available_memory_gb = get_available_memory_gb()
+        estimated_memory_gb = total_size_mb / 1024 * 2  # Rough estimate with processing overhead
+        
+        print(f"  💾 Available memory: {available_memory_gb:.1f} GB")
+        print(f"  📊 Estimated memory needed: {estimated_memory_gb:.1f} GB")
+        
+        # Use streaming if data is large relative to available memory
+        use_streaming = estimated_memory_gb > (available_memory_gb * 0.4)
+        
+        if use_streaming:
+            print(f"  💾 Using STREAMING approach (large cluster)")
+            return self._prepare_streaming_cluster_data(cluster_id, site_info), 'streaming'
+        else:
+            print(f"  🚀 Using IN-MEMORY approach (small cluster)")
+            return self._load_cluster_data_in_memory(cluster_id, site_info), 'in_memory'
+    
+    def _load_cluster_data_in_memory(self, cluster_id, site_info):
+        """Load cluster data in memory (for smaller clusters)"""
+        print(f"    📊 Loading cluster data in memory...")
+        
+        cluster_data = []
+        
+        for site, info in site_info.items():
+            try:
+                df_site = pd.read_parquet(info['file_path'])
                 df_site = df_site.dropna(subset=[self.target_col])
                 
                 if len(df_site) == 0:
-                    print(f"    ⚠️  No valid data for {site}")
                     continue
                 
                 # Add site identifier for validation splits
                 df_site['site'] = site
-                
                 cluster_data.append(df_site)
-                successful_sites.append(site)
-                
-                print(f"    ✅ {site}: {len(df_site):,} rows loaded")
                 
                 del df_site
                 gc.collect()
                 
             except Exception as e:
-                print(f"    ❌ Error loading {site}: {e}")
+                print(f"      ❌ Error loading {site}: {e}")
                 continue
         
         if not cluster_data:
             raise ValueError(f"No valid data loaded for cluster {cluster_id}")
         
         # Combine all site data
-        print(f"  🔄 Combining data from {len(successful_sites)} sites...")
         combined_df = pd.concat(cluster_data, ignore_index=True)
-        
-        print(f"  ✅ Combined cluster data: {len(combined_df):,} rows from {len(successful_sites)} sites")
+        print(f"    ✅ Loaded {len(combined_df):,} rows in memory")
         
         # Clean up individual site data
         del cluster_data
         gc.collect()
         
-        return combined_df, successful_sites
+        return combined_df, list(site_info.keys())
+    
+    def _prepare_streaming_cluster_data(self, cluster_id, site_info):
+        """Prepare cluster data for streaming validation"""
+        print(f"    🔧 Preparing streaming validation setup...")
+        
+        # Create temporary directory for this cluster
+        temp_dir = os.path.join(self.results_dir, f'temp_cluster_{cluster_id}')
+        os.makedirs(temp_dir, exist_ok=True)
+        
+        # Return site info and temp directory for streaming processing
+        return {
+            'site_info': site_info,
+            'temp_dir': temp_dir,
+            'cluster_id': cluster_id
+        }, list(site_info.keys())
 
     def prepare_features(self, df):
         """Prepare features for training (same as used in cluster training)"""
@@ -203,7 +283,7 @@ class ParquetSpatialValidator:
         return X, y, feature_cols
 
     def validate_cluster_spatially(self, cluster_id, cluster_sites, model):
-        """Perform Leave-One-Site-Out validation within a cluster using parquet data"""
+        """Perform Leave-One-Site-Out validation within a cluster - MEMORY OPTIMIZED"""
         print(f"\n{'='*60}")
         print(f"SPATIAL VALIDATION FOR CLUSTER {cluster_id} (PARQUET)")
         print(f"{'='*60}")
@@ -213,22 +293,33 @@ class ParquetSpatialValidator:
             print(f"⚠️  Skipping cluster {cluster_id}: Need at least 3 sites for spatial validation")
             return None
         
-        # Load raw parquet data for this cluster
+        # Load data for this cluster (memory-optimized)
         try:
-            cluster_df, successful_sites = self.load_cluster_data_from_parquet(cluster_id, cluster_sites)
+            cluster_data, data_mode = self.load_cluster_data_from_parquet(cluster_id, cluster_sites)
         except Exception as e:
             print(f"❌ Failed to load cluster data: {e}")
             return None
         
+        if data_mode == 'in_memory':
+            cluster_df, successful_sites = cluster_data
+            return self._validate_cluster_in_memory_parquet(cluster_id, successful_sites, model, cluster_df)
+        else:  # streaming mode
+            streaming_info, successful_sites = cluster_data
+            return self._validate_cluster_streaming_parquet(cluster_id, successful_sites, model, streaming_info)
+    
+    def _validate_cluster_in_memory_parquet(self, cluster_id, successful_sites, model, cluster_df):
+        """Perform validation with in-memory parquet data"""
+        print(f"  🚀 Running in-memory validation with parquet data...")
+        
         if len(successful_sites) < 3:
-            print(f"⚠️  Only {len(successful_sites)} sites loaded successfully, need at least 3")
+            print(f"  ⚠️  Only {len(successful_sites)} sites loaded successfully, need at least 3")
             return None
         
         # Prepare features
         try:
             X, y, feature_cols = self.prepare_features(cluster_df)
         except Exception as e:
-            print(f"❌ Failed to prepare features: {e}")
+            print(f"  ❌ Failed to prepare features: {e}")
             return None
         
         fold_results = []
@@ -293,6 +384,155 @@ class ParquetSpatialValidator:
         gc.collect()
         
         return self._calculate_cluster_summary(cluster_id, successful_sites, fold_results)
+    
+    def _validate_cluster_streaming_parquet(self, cluster_id, successful_sites, model, streaming_info):
+        """Perform validation with streaming parquet data processing"""
+        print(f"  💾 Running streaming validation with parquet data...")
+        
+        if len(successful_sites) < 3:
+            print(f"  ⚠️  Only {len(successful_sites)} sites available, need at least 3")
+            return None
+        
+        site_info = streaming_info['site_info']
+        temp_dir = streaming_info['temp_dir']
+        
+        fold_results = []
+        
+        try:
+            # Leave-One-Site-Out validation
+            for i, test_site in enumerate(successful_sites):
+                print(f"\n--- Fold {i+1}/{len(successful_sites)}: Test site {test_site} ---")
+                
+                try:
+                    # Create train/test libsvm files for this fold from parquet
+                    train_file, test_file, train_samples, test_samples = self._create_fold_files_from_parquet(
+                        test_site, site_info, temp_dir
+                    )
+                    
+                    if train_samples == 0 or test_samples == 0:
+                        print(f"  ⚠️  Insufficient data for {test_site}")
+                        continue
+                    
+                    print(f"  Train: {train_samples:,} samples, Test: {test_samples:,} samples")
+                    
+                    # Create DMatrix objects from files
+                    dtrain = xgb.DMatrix(f"{train_file}?format=libsvm")
+                    dtest = xgb.DMatrix(f"{test_file}?format=libsvm")
+                    
+                    # Make predictions
+                    y_pred_train = model.predict(dtrain)
+                    y_pred_test = model.predict(dtest)
+                    
+                    # Load actual targets for metrics
+                    y_train_actual = self._load_targets_from_libsvm(train_file)
+                    y_test_actual = self._load_targets_from_libsvm(test_file)
+                    
+                    # Calculate metrics
+                    fold_metrics = {
+                        'cluster': cluster_id,
+                        'fold': i + 1,
+                        'test_site': test_site,
+                        'train_samples': train_samples,
+                        'test_samples': test_samples,
+                        'train_rmse': np.sqrt(mean_squared_error(y_train_actual, y_pred_train)),
+                        'test_rmse': np.sqrt(mean_squared_error(y_test_actual, y_pred_test)),
+                        'train_mae': mean_absolute_error(y_train_actual, y_pred_train),
+                        'test_mae': mean_absolute_error(y_test_actual, y_pred_test),
+                        'train_r2': r2_score(y_train_actual, y_pred_train),
+                        'test_r2': r2_score(y_test_actual, y_pred_test)
+                    }
+                    
+                    fold_results.append(fold_metrics)
+                    
+                    print(f"  Results: Train R² = {fold_metrics['train_r2']:.4f}, Test R² = {fold_metrics['test_r2']:.4f}")
+                    
+                    # Clean up fold files and memory
+                    os.remove(train_file)
+                    os.remove(test_file)
+                    del dtrain, dtest, y_pred_train, y_pred_test, y_train_actual, y_test_actual
+                    gc.collect()
+                    
+                except Exception as e:
+                    print(f"  ❌ Error in fold {i+1}: {e}")
+                    continue
+            
+            return self._calculate_cluster_summary(cluster_id, successful_sites, fold_results)
+            
+        finally:
+            # Clean up temporary directory
+            if os.path.exists(temp_dir):
+                try:
+                    shutil.rmtree(temp_dir)
+                except Exception as e:
+                    print(f"  ⚠️  Could not clean up temp directory: {e}")
+    
+    def _create_fold_files_from_parquet(self, test_site, site_info, temp_dir):
+        """Create train/test libsvm files for a single fold from parquet data"""
+        train_file = os.path.join(temp_dir, f'fold_{test_site}_train.svm')
+        test_file = os.path.join(temp_dir, f'fold_{test_site}_test.svm')
+        
+        train_samples = 0
+        test_samples = 0
+        
+        # Get feature columns from first site
+        first_site_file = list(site_info.values())[0]['file_path']
+        df_sample = pd.read_parquet(first_site_file)
+        df_sample = df_sample.head(100)  # Small sample to get feature columns
+        _, _, feature_cols = self.prepare_features(df_sample)
+        del df_sample
+        gc.collect()
+        
+        print(f"    📊 Creating fold files: test site {test_site}")
+        
+        with open(train_file, 'w') as train_out, open(test_file, 'w') as test_out:
+            for site, info in site_info.items():
+                try:
+                    # Load site data
+                    df_site = pd.read_parquet(info['file_path'])
+                    df_site = df_site.dropna(subset=[self.target_col])
+                    
+                    if len(df_site) == 0:
+                        continue
+                    
+                    # Prepare features
+                    X, y, _ = self.prepare_features(df_site)
+                    
+                    # Write to appropriate file
+                    output_file = test_out if site == test_site else train_out
+                    
+                    # Convert to libsvm format and write
+                    for j in range(len(X)):
+                        line_parts = [str(y[j])]
+                        for k, value in enumerate(X[j]):
+                            if value != 0:  # Sparse format
+                                line_parts.append(f"{k}:{value}")
+                        output_file.write(' '.join(line_parts) + '\n')
+                    
+                    if site == test_site:
+                        test_samples += len(X)
+                    else:
+                        train_samples += len(X)
+                    
+                    del df_site, X, y
+                    gc.collect()
+                    
+                except Exception as e:
+                    print(f"      ❌ Error processing {site}: {e}")
+                    continue
+        
+        print(f"    ✅ Created fold files: train={train_samples:,}, test={test_samples:,}")
+        
+        return train_file, test_file, train_samples, test_samples
+    
+    def _load_targets_from_libsvm(self, libsvm_file):
+        """Load only target values from libsvm file"""
+        targets = []
+        with open(libsvm_file, 'r') as f:
+            for line in f:
+                if line.strip():
+                    target = float(line.split()[0])
+                    targets.append(target)
+        return np.array(targets)
     
     def _calculate_cluster_summary(self, cluster_id, cluster_sites, fold_results):
         """Calculate cluster summary statistics"""
