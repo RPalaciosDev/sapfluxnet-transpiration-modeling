@@ -74,7 +74,8 @@ class AdvancedEcosystemClusterer:
         ]
         self.hybrid_categorical = [
             'climate_zone_code', 'biome_code', 'igbp_class_code', 'leaf_habit_code',
-            'soil_texture_code', 'terrain_code'
+            'soil_texture_code', 'terrain_code', 'species_functional_group_code',
+            'koppen_geiger_code_encoded'
         ]
         print(f"🌍 Advanced Ecosystem Clusterer initialized (feature set: {self.feature_set})")
         print(f"📁 Data directory: {data_dir}")
@@ -83,6 +84,68 @@ class AdvancedEcosystemClusterer:
         print(f"🔧 Advanced features: {len(self.advanced_features)}")
         print(f"🧬 Hybrid numeric: {len(self.hybrid_numeric)} | Hybrid categorical: {len(self.hybrid_categorical)}")
         print(f"🎲 Random seed: {self.random_seed}")
+        print(f"🌿 NEW: Added species_functional_group_code and koppen_geiger_code_encoded for better ecological clustering")
+    
+    def validate_data_pipeline_compatibility(self, site_df):
+        """
+        Validate compatibility with updated data pipeline features
+        
+        Checks for:
+        - New species functional group encoding
+        - Köppen-Geiger climate classification  
+        - Blocked identity/geographic features
+        - Updated categorical encodings
+        """
+        print("\n🔍 Validating data pipeline compatibility...")
+        
+        # Check for new features from data pipeline improvements
+        expected_new_features = [
+            'species_functional_group_code',  # Replaces species_name  
+            'koppen_geiger_code_encoded',     # New climate classification
+        ]
+        
+        found_new_features = []
+        missing_new_features = []
+        
+        for feature in expected_new_features:
+            if feature in site_df.columns:
+                found_new_features.append(feature)
+            else:
+                missing_new_features.append(feature)
+        
+        if found_new_features:
+            print(f"  ✅ Found new pipeline features: {', '.join(found_new_features)}")
+        
+        if missing_new_features:
+            print(f"  ⚠️  Missing new pipeline features: {', '.join(missing_new_features)}")
+            print(f"     These features improve ecological clustering but are not critical")
+        
+        # Check for blocked features that might cause issues
+        potentially_blocked_features = [
+            'site_code', 'site_name', 'species_name', 'timezone', 'country'
+        ]
+        
+        blocked_features_found = []
+        for feature in potentially_blocked_features:
+            if feature in site_df.columns:
+                blocked_features_found.append(feature)
+        
+        if blocked_features_found:
+            print(f"  🚨 WARNING: Found features that should be blocked by data pipeline: {', '.join(blocked_features_found)}")
+            print(f"     These may indicate data pipeline is not properly applied!")
+        else:
+            print(f"  ✅ No blocked identity/geographic features found - data pipeline working correctly")
+        
+        # Show sample of available categorical features for debugging
+        categorical_features_available = [f for f in self.hybrid_categorical if f in site_df.columns]
+        print(f"  📊 Available categorical features: {len(categorical_features_available)}/{len(self.hybrid_categorical)}")
+        
+        return {
+            'new_features_found': found_new_features,
+            'new_features_missing': missing_new_features,
+            'blocked_features_found': blocked_features_found,
+            'categorical_available': categorical_features_available
+        }
     
     def load_site_data(self):
         """Load and combine site data from processed parquet files"""
@@ -705,6 +768,9 @@ class AdvancedEcosystemClusterer:
         try:
             # Step 1: Load site data
             site_df = self.load_site_data()
+            
+            # Step 1.5: Validate data pipeline compatibility
+            validation_results = self.validate_data_pipeline_compatibility(site_df)
             
             # Step 2: Prepare clustering data with advanced features
             clustering_df = self.prepare_clustering_data(site_df)

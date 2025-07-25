@@ -26,7 +26,7 @@ This document describes the process and rationale for using a **hybrid feature s
 - **Geographic/Climate:** longitude, latitude, latitude_abs, mean_annual_temp, mean_annual_precip, aridity_index, elevation, climate_zone_code, seasonal_temp_range, seasonal_precip_range
 - **Engineered/Derived:** temp_precip_ratio, seasonality_index, climate_continentality, elevation_latitude_ratio, aridity_seasonality, temp_elevation_ratio, precip_latitude_ratio
 - **Stand/Forest Structure:** tree_volume_index, stand_age, n_trees, tree_density, basal_area, stand_height, tree_size_class_code, sapwood_leaf_ratio, pl_dbh, pl_age, pl_height, pl_leaf_area, pl_sapw_depth, pl_sapw_area
-- **Categorical (one-hot):** climate_zone_code, biome_code, igbp_class_code, leaf_habit_code
+- **Categorical (one-hot):** climate_zone_code, biome_code, igbp_class_code, leaf_habit_code, soil_texture_code, terrain_code, species_functional_group_code, koppen_geiger_code_encoded
 
 ### 3. **Update Clustering Script**
 
@@ -66,6 +66,13 @@ This document describes the process and rationale for using a **hybrid feature s
 - The hybrid feature set produced clusters that are both balanced and ecologically meaningful.
 - This approach is recommended for ecosystem-based spatial validation and model transfer in SAPFLUXNET.
 - The workflow is fully reproducible and configurable via the `--feature_set` argument.
+
+## NEW: Data Pipeline Compatibility (January 2025)
+
+- **Species Features**: Now uses `species_functional_group_code` instead of `species_name` to prevent site-specific memorization
+- **Climate Classification**: Added `koppen_geiger_code_encoded` for improved ecological clustering  
+- **Overfitting Protection**: Compatible with data pipeline that blocks identity features (site_code, site_name) and geographic proxies (timezone, country)
+- **Validation**: Clustering script now validates compatibility with updated data pipeline features
 
 ---
 
