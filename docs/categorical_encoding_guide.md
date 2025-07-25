@@ -2,6 +2,22 @@
 
 This document provides the complete mapping between original text values and their numeric encodings used in the comprehensive processed dataset.
 
+## ⚠️ CRITICAL UPDATE (January 2025)
+
+**OVERFITTING PROTECTION IMPLEMENTED**: The pipeline now includes critical protections against site identity memorization and geographic proxy overfitting. Many previously encoded features are now **BLOCKED** to prevent catastrophic spatial generalization failure.
+
+**BLOCKED FEATURES** (no longer encoded):
+
+- `country` → **BLOCKED** (pure geographic identifier)
+- `timezone` → **BLOCKED** (pure geographic identifier)
+- `site_code` → **BLOCKED** (identity feature)
+- `species_name` → **CONVERTED** to `species_functional_group` (see Section 13)
+
+**ALLOWED FEATURES** (still encoded):
+
+- Climate-based geographic features (climate_zone, biome_region)
+- Ecological categorical variables (biome, igbp_class, soil_texture, etc.)
+
 ## Overview
 
 All categorical text variables have been converted to numeric codes for machine learning compatibility. This guide shows what each code represents.
@@ -57,40 +73,7 @@ All categorical text variables have been converted to numeric codes for machine 
 
 ---
 
-## 3. Country Codes
-
-| Code | Country |
-|------|---------|
-| 1 | Argentina (ARG) |
-| 2 | Australia (AUS) |
-| 3 | Austria (AUT) |
-| 4 | Brazil (BRA) |
-| 5 | Canada (CAN) |
-| 6 | Switzerland (CHE) |
-| 7 | China (CHN) |
-| 8 | Colombia (COL) |
-| 9 | Czech Republic (CZE) |
-| 10 | Germany (DEU) |
-| 11 | Spain (ESP) |
-| 12 | Finland (FIN) |
-| 13 | France (FRA) |
-| 14 | United Kingdom (GBR) |
-| 15 | French Guiana (GUF) |
-| 16 | Japan (JPN) |
-| 17 | South Korea (KOR) |
-| 18 | Madagascar (MDG) |
-| 19 | Portugal (PRT) |
-| 20 | Russia (RUS) |
-| 21 | Senegal (SEN) |
-| 22 | Sweden (SWE) |
-| 23 | United States (USA) |
-| 24 | South Africa (ZAF) |
-
-**Column**: `country_code`
-
----
-
-## 4. Soil Texture Classification
+## 3. Soil Texture Classification
 
 | Code | Soil Texture |
 |------|-------------|
@@ -111,7 +94,7 @@ All categorical text variables have been converted to numeric codes for machine 
 
 ---
 
-## 5. Terrain Aspect
+## 4. Terrain Aspect
 
 | Code | Aspect |
 |------|--------|
@@ -128,7 +111,7 @@ All categorical text variables have been converted to numeric codes for machine 
 
 ---
 
-## 6. Terrain Type
+## 5. Terrain Type
 
 | Code | Terrain |
 |------|---------|
@@ -143,7 +126,7 @@ All categorical text variables have been converted to numeric codes for machine 
 
 ---
 
-## 7. Growth Condition
+## 6. Growth Condition
 
 | Code | Growth Condition |
 |------|------------------|
@@ -156,7 +139,7 @@ All categorical text variables have been converted to numeric codes for machine 
 
 ---
 
-## 8. Leaf Habit
+## 7. Leaf Habit
 
 | Code | Leaf Habit |
 |------|-----------|
@@ -169,7 +152,7 @@ All categorical text variables have been converted to numeric codes for machine 
 
 ---
 
-## 9. Tree Social Status
+## 8. Tree Social Status
 
 | Code | Social Status |
 |------|---------------|
@@ -182,7 +165,7 @@ All categorical text variables have been converted to numeric codes for machine 
 
 ---
 
-## 10. Sensor Manufacturer
+## 9. Sensor Manufacturer
 
 | Code | Manufacturer |
 |------|--------------|
@@ -196,7 +179,7 @@ All categorical text variables have been converted to numeric codes for machine 
 
 ---
 
-## 11. Sensor Method
+## 10. Sensor Method
 
 | Code | Method | Full Name |
 |------|--------|-----------|
@@ -210,7 +193,7 @@ All categorical text variables have been converted to numeric codes for machine 
 
 ---
 
-## 12. Climate Zone
+## 11. Climate Zone
 
 | Code | Climate Zone |
 |------|--------------|
@@ -222,7 +205,7 @@ All categorical text variables have been converted to numeric codes for machine 
 
 ---
 
-## 13. Tree Size Class
+## 12. Tree Size Class
 
 | Code | Size Class | DBH Range (cm) |
 |------|------------|----------------|
@@ -233,6 +216,31 @@ All categorical text variables have been converted to numeric codes for machine 
 | 4 | Very Large | 100+ |
 
 **Column**: `tree_size_class`
+
+---
+
+## 13. Species Functional Groups (NEW)
+
+**🆕 UPDATED**: Species are now classified into functional groups instead of individual species encoding to prevent site identity memorization.
+
+| Code | Functional Group | Description |
+|------|------------------|-------------|
+| 0 | unknown | Unknown or unclassified species |
+| 1 | needleleaf_evergreen | Evergreen coniferous species |
+| 2 | needleleaf_deciduous | Deciduous coniferous species |
+| 3 | broadleaf_evergreen | Evergreen broadleaf species |
+| 4 | broadleaf_deciduous_temperate | Temperate deciduous broadleaf |
+| 5 | broadleaf_deciduous_tropical | Tropical deciduous broadleaf |
+
+**Column**: `species_functional_group`
+
+**Examples of species mapping**:
+
+- Abies, Picea, Pinus → needleleaf_evergreen (1)
+- Larix → needleleaf_deciduous (2)  
+- Eucalyptus → broadleaf_evergreen (3)
+- Quercus, Fagus, Betula → broadleaf_deciduous_temperate (4)
+- Cecropia → broadleaf_deciduous_tropical (5)
 
 ---
 
@@ -333,11 +341,13 @@ All categorical text variables have been converted to numeric codes for machine 
 1. **Missing Values**: NaN values in encoded columns indicate missing data
 2. **Unknown Categories**: New categories not in the mapping will be assigned sequential codes
 3. **Ordinal Relationships**: Some codes preserve ordinal relationships (e.g., social status, tree size)
-4. **Nominal Categories**: Other codes are purely nominal (e.g., country, biome)
+4. **Nominal Categories**: Other codes are purely nominal (e.g., biome, functional groups)
+5. **⚠️ Blocked Features**: Some previously encoded features are now blocked for overfitting protection
 
 ## For Machine Learning
 
-- **Feature Selection**: Use `*_code` columns for training
+- **Feature Selection**: Use `*_code` columns for training, avoid blocked features
 - **Interpretation**: Use this guide to interpret model results
 - **Transfer Learning**: Consistent encodings across sites enable cross-site predictions
 - **Feature Importance**: Codes preserve meaningful relationships for model learning
+- **🛡️ Overfitting Protection**: Identity and pure geographic features are automatically blocked

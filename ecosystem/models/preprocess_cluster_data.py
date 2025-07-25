@@ -2,6 +2,24 @@
 Memory-Optimized Cluster Data Preprocessing for SAPFLUXNET
 Preprocesses parquet files into libsvm format for cluster-specific training
 Separated from training to allow for better control and cleanup
+
+NEW FEATURES:
+- Non-destructive workflow: Reads cluster assignments from CSV instead of modifying parquet files
+- Balanced sampling: Addresses site imbalance within clusters using median-based sampling
+- On-the-fly cluster assignment: Assigns cluster labels during preprocessing without altering original data
+
+USAGE:
+1. With cluster CSV file:
+   python preprocess_cluster_data.py --cluster-csv ../evaluation/clustering_results/advanced_site_clusters_20250723_215127.csv
+
+2. With balanced sampling enabled:
+   python preprocess_cluster_data.py --cluster-csv path/to/clusters.csv --apply-sampling
+
+3. Legacy mode (reads cluster labels from parquet files):
+   python preprocess_cluster_data.py
+
+4. Auto-find latest cluster CSV:
+   python preprocess_cluster_data.py --cluster-csv auto
 """
 
 import pandas as pd
@@ -18,6 +36,18 @@ from pathlib import Path
 import argparse
 
 warnings.filterwarnings('ignore')
+
+def find_latest_cluster_csv(base_dir='../evaluation/clustering_results'):
+    """Find the latest cluster assignments CSV file"""
+    csv_pattern = os.path.join(base_dir, 'advanced_site_clusters_*.csv')
+    csv_files = sorted(glob.glob(csv_pattern))
+    
+    if not csv_files:
+        raise FileNotFoundError(f'No advanced_site_clusters_*.csv found in {base_dir}')
+    
+    latest_csv = csv_files[-1]
+    print(f"🔍 Auto-found latest cluster CSV: {latest_csv}")
+    return latest_csv
 
 def get_available_memory_gb():
     """Get available system memory in GB"""
@@ -39,13 +69,23 @@ class ClusterDataPreprocessor:
     Preprocesses cluster data to libsvm format for memory-efficient training
     """
     
-    def __init__(self, parquet_dir='../../processed_parquet', results_dir='./results/cluster_models'):
+    def __init__(self, parquet_dir='../../processed_parquet', results_dir='./results/cluster_models', 
+                 apply_sampling=False, min_fraction=0.3, sampling_seed=42, cluster_csv_path=None):
         self.parquet_dir = parquet_dir
         self.results_dir = results_dir
         self.preprocessed_dir = os.path.join(results_dir, 'preprocessed_libsvm')
         self.cluster_col = 'ecosystem_cluster'
         self.target_col = 'sap_flow'
         self.timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        
+        # Cluster assignments from CSV
+        self.cluster_csv_path = cluster_csv_path
+        self.cluster_assignments = None
+        
+        # Balanced sampling parameters
+        self.apply_sampling = apply_sampling
+        self.min_fraction = min_fraction
+        self.sampling_seed = sampling_seed
         
         # Adaptive chunk size based on available memory
         available_memory = get_available_memory_gb()
@@ -63,12 +103,59 @@ class ClusterDataPreprocessor:
         os.makedirs(self.results_dir, exist_ok=True)
         os.makedirs(self.preprocessed_dir, exist_ok=True)
         
+        # Load cluster assignments if CSV path provided
+        if self.cluster_csv_path:
+            self.cluster_assignments = self.load_cluster_assignments()
+        
         print(f"🔧 Cluster Data Preprocessor initialized")
         print(f"📁 Parquet directory: {parquet_dir}")
         print(f"📁 Results directory: {results_dir}")
         print(f"📁 Preprocessed directory: {self.preprocessed_dir}")
         print(f"🎯 Target column: {self.target_col}")
         print(f"🏷️  Cluster column: {self.cluster_col}")
+        if self.cluster_csv_path:
+            print(f"📊 Cluster assignments: {self.cluster_csv_path}")
+            if self.cluster_assignments is not None:
+                print(f"   Loaded {len(self.cluster_assignments)} site assignments")
+        print(f"⚖️  Apply balanced sampling: {apply_sampling}")
+        if apply_sampling:
+            print(f"   Min fraction: {min_fraction}")
+            print(f"   Sampling seed: {sampling_seed}")
+
+    def load_cluster_assignments(self):
+        """Load cluster assignments from CSV file"""
+        if not self.cluster_csv_path:
+            return None
+            
+        print(f"\n📊 Loading cluster assignments from {self.cluster_csv_path}...")
+        
+        if not os.path.exists(self.cluster_csv_path):
+            print(f"❌ Cluster CSV file not found: {self.cluster_csv_path}")
+            return None
+        
+        try:
+            cluster_df = pd.read_csv(self.cluster_csv_path)
+            
+            # Validate required columns
+            if 'site' not in cluster_df.columns or 'cluster' not in cluster_df.columns:
+                raise ValueError("CSV must contain 'site' and 'cluster' columns")
+            
+            # Convert to dictionary for fast lookup
+            cluster_dict = dict(zip(cluster_df['site'], cluster_df['cluster']))
+            
+            print(f"✅ Loaded cluster assignments for {len(cluster_dict)} sites")
+            
+            # Show cluster distribution
+            cluster_counts = cluster_df['cluster'].value_counts().sort_index()
+            print("📈 Cluster distribution:")
+            for cluster_id, count in cluster_counts.items():
+                print(f"   Cluster {cluster_id}: {count} sites")
+            
+            return cluster_dict
+            
+        except Exception as e:
+            print(f"❌ Error loading cluster assignments: {e}")
+            return None
 
     def analyze_data_requirements(self):
         """Analyze data size and memory requirements"""
@@ -118,7 +205,7 @@ class ClusterDataPreprocessor:
         return estimated_total_size_gb, estimated_total_rows, total_files
 
     def load_cluster_info_memory_efficient(self):
-        """Load cluster information without loading full data"""
+        """Load cluster information using CSV assignments or from parquet files"""
         print("\n🔍 Loading cluster information...")
         
         cluster_info = {}
@@ -127,37 +214,74 @@ class ClusterDataPreprocessor:
         if not parquet_files:
             raise ValueError(f"No parquet files found in {self.parquet_dir}")
         
-        for parquet_file in parquet_files:
-            site_name = parquet_file.replace('_comprehensive.parquet', '')
-            file_path = os.path.join(self.parquet_dir, parquet_file)
+        # Use CSV assignments if available, otherwise fall back to reading from parquet
+        if self.cluster_assignments is not None:
+            print("📊 Using cluster assignments from CSV file...")
             
-            try:
-                # Load only cluster and target columns for analysis
-                df_sample = pd.read_parquet(file_path, columns=[self.cluster_col, self.target_col])
+            for parquet_file in parquet_files:
+                site_name = parquet_file.replace('_comprehensive.parquet', '')
+                file_path = os.path.join(self.parquet_dir, parquet_file)
                 
-                if self.cluster_col not in df_sample.columns:
-                    print(f"  ⚠️  {site_name}: Missing {self.cluster_col} column")
+                # Look up cluster assignment
+                if site_name not in self.cluster_assignments:
+                    print(f"  ⚠️  {site_name}: No cluster assignment found in CSV")
                     continue
                 
-                cluster_id = df_sample[self.cluster_col].iloc[0]  # All rows should have same cluster
-                valid_rows = len(df_sample.dropna(subset=[self.target_col]))
+                cluster_id = self.cluster_assignments[site_name]
                 
-                if cluster_id not in cluster_info:
-                    cluster_info[cluster_id] = {'sites': [], 'total_rows': 0}
+                try:
+                    # Load only target column for row counting
+                    df_sample = pd.read_parquet(file_path, columns=[self.target_col])
+                    valid_rows = len(df_sample.dropna(subset=[self.target_col]))
+                    
+                    if cluster_id not in cluster_info:
+                        cluster_info[cluster_id] = {'sites': [], 'total_rows': 0}
+                    
+                    cluster_info[cluster_id]['sites'].append(site_name)
+                    cluster_info[cluster_id]['total_rows'] += valid_rows
+                    
+                    print(f"  ✅ {site_name}: Cluster {cluster_id}, {valid_rows:,} valid rows")
+                    del df_sample
+                    gc.collect()
+                    
+                except Exception as e:
+                    print(f"  ❌ Error loading {site_name}: {e}")
+                    continue
+        
+        else:
+            print("📊 Reading cluster assignments from parquet files (legacy mode)...")
+            
+            for parquet_file in parquet_files:
+                site_name = parquet_file.replace('_comprehensive.parquet', '')
+                file_path = os.path.join(self.parquet_dir, parquet_file)
                 
-                cluster_info[cluster_id]['sites'].append(site_name)
-                cluster_info[cluster_id]['total_rows'] += valid_rows
-                
-                print(f"  ✅ {site_name}: Cluster {cluster_id}, {valid_rows:,} valid rows")
-                del df_sample
-                gc.collect()
-                
-            except Exception as e:
-                print(f"  ❌ Error loading {site_name}: {e}")
-                continue
+                try:
+                    # Load only cluster and target columns for analysis
+                    df_sample = pd.read_parquet(file_path, columns=[self.cluster_col, self.target_col])
+                    
+                    if self.cluster_col not in df_sample.columns:
+                        print(f"  ⚠️  {site_name}: Missing {self.cluster_col} column")
+                        continue
+                    
+                    cluster_id = df_sample[self.cluster_col].iloc[0]  # All rows should have same cluster
+                    valid_rows = len(df_sample.dropna(subset=[self.target_col]))
+                    
+                    if cluster_id not in cluster_info:
+                        cluster_info[cluster_id] = {'sites': [], 'total_rows': 0}
+                    
+                    cluster_info[cluster_id]['sites'].append(site_name)
+                    cluster_info[cluster_id]['total_rows'] += valid_rows
+                    
+                    print(f"  ✅ {site_name}: Cluster {cluster_id}, {valid_rows:,} valid rows")
+                    del df_sample
+                    gc.collect()
+                    
+                except Exception as e:
+                    print(f"  ❌ Error loading {site_name}: {e}")
+                    continue
         
         if not cluster_info:
-            raise ValueError("No valid cluster information found! Make sure parquet files have ecosystem_cluster column.")
+            raise ValueError("No valid cluster information found! Make sure cluster assignments are available via CSV or parquet files have ecosystem_cluster column.")
         
         print(f"\n📊 Cluster distribution:")
         for cluster_id, info in sorted(cluster_info.items()):
@@ -264,6 +388,7 @@ class ClusterDataPreprocessor:
         
         all_features = []
         total_rows = 0
+        processed_sites = []
         
         with open(libsvm_file, 'w') as output_file:
             for site_idx, site in enumerate(cluster_sites):
@@ -276,9 +401,8 @@ class ClusterDataPreprocessor:
                 try:
                     print(f"    🔄 Processing {site} ({site_idx+1}/{len(cluster_sites)})...")
                     
-                    # Check site size first
-                    df_info = pd.read_parquet(parquet_file, columns=[self.cluster_col, self.target_col])
-                    df_info = df_info[df_info[self.cluster_col] == cluster_id]
+                    # Check site size first - no cluster filtering needed now
+                    df_info = pd.read_parquet(parquet_file, columns=[self.target_col])
                     df_info = df_info.dropna(subset=[self.target_col])
                     site_total_rows = len(df_info)
                     
@@ -304,8 +428,12 @@ class ClusterDataPreprocessor:
                             parquet_file, cluster_id, output_file, all_features
                         )
                     
-                    total_rows += site_rows_processed
-                    print(f"      ✅ {site}: {site_rows_processed:,} rows processed")
+                    if site_rows_processed > 0:
+                        total_rows += site_rows_processed
+                        processed_sites.append(site)
+                        print(f"      ✅ {site}: {site_rows_processed:,} rows processed")
+                    else:
+                        print(f"      ⚠️  {site}: No rows processed after filtering/sampling")
                     
                     # Force garbage collection after each site
                     gc.collect()
@@ -324,9 +452,16 @@ class ClusterDataPreprocessor:
             'total_rows': int(total_rows),
             'feature_count': int(len(all_features)),
             'feature_names': [str(feature) for feature in all_features],
-            'sites': [str(site) for site in cluster_sites],
+            'sites_requested': [str(site) for site in cluster_sites],
+            'sites_processed': [str(site) for site in processed_sites],
+            'sites_skipped': [str(site) for site in cluster_sites if site not in processed_sites],
             'created_at': datetime.now().isoformat(),
-            'chunk_size_used': int(self.chunk_size)
+            'chunk_size_used': int(self.chunk_size),
+            'balanced_sampling_applied': bool(self.apply_sampling),
+            'sampling_parameters': {
+                'min_fraction': float(self.min_fraction),
+                'sampling_seed': int(self.sampling_seed)
+            } if self.apply_sampling else None
         }
         
         with open(metadata_file, 'w') as f:
@@ -334,18 +469,26 @@ class ClusterDataPreprocessor:
         
         file_size_mb = os.path.getsize(libsvm_file) / (1024**2)
         print(f"  ✅ Preprocessed cluster {cluster_id}: {total_rows:,} rows, {len(all_features)} features, {file_size_mb:.1f} MB")
+        print(f"     Processed {len(processed_sites)}/{len(cluster_sites)} sites")
+        if len(processed_sites) < len(cluster_sites):
+            skipped = [site for site in cluster_sites if site not in processed_sites]
+            print(f"     Skipped sites: {', '.join(skipped[:3])}{'...' if len(skipped) > 3 else ''}")
         
         return libsvm_file, metadata
 
     def _process_site_chunked_to_libsvm(self, parquet_file, cluster_id, output_file, all_features):
         """Process a large site in chunks to avoid memory issues"""
         total_processed = 0
+        site_name = os.path.basename(parquet_file).replace('_comprehensive.parquet', '')
         
         # Read parquet file in chunks using pyarrow for better memory control
         import pyarrow.parquet as pq
         
         parquet_table = pq.read_table(parquet_file)
         total_rows = len(parquet_table)
+        
+        # Collect all chunks for this site to apply balanced sampling at site level
+        site_chunks = []
         
         # Process in chunks
         for start_idx in range(0, total_rows, self.chunk_size):
@@ -355,75 +498,96 @@ class ClusterDataPreprocessor:
             chunk_table = parquet_table.slice(start_idx, end_idx - start_idx)
             df_chunk = chunk_table.to_pandas()
             
-            # Filter for this cluster and valid target
-            df_chunk = df_chunk[df_chunk[self.cluster_col] == cluster_id]
+            # Filter for valid target (no cluster filtering needed - we assign cluster on-the-fly)
             df_chunk = df_chunk.dropna(subset=[self.target_col])
             
             if len(df_chunk) == 0:
                 del df_chunk
                 continue
             
-            # Prepare features
-            exclude_cols = ['TIMESTAMP', 'solar_TIMESTAMP', 'site', 'plant_id', 'Unnamed: 0', self.cluster_col]
-            feature_cols = [col for col in df_chunk.columns 
-                           if col not in exclude_cols + [self.target_col]
-                           and not col.endswith('_flags')
-                           and not col.endswith('_md')]
-            
-            if not all_features:
-                all_features.extend(feature_cols)
-            
-            # Extract and clean features
-            X_df = df_chunk[feature_cols].copy()
-            
-            # Convert boolean columns to numeric (True=1, False=0)
-            for col in X_df.columns:
-                if X_df[col].dtype == bool:
-                    X_df[col] = X_df[col].astype(int)
-                elif X_df[col].dtype == 'object':
-                    # Try to convert object columns to numeric, fill non-numeric with 0
-                    X_df[col] = pd.to_numeric(X_df[col], errors='coerce').fillna(0)
-            
-            # Fill remaining NaN values with 0
-            X = X_df.fillna(0).values
-            y = df_chunk[self.target_col].values
-            
-            # Convert to libsvm format and append to file
-            for i in range(len(X)):
-                line_parts = [str(y[i])]
-                for j, value in enumerate(X[i]):
-                    if value != 0:  # Sparse format
-                        line_parts.append(f"{j}:{value}")
-                output_file.write(' '.join(line_parts) + '\n')
-            
-            chunk_processed = len(X)
-            total_processed += chunk_processed
+            # Add site column for balanced sampling
+            df_chunk['site'] = site_name
+            site_chunks.append(df_chunk)
             
             # Clean up chunk
-            del df_chunk, X_df, X, y
+            del df_chunk
             gc.collect()
-            
-            if start_idx % (self.chunk_size * 3) == 0:  # Log every 3 chunks for high-memory systems
-                print(f"        📊 Processed {total_processed:,}/{total_rows:,} rows...")
         
-        # Clean up parquet table
-        del parquet_table
+        if not site_chunks:
+            del parquet_table
+            gc.collect()
+            return 0
+        
+        # Combine all chunks for this site
+        df_site = pd.concat(site_chunks, ignore_index=True)
+        del site_chunks
+        gc.collect()
+        
+        # Apply balanced sampling if enabled
+        if self.apply_sampling:
+            df_site = self.apply_balanced_sampling_to_cluster_data(df_site, cluster_id)
+        
+        # Prepare features
+        exclude_cols = ['TIMESTAMP', 'solar_TIMESTAMP', 'site', 'plant_id', 'Unnamed: 0', self.cluster_col]
+        feature_cols = [col for col in df_site.columns 
+                       if col not in exclude_cols + [self.target_col]
+                       and not col.endswith('_flags')
+                       and not col.endswith('_md')]
+        
+        if not all_features:
+            all_features.extend(feature_cols)
+        
+        # Extract and clean features
+        X_df = df_site[feature_cols].copy()
+        
+        # Convert boolean columns to numeric (True=1, False=0)
+        for col in X_df.columns:
+            if X_df[col].dtype == bool:
+                X_df[col] = X_df[col].astype(int)
+            elif X_df[col].dtype == 'object':
+                # Try to convert object columns to numeric, fill non-numeric with 0
+                X_df[col] = pd.to_numeric(X_df[col], errors='coerce').fillna(0)
+        
+        # Fill remaining NaN values with 0
+        X = X_df.fillna(0).values
+        y = df_site[self.target_col].values
+        
+        # Convert to libsvm format and append to file
+        for i in range(len(X)):
+            line_parts = [str(y[i])]
+            for j, value in enumerate(X[i]):
+                if value != 0:  # Sparse format
+                    line_parts.append(f"{j}:{value}")
+            output_file.write(' '.join(line_parts) + '\n')
+        
+        total_processed = len(X)
+        
+        # Clean up
+        del df_site, X_df, X, y, parquet_table
         gc.collect()
         
         return total_processed
 
     def _process_site_in_memory_to_libsvm(self, parquet_file, cluster_id, output_file, all_features):
         """Process a small site in memory"""
+        site_name = os.path.basename(parquet_file).replace('_comprehensive.parquet', '')
+        
         # Load site data
         df_site = pd.read_parquet(parquet_file)
         
-        # Filter for this cluster and valid target
-        df_site = df_site[df_site[self.cluster_col] == cluster_id]
+        # Filter for valid target (no cluster filtering needed - we assign cluster on-the-fly)
         df_site = df_site.dropna(subset=[self.target_col])
         
         if len(df_site) == 0:
             del df_site
             return 0
+        
+        # Add site column for balanced sampling
+        df_site['site'] = site_name
+        
+        # Apply balanced sampling if enabled
+        if self.apply_sampling:
+            df_site = self.apply_balanced_sampling_to_cluster_data(df_site, cluster_id)
         
         # Prepare features
         exclude_cols = ['TIMESTAMP', 'solar_TIMESTAMP', 'site', 'plant_id', 'Unnamed: 0', self.cluster_col]
@@ -527,6 +691,99 @@ class ClusterDataPreprocessor:
         
         return preprocessed_files
 
+    def apply_balanced_sampling_to_cluster_data(self, df, cluster_id):
+        """
+        Apply median-based balanced sampling within a cluster
+        
+        This addresses site imbalance by:
+        1. Finding median sample size within the cluster
+        2. Setting max samples per site to median value
+        3. Setting min samples per site to fraction of median
+        4. Randomly sampling to achieve balance
+        
+        Args:
+            df: DataFrame with cluster data and site identifiers
+            cluster_id: The cluster ID being processed
+            
+        Returns:
+            DataFrame with balanced sampling applied
+        """
+        if not self.apply_sampling:
+            return df
+        
+        if 'site' not in df.columns:
+            print(f"      ⚠️  No site column found - skipping sampling for cluster {cluster_id}")
+            return df
+        
+        original_size = len(df)
+        print(f"      🎯 Applying balanced sampling to cluster {cluster_id}...")
+        
+        # Check if this is actually multi-site data or single site
+        unique_sites = df['site'].unique()
+        if len(unique_sites) == 1:
+            print(f"      ℹ️  Single site ({unique_sites[0]}) - no site balancing needed")
+            return df
+        
+        # Calculate site sample sizes within this cluster
+        site_sizes = df.groupby('site').size().sort_values(ascending=False)
+        
+        if len(site_sizes) <= 1:
+            print(f"      ⚠️  Only {len(site_sizes)} site(s) in cluster {cluster_id} - no sampling needed")
+            return df
+        
+        # Calculate median sample size for this cluster
+        median_size = int(site_sizes.median())
+        min_size = max(int(median_size * self.min_fraction), 1)  # At least 1 sample per site
+        
+        print(f"      📊 Sites: {len(site_sizes)}, Samples: {len(df):,}")
+        print(f"      📈 Min size: {site_sizes.min()}, Max size: {site_sizes.max()}, Median: {median_size}")
+        print(f"      🎯 Target range: {min_size} - {median_size} samples per site")
+        
+        # Check if sampling is actually needed
+        sites_need_downsampling = (site_sizes > median_size).sum()
+        if sites_need_downsampling == 0:
+            print(f"      ✅ No sites exceed median size - no sampling needed")
+            return df
+        
+        # Apply sampling to each site in this cluster
+        balanced_sites = []
+        sites_modified = 0
+        
+        np.random.seed(self.sampling_seed)  # Set seed for reproducible sampling
+        
+        for site_name, site_group in df.groupby('site'):
+            site_size = len(site_group)
+            
+            if site_size > median_size:
+                # Downsample large sites
+                sampled_site = site_group.sample(n=median_size, random_state=self.sampling_seed)
+                sites_modified += 1
+                print(f"        ↓ {site_name}: {site_size:,} → {median_size:,} (downsampled)")
+            
+            elif site_size < min_size:
+                # Keep small sites as-is (could implement upsampling with SMOTE if needed)
+                sampled_site = site_group.copy()
+                print(f"        ↑ {site_name}: {site_size:,} → {site_size:,} (kept small)")
+            
+            else:
+                # Site is within target range
+                sampled_site = site_group.copy()
+                print(f"        = {site_name}: {site_size:,} → {site_size:,} (no change)")
+            
+            balanced_sites.append(sampled_site)
+        
+        # Combine all sites
+        balanced_df = pd.concat(balanced_sites, ignore_index=True)
+        final_size = len(balanced_df)
+        
+        # Report statistics
+        final_site_sizes = balanced_df.groupby('site').size()
+        print(f"      ✅ Sampling complete: {original_size:,} → {final_size:,} samples ({final_size/original_size*100:.1f}% retained)")
+        print(f"         Modified {sites_modified} sites (downsampled)")
+        print(f"         New size range: {final_site_sizes.min()} - {final_site_sizes.max()}")
+        
+        return balanced_df
+
 def main():
     """Main function for cluster data preprocessing"""
     parser = argparse.ArgumentParser(description="Cluster Data Preprocessing for SAPFLUXNET")
@@ -540,6 +797,14 @@ def main():
                         help="Directory containing parquet files")
     parser.add_argument('--results-dir', default='./results/cluster_models',
                         help="Directory to save results")
+    parser.add_argument('--cluster-csv', type=str,
+                        help="Path to CSV file with cluster assignments (site,cluster columns) or 'auto' for auto-find")
+    parser.add_argument('--apply-sampling', action='store_true',
+                        help="Apply balanced sampling to address site imbalance within clusters")
+    parser.add_argument('--min-fraction', type=float, default=0.3,
+                        help="Minimum fraction of median samples per site (default: 0.3)")
+    parser.add_argument('--sampling-seed', type=int, default=42,
+                        help="Random seed for reproducible sampling (default: 42)")
     
     args = parser.parse_args()
     
@@ -548,11 +813,37 @@ def main():
     print(f"Action: {args.action.upper()}")
     print(f"Started at: {datetime.now()}")
     
+    # Show configuration
+    cluster_csv_path = args.cluster_csv
+    if args.cluster_csv == 'auto':
+        try:
+            cluster_csv_path = find_latest_cluster_csv()
+        except FileNotFoundError as e:
+            print(f"❌ {e}")
+            print("💡 Try specifying the cluster CSV path manually with --cluster-csv")
+            return
+    
+    if cluster_csv_path:
+        print(f"📊 Cluster assignments: {cluster_csv_path}")
+    else:
+        print("📊 Cluster assignments: Reading from parquet files (legacy mode)")
+    
+    if args.apply_sampling:
+        print(f"⚖️  Balanced sampling: ENABLED")
+        print(f"   Min fraction: {args.min_fraction}")
+        print(f"   Sampling seed: {args.sampling_seed}")
+    else:
+        print(f"⚖️  Balanced sampling: DISABLED")
+    
     try:
         # Initialize preprocessor
         preprocessor = ClusterDataPreprocessor(
             parquet_dir=args.parquet_dir,
-            results_dir=args.results_dir
+            results_dir=args.results_dir,
+            apply_sampling=args.apply_sampling,
+            min_fraction=args.min_fraction,
+            sampling_seed=args.sampling_seed,
+            cluster_csv_path=cluster_csv_path
         )
         
         if args.action == 'clean':
@@ -593,6 +884,18 @@ def main():
                 print(f"\n🎉 Preprocessing completed successfully!")
                 print(f"📁 Preprocessed files saved to: {preprocessor.preprocessed_dir}")
                 print(f"💡 Run the training script next: python train_cluster_models.py --mode train")
+                
+                # Show final statistics
+                total_size_mb = sum(info['size_mb'] for info in preprocessed_files.values())
+                total_rows = sum(info['metadata']['total_rows'] for info in preprocessed_files.values())
+                print(f"\n📊 Final Statistics:")
+                print(f"   Clusters processed: {len(preprocessed_files)}")
+                print(f"   Total rows: {total_rows:,}")
+                print(f"   Total size: {total_size_mb:.1f} MB ({total_size_mb/1024:.1f} GB)")
+                
+                if args.apply_sampling:
+                    print(f"   Balanced sampling: Applied with min_fraction={args.min_fraction}")
+                
             else:
                 print(f"\n❌ Preprocessing failed - no files were created")
                 

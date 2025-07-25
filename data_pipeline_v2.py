@@ -1341,6 +1341,12 @@ class MemoryEfficientSAPFLUXNETProcessor:
                 labels=['Temperate_South', 'Tropical', 'Temperate_North']
             )
         
+        # Köppen-Geiger classification (ecological encoding instead of raw location proxies)
+        if all(col in features.columns for col in ['latitude', 'mean_annual_temp', 'mean_annual_precip']):
+            print("    🌍 Adding Köppen-Geiger climate classification...")
+            features['koppen_geiger_code'] = features.apply(self._classify_koppen_geiger, axis=1)
+            print(f"    ✅ Köppen-Geiger classification completed")
+        
         # Aridity index (simplified)
         if 'mean_annual_temp' in features.columns and 'mean_annual_precip' in features.columns:
             features['aridity_index'] = features['mean_annual_precip'] / (features['mean_annual_temp'] + 10)
@@ -1458,6 +1464,13 @@ class MemoryEfficientSAPFLUXNETProcessor:
         
         features = df.copy()
         
+        # Initialize tracking lists at the beginning
+        encoded_features = []
+        skipped_identity_features = []
+        skipped_pure_geographic_features = []
+        allowed_climate_geographic_features = []
+        dropped_features = []
+        
         # 🚨 CRITICAL: Identity features blacklist - NEVER encode these as predictive features
         IDENTITY_BLACKLIST = {
             'site_code', 'site_name', 'site_id', 'site_identifier',
@@ -1480,7 +1493,7 @@ class MemoryEfficientSAPFLUXNETProcessor:
         APPROVED_ECOLOGICAL_FEATURES = {
             'biome', 'igbp_class', 'soil_texture', 'aspect', 'terrain', 
             'growth_condition', 'leaf_habit', 'pl_social', 'climate_zone',
-            'tree_size_class', 'tree_age_class'
+            'tree_size_class', 'tree_age_class', 'koppen_geiger_code'
         }
         
         # 🌿 Species functional group mapping (ecological traits instead of specific species)
@@ -1606,12 +1619,23 @@ class MemoryEfficientSAPFLUXNETProcessor:
             group_counts = features['species_functional_group'].value_counts()
             print(f"    📊 Functional groups: {dict(group_counts)}")
         
+        # Explicitly encode Köppen-Geiger climate codes
+        if 'koppen_geiger_code' in features.columns:
+            print(f"    🌍 Encoding Köppen-Geiger climate codes...")
+            # Use factorize for robust integer encoding of string categories
+            features['koppen_geiger_code_encoded'], unique_koppen_codes = pd.factorize(features['koppen_geiger_code'])
+            features = features.drop('koppen_geiger_code', axis=1)
+            print(f"    ✅ Encoded Köppen-Geiger: {len(unique_koppen_codes)} unique codes")
+            print(f"      Unique codes: {list(unique_koppen_codes)}")
+            encoded_features.append('koppen_geiger_code')
+        
         # Encode approved ecological categorical variables
         for col, mapping in encodings.items():
             if col in features.columns:
                 features[f'{col}_code'] = features[col].map(mapping)
                 # Drop original text column
                 features = features.drop(col, axis=1)
+                encoded_features.append(col)
                 print(f"    ✅ Encoded ecological feature: {col} → {col}_code")
         
         # REMOVED: Geographic proxy features from automatic encoding
@@ -1630,13 +1654,6 @@ class MemoryEfficientSAPFLUXNETProcessor:
                        'pl_age', 'pl_dbh', 'pl_height', 'pl_leaf_area', 'pl_bark_thick',
                        'pl_sapw_area', 'pl_sapw_depth', 'measurement_timestep', 'swc_shallow_depth',
                        'timezone_offset', 'measurement_frequency']
-        
-        # Track what we're doing for logging
-        encoded_features = []
-        skipped_identity_features = []
-        skipped_pure_geographic_features = []
-        allowed_climate_geographic_features = []
-        dropped_features = []
         
         # Process each object column with enhanced safety checks
         for col in text_columns:
@@ -1895,6 +1912,14 @@ class MemoryEfficientSAPFLUXNETProcessor:
         except Exception as e:
             print(f"    ❌ Error creating seasonality features: {e}")
             return df
+
+    # NOTE: apply_balanced_sampling method removed - cannot work during data processing
+    # Balanced sampling must happen AFTER clustering (which uses the processed data)
+    # This is a chicken-and-egg problem: clusters are created FROM processed data,
+    # so cluster information cannot be used DURING data processing.
+    # 
+    # Solution: Implement balanced sampling in the clustering or training stage,
+    # not in the data processing pipeline.
 
     
     def process_all_sites(self):
@@ -2190,6 +2215,9 @@ class MemoryEfficientSAPFLUXNETProcessor:
         # Stage 7: Seasonality features (for ecosystem clustering) - after site is added
         merged = self.create_seasonality_features(merged)
         self.check_memory_usage()
+        
+        # NOTE: Balanced sampling happens AFTER clustering, not during initial processing
+        # Clusters don't exist yet during data pipeline - they're created from processed data
         
         # Ensure consistent schema across all sites
         merged = self.ensure_consistent_schema(merged)
@@ -2535,14 +2563,14 @@ class MemoryEfficientSAPFLUXNETProcessor:
             'pl_name', 'swc_deep', 'netrad', 'seasonal_leaf_area', 'seasonal_leaf_area_code',
             'stand_name_code', 'stand_remarks_code', 'site_remarks_code', 'env_remarks_code',
             'moisture_availability', 'swc_shallow_depth',
-                    # Redundant features (can be computed during training)
-        'wind_stress', 'stand_soil_texture_code',
-        'ppfd_efficiency', 'stomatal_conductance_proxy', 'stomatal_control_index',
-        'precip_intensity', 'recent_precip_1h', 'recent_precip_6h', 
-        'recent_precip_24h', 'aspect_code', 'species_basal_area_perc', 'site_paper_code',
-        'daylight_time'
-        # Note: soil_texture_code and terrain_code are kept - these are legitimate ecological features
-            # Note: Removed interaction features from problematic list to preserve our new features
+            # Redundant features (can be computed during training)
+            'stand_soil_texture_code',
+            'precip_intensity', 'recent_precip_1h', 'recent_precip_6h', 
+            'recent_precip_24h', 'aspect_code', 'species_basal_area_perc', 'site_paper_code',
+            'daylight_time'
+            # Note: wind_stress, ppfd_efficiency, stomatal_conductance_proxy, stomatal_control_index
+            # REMOVED from problematic list - these are scientifically important features (Jan 2025)
+            # Note: soil_texture_code and terrain_code are kept - these are legitimate ecological features
         ]
         
         # Ensure inconsistent columns are properly handled for XGBoost
@@ -2610,6 +2638,154 @@ class MemoryEfficientSAPFLUXNETProcessor:
                 print(f"    🔧 Ensured XGBoost compatibility for: {col}")
         
         return df
+    
+    def _classify_koppen_geiger(self, row):
+        """
+        Classify Köppen-Geiger climate zone based on latitude, mean annual temperature, and precipitation.
+        
+        This implementation provides ecological encoding that captures climate patterns
+        without overfitting to specific site identities, addressing the site imbalance
+        issue in spatial generalization.
+        
+        Parameters:
+        -----------
+        row : pandas.Series
+            Row containing 'latitude', 'mean_annual_temp', 'mean_annual_precip'
+            
+        Returns:
+        --------
+        str : Köppen-Geiger climate code (e.g., 'Af', 'BWk', 'Cfb', 'Dfb')
+        """
+        try:
+            lat = row['latitude']
+            temp = row['mean_annual_temp']  # Annual mean temperature in °C
+            precip = row['mean_annual_precip']  # Annual precipitation in mm
+            
+            # Handle missing values
+            if pd.isna(lat) or pd.isna(temp) or pd.isna(precip):
+                return 'Unknown'
+            
+            # Determine hemisphere for seasonal logic
+            is_northern = lat >= 0
+            
+            # For simplification, estimate seasonal patterns based on latitude and hemisphere
+            # In reality, this would use monthly data, but we approximate from annual values
+            
+            # Estimate seasonal temperature variation (larger variation at higher latitudes)
+            temp_seasonal_range = min(30, abs(lat) * 0.8)  # Conservative estimate
+            
+            # Estimate seasonal precipitation patterns
+            # We'll make simplified assumptions about precipitation seasonality
+            summer_precip_ratio = 0.4 + 0.2 * (1 - abs(lat) / 90)  # More summer rain near equator
+            winter_precip_ratio = 1 - summer_precip_ratio
+            
+            summer_precip = precip * summer_precip_ratio
+            winter_precip = precip * winter_precip_ratio
+            
+            # Calculate coldest and warmest month temperatures (approximate)
+            temp_coldest = temp - temp_seasonal_range / 2
+            temp_warmest = temp + temp_seasonal_range / 2
+            
+            # Köppen-Geiger Classification Logic
+            
+            # A: Tropical climates (all months > 18°C)
+            if temp_coldest > 18:
+                if precip >= 2500:
+                    return 'Af'  # Tropical rainforest
+                elif precip >= 1000:
+                    # Check for dry season (simplified)
+                    if min(summer_precip, winter_precip) < 60:
+                        if summer_precip > winter_precip:
+                            return 'Aw'  # Tropical savanna, winter dry
+                        else:
+                            return 'As'  # Tropical savanna, summer dry
+                    else:
+                        return 'Am'  # Tropical monsoon
+                else:
+                    return 'Aw'  # Tropical savanna
+            
+            # B: Arid climates
+            # Calculate aridity threshold
+            if temp >= 0:
+                aridity_threshold = 20 * temp + 280  # For predominantly summer rain
+            else:
+                aridity_threshold = 20 * temp + 280
+            
+            # Adjust for precipitation seasonality (simplified)
+            if winter_precip > summer_precip * 2:  # Winter rain dominant
+                aridity_threshold = 20 * temp + 140
+            elif summer_precip > winter_precip * 2:  # Summer rain dominant  
+                aridity_threshold = 20 * temp + 420
+            
+            if precip < aridity_threshold:
+                if precip < aridity_threshold / 2:
+                    # Desert climate (BW)
+                    if temp >= 18:
+                        return 'BWh'  # Hot desert
+                    else:
+                        return 'BWk'  # Cold desert
+                else:
+                    # Steppe climate (BS)
+                    if temp >= 18:
+                        return 'BSh'  # Hot steppe
+                    else:
+                        return 'BSk'  # Cold steppe
+            
+            # C: Temperate climates (coldest month -3°C to 18°C, warmest month > 10°C)
+            if -3 <= temp_coldest <= 18 and temp_warmest > 10:
+                # Determine precipitation pattern
+                if winter_precip > summer_precip * 3:
+                    precip_code = 's'  # Summer dry
+                elif summer_precip > winter_precip * 10:
+                    precip_code = 'w'  # Winter dry
+                else:
+                    precip_code = 'f'  # Fully humid
+                
+                # Determine temperature pattern
+                if temp_warmest >= 22:
+                    temp_code = 'a'  # Hot summer
+                elif temp_warmest >= 10 and (temp_warmest - temp_coldest) >= 10:
+                    temp_code = 'b'  # Warm summer
+                else:
+                    temp_code = 'c'  # Cool summer
+                
+                return f'C{precip_code}{temp_code}'
+            
+            # D: Continental climates (coldest month < -3°C, warmest month > 10°C)
+            if temp_coldest < -3 and temp_warmest > 10:
+                # Determine precipitation pattern
+                if winter_precip > summer_precip * 3:
+                    precip_code = 's'  # Summer dry
+                elif summer_precip > winter_precip * 10:
+                    precip_code = 'w'  # Winter dry
+                else:
+                    precip_code = 'f'  # Fully humid
+                
+                # Determine temperature pattern
+                if temp_warmest >= 22:
+                    temp_code = 'a'  # Hot summer
+                elif temp_warmest >= 10 and (temp_warmest - temp_coldest) >= 10:
+                    temp_code = 'b'  # Warm summer
+                elif temp_coldest < -38:
+                    temp_code = 'd'  # Extremely continental
+                else:
+                    temp_code = 'c'  # Cool summer
+                
+                return f'D{precip_code}{temp_code}'
+            
+            # E: Polar climates (warmest month < 10°C)
+            if temp_warmest < 10:
+                if temp_warmest > 0:
+                    return 'ET'  # Tundra
+                else:
+                    return 'EF'  # Ice cap
+            
+            # Default fallback (should rarely occur)
+            return 'Unknown'
+            
+        except Exception as e:
+            # Handle any calculation errors gracefully
+            return 'Unknown'
 
 def main():
     """Main execution function"""

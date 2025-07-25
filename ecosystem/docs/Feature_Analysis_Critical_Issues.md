@@ -3,10 +3,31 @@
 **Date**: January 2025  
 **Analysis**: Post-clustering model evaluation  
 **Critical Finding**: Cluster 4 model failure due to site identity memorization  
+**Status**: **✅ RESOLVED** - Overfitting protection implemented in pipeline
 
 ---
 
-## 🚨 Executive Summary
+## ✅ RESOLUTION STATUS (UPDATED)
+
+**ISSUES FIXED**: All critical overfitting problems have been resolved in the updated pipeline (`data_pipeline_v2.py`):
+
+- **🚨 `site_code_code`** → **BLOCKED** (added to IDENTITY_BLACKLIST)
+- **⚠️ `timezone_code`** → **BLOCKED** (added to PURE_GEOGRAPHIC_IDENTIFIERS)
+- **⚠️ `country_code`** → **BLOCKED** (added to PURE_GEOGRAPHIC_IDENTIFIERS)
+- **🔄 `species_name`** → **CONVERTED** to functional groups
+
+**NEW PROTECTIONS**:
+
+- IDENTITY_BLACKLIST prevents site memorization
+- PURE_GEOGRAPHIC_IDENTIFIERS blocks regional overfitting
+- Species functional groups preserve ecological information
+- Key physiological interactions RE-ENABLED
+
+**Expected Result**: Robust spatial generalization across all ecosystem clusters.
+
+---
+
+## 🚨 Executive Summary (HISTORICAL)
 
 **CRITICAL ISSUE IDENTIFIED**: Cluster 4's poor spatial generalization (R² = -0.4085 ± 4.3967) is caused by **site identity memorization** rather than ecological learning. The model learned "if site=X, predict Y" instead of transferable ecological relationships.
 

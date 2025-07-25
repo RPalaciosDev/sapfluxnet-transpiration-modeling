@@ -22,7 +22,7 @@ The pipeline creates features in six stages:
 1. **Temporal Features**: Basic time features and solar-adjusted cyclical encoding
 2. **Lagged Features**: Environmental variables with 1-24 hour lags
 3. **Rolling Features**: Moving averages and standard deviations (3-72 hour windows)
-4. **Interaction Features**: Currently disabled (all commented out)
+4. **Interaction Features**: **RE-ENABLED** - Key physiological interactions restored
 5. **Domain-Specific Features**: Temperature deviation and tree-specific features
 6. **Metadata Features**: Site, stand, species, and plant characteristics
 
@@ -33,6 +33,7 @@ The pipeline creates features in six stages:
 **Features Created:** `hour`, `day_of_year`, `month`, `year`, `day_of_week`
 
 **Formulas:**
+
 - `hour = timestamp.hour` (0-23)
 - `day_of_year = timestamp.dayofyear` (1-366)
 - `month = timestamp.month` (1-12)
@@ -42,6 +43,7 @@ The pipeline creates features in six stages:
 **Scientific Basis:** Temporal patterns in transpiration follow diurnal and seasonal cycles driven by solar radiation, temperature, and plant physiology. These features capture the fundamental temporal structure of plant water use.
 
 **References:**
+
 - Granier, A. (1987). Evaluation of transpiration in a Douglas-fir stand by means of sap flow measurements. *Tree Physiology*, 3(4), 309-320.
 - Oren, R., et al. (1999). Survey of sap flow in forest trees using heat pulse velocity. *Agricultural and Forest Meteorology*, 95(4), 225-244.
 - Wullschleger, S. D., et al. (2001). Diurnal and seasonal variation in xylem sap flow of Norway spruce (Picea abies L.) growing in Sweden. *Journal of Experimental Botany*, 52(357), 921-929.
@@ -51,6 +53,7 @@ The pipeline creates features in six stages:
 **Features Created:** `solar_hour`, `solar_day_of_year`, `solar_hour_sin`, `solar_hour_cos`, `solar_day_sin`, `solar_day_cos`
 
 **Formulas:**
+
 ```
 # Extract solar time components
 solar_hour = solar_TIMESTAMP.hour
@@ -70,6 +73,7 @@ solar_day_cos = cos(solar_day_rad)
 **Scientific Basis:** Uses existing `solar_TIMESTAMP` data for more accurate time features that account for geographic position and seasonal variations in day length. Solar-adjusted features provide better representation of actual solar forcing than standard time features.
 
 **References:**
+
 - Cerqueira, V., et al. (2020). A comparative study of time series forecasting methods for short term electric energy consumption prediction in smart buildings. *Energy Reports*, 6, 173-182.
 - Hyndman, R. J., & Athanasopoulos, G. (2018). *Forecasting: principles and practice*. OTexts.
 - Campbell, G. S., & Norman, J. M. (1998). *An introduction to environmental biophysics*. Springer.
@@ -79,6 +83,7 @@ solar_day_cos = cos(solar_day_rad)
 **Features Created:** `is_daylight`, `is_peak_sunlight`, `is_weekend`
 
 **Formulas:**
+
 ```
 is_daylight = (hour >= 6) AND (hour <= 18)
 is_peak_sunlight = (hour >= 10) AND (hour <= 16)
@@ -88,6 +93,7 @@ is_weekend = (day_of_week >= 5)
 **Scientific Basis:** Simple boolean features capture key diurnal patterns in transpiration without redundant calculations. These features represent critical periods for plant water use and stomatal activity.
 
 **References:**
+
 - Oren, R., et al. (1999). Survey of sap flow in forest trees using heat pulse velocity. *Agricultural and Forest Meteorology*, 95(4), 225-244.
 - Granier, A., et al. (1996). Transpiration of trees and forest stands: short and long-term monitoring using sapflow methods. *Global Change Biology*, 2(3), 265-274.
 
@@ -98,6 +104,7 @@ is_weekend = (day_of_week >= 5)
 **Features Created:** `{variable}_lag_{N}h` where variable ∈ {ta, rh, vpd, sw_in, ws, precip, swc_shallow, ppfd_in} and N ∈ {1, 2, 3, 6, 12, 24}
 
 **Formula:**
+
 ```
 variable_lag_Nh = variable.shift(N)
 ```
@@ -107,6 +114,7 @@ variable_lag_Nh = variable.shift(N)
 **Implementation:** The pipeline creates adaptive lag features based on available memory and file size. Full 24-hour lags are created when memory allows, with reduced lag sets for memory-constrained situations.
 
 **References:**
+
 - Jarvis, P. G. (1976). The interpretation of the variations in leaf water potential and stomatal conductance found in canopies in the field. *Philosophical Transactions of the Royal Society B*, 273(927), 593-610.
 - Monteith, J. L. (1965). Evaporation and environment. *Symposia of the Society for Experimental Biology*, 19, 205-234.
 - Whitehead, D., et al. (1984). Stomatal conductance, transpiration and resistance to water uptake in a Pinus sylvestris spacing experiment. *Canadian Journal of Forest Research*, 14(5), 692-700.
@@ -118,6 +126,7 @@ variable_lag_Nh = variable.shift(N)
 **Features Created:** `{variable}_mean_{N}h`, `{variable}_std_{N}h` where variable ∈ {ta, vpd, sw_in, rh} and N ∈ {3, 6, 12, 24, 48, 72}
 
 **Formulas:**
+
 ```
 variable_mean_Nh = variable.rolling(window=N, min_periods=1).mean()
 variable_std_Nh = variable.rolling(window=N, min_periods=1).std()
@@ -128,15 +137,53 @@ variable_std_Nh = variable.rolling(window=N, min_periods=1).std()
 **Implementation:** The pipeline creates adaptive rolling features based on available memory. Full rolling windows (3-72h) are created when memory allows, with reduced sets for memory-constrained situations.
 
 **References:**
+
 - Oren, R., et al. (1999). Survey of sap flow in forest trees using heat pulse velocity. *Agricultural and Forest Meteorology*, 95(4), 225-244.
 - Wullschleger, S. D., et al. (2001). Diurnal and seasonal variation in xylem sap flow of Norway spruce (Picea abies L.) growing in Sweden. *Journal of Experimental Botany*, 52(357), 921-929.
 - Phillips, N., et al. (2002). Canopy and hydraulic conductance in young, mature and old Douglas-fir trees. *Tree Physiology*, 22(2-3), 205-211.
 
 ## 4. Interaction Features
 
-**Status:** Currently disabled in the pipeline. All interaction features are commented out and not created.
+**Status:** **RE-ENABLED** - Key scientifically important interaction features have been restored to improve model performance while maintaining overfitting protection through selective feature inclusion.
 
-**Rationale:** Interaction features can be computed during training phase to reduce preprocessing complexity and memory usage. The pipeline focuses on core environmental and physiological features.
+### 4.1 Light and Energy Interactions
+
+**Features Created:** `ppfd_efficiency`, `light_efficiency`
+
+**Formulas:**
+
+```
+ppfd_efficiency = ppfd_in / (sw_in + 1e-6)
+light_efficiency = ppfd_in / (ext_rad + 1e-6)
+```
+
+**Scientific Basis:** Light use efficiency indicators that capture how effectively plants utilize available light for photosynthesis and transpiration.
+
+### 4.2 Physiological Interactions
+
+**Features Created:** `stomatal_conductance_proxy`, `stomatal_control_index`
+
+**Formulas:**
+
+```
+stomatal_conductance_proxy = ppfd_in / (vpd + 1e-6)
+stomatal_control_index = vpd × ppfd_in × ext_rad
+```
+
+**Scientific Basis:** Key physiological controls on transpiration through stomatal behavior. The stomatal control index captures the critical three-way interaction between atmospheric demand (VPD), light availability (PPFD), and seasonal timing (ext_rad).
+
+### 4.3 Wind Effects
+
+**Features Created:** `wind_stress`, `wind_vpd_interaction`
+
+**Formulas:**
+
+```
+wind_stress = ws / (ws.max() + 1e-6)
+wind_vpd_interaction = ws × vpd
+```
+
+**Scientific Basis:** Wind enhances transpiration through boundary layer effects and amplifies VPD impacts on leaf-to-air vapor transport.
 
 ## 5. Domain-Specific Features
 
@@ -145,6 +192,7 @@ variable_std_Nh = variable.rolling(window=N, min_periods=1).std()
 **Features Created:** `temp_deviation`
 
 **Formula:**
+
 ```
 temp_deviation = |ta - 25|
 ```
@@ -152,6 +200,7 @@ temp_deviation = |ta - 25|
 **Scientific Basis:** Temperature deviation from optimal photosynthesis temperature (25°C) affects stomatal conductance and transpiration rates. This feature captures the non-linear relationship between temperature and plant physiological processes.
 
 **References:**
+
 - Farquhar, G. D., et al. (1980). A biochemical model of photosynthetic CO2 assimilation in leaves of C3 species. *Planta*, 149(1), 78-90.
 - Schulze, E. D., et al. (1972). A mathematical model for simulating water relations in photosynthesis. *Oecologia*, 10(2), 121-130.
 
@@ -160,6 +209,7 @@ temp_deviation = |ta - 25|
 **Features Created:** `tree_size_factor`, `sapwood_leaf_ratio`, `transpiration_capacity`
 
 **Formulas:**
+
 ```
 tree_size_factor = log(pl_dbh + 1)
 sapwood_leaf_ratio = pl_sapw_area / (pl_leaf_area + 1e-6)
@@ -169,6 +219,7 @@ transpiration_capacity = pl_sapw_area × (ppfd_in / (vpd + 1e-6))
 **Scientific Basis:** Tree size and hydraulic architecture determine transpiration capacity. Larger trees have greater water transport capacity, while sapwood-to-leaf area ratios indicate hydraulic efficiency. Transpiration capacity combines hydraulic capacity with environmental driving forces.
 
 **References:**
+
 - McDowell, N., et al. (2002). The relationship between tree height and leaf area: sapwood area ratio. *Oecologia*, 132(1), 12-20.
 - Phillips, N., et al. (2002). Canopy and hydraulic conductance in young, mature and old Douglas-fir trees. *Tree Physiology*, 22(2-3), 205-211.
 - Tyree, M. T., & Ewers, F. W. (1991). The hydraulic architecture of trees and other woody plants. *New Phytologist*, 119(3), 345-370.
@@ -177,11 +228,14 @@ transpiration_capacity = pl_sapw_area × (ppfd_in / (vpd + 1e-6))
 
 ### 6.1 Site-Level Features
 
-**Features Created:** `latitude`, `longitude`, `elevation`, `mean_annual_temp`, `mean_annual_precip`, `biome`, `igbp_class`, `country`, `site_code`, `site_name`, `is_inside_country`
+**Features Created:** `latitude`, `longitude`, `elevation`, `mean_annual_temp`, `mean_annual_precip`, `biome`, `igbp_class`
+
+**Note:** `country` and `site_code` are now **BLOCKED** due to overfitting protection measures implemented in January 2025.
 
 **Scientific Basis:** Geographic and climatic characteristics influence species composition, growth patterns, and transpiration rates. These features provide environmental context for transpiration modeling.
 
 **References:**
+
 - Churkina, G., et al. (2005). Spatial analysis of growing season length control over net ecosystem exchange. *Global Change Biology*, 11(10), 1777-1787.
 - Peel, M. C., et al. (2007). Updated world map of the Köppen-Geiger climate classification. *Hydrology and Earth System Sciences*, 11(5), 1633-1644.
 
@@ -192,6 +246,7 @@ transpiration_capacity = pl_sapw_area × (ppfd_in / (vpd + 1e-6))
 **Scientific Basis:** Stand structure and soil properties affect water availability, root distribution, and transpiration patterns. These features capture the forest ecosystem context that influences water use.
 
 **References:**
+
 - Waring, R. H., & Running, S. W. (2007). *Forest ecosystems: analysis at multiple scales*. Academic Press.
 - Bréda, N., et al. (2006). Temperate forest trees and stands under severe drought: a review of ecophysiological responses, adaptation processes and long-term consequences. *Annals of Forest Science*, 63(6), 625-644.
 
@@ -202,6 +257,7 @@ transpiration_capacity = pl_sapw_area × (ppfd_in / (vpd + 1e-6))
 **Scientific Basis:** Species-specific characteristics determine transpiration behavior and responses to environmental conditions. Leaf habit particularly affects seasonal patterns and drought responses.
 
 **References:**
+
 - Meinzer, F. C., et al. (2001). Coordination of leaf and stem water transport properties in tropical forest trees. *Oecologia*, 127(4), 457-465.
 - Reich, P. B., et al. (1997). From tropics to tundra: global convergence in plant functioning. *Proceedings of the National Academy of Sciences*, 94(25), 13730-13734.
 
@@ -212,6 +268,7 @@ transpiration_capacity = pl_sapw_area × (ppfd_in / (vpd + 1e-6))
 **Scientific Basis:** Individual tree characteristics determine water transport capacity and transpiration rates. These features capture tree-level variation in hydraulic architecture and competitive status.
 
 **References:**
+
 - Phillips, N., et al. (2002). Canopy and hydraulic conductance in young, mature and old Douglas-fir trees. *Tree Physiology*, 22(2-3), 205-211.
 - Meinzer, F. C., et al. (2001). Coordination of leaf and stem water transport properties in tropical forest trees. *Oecologia*, 127(4), 457-465.
 
@@ -222,6 +279,7 @@ transpiration_capacity = pl_sapw_area × (ppfd_in / (vpd + 1e-6))
 **Scientific Basis:** Measurement protocol and temporal context affect data quality and temporal patterns in transpiration measurements.
 
 **References:**
+
 - Poyatos, R., et al. (2021). Global transpiration data from sap flow measurements: the SAPFLUXNET database. *Earth System Science Data*, 13(6), 2607-2649.
 
 ## 7. Derived Features
@@ -231,6 +289,7 @@ transpiration_capacity = pl_sapw_area × (ppfd_in / (vpd + 1e-6))
 **Features Created:** `climate_zone_code`, `latitude_abs`, `climate_zone`
 
 **Formulas:**
+
 ```
 climate_zone_code = cut(latitude, bins=[-90, -23.5, 23.5, 90], labels=[0, 1, 2])
 latitude_abs = |latitude|
@@ -241,6 +300,7 @@ climate_zone = cut(latitude, bins=[-90, -23.5, 23.5, 90],
 **Scientific Basis:** Climate zones determine growing seasons, day length patterns, and species adaptations. These features capture large-scale climatic controls on transpiration.
 
 **References:**
+
 - Peel, M. C., et al. (2007). Updated world map of the Köppen-Geiger climate classification. *Hydrology and Earth System Sciences*, 11(5), 1633-1644.
 - Woodward, F. I., et al. (2004). Global climate and the distribution of plant biomes. *Philosophical Transactions of the Royal Society B*, 359(1450), 1465-1476.
 
@@ -249,6 +309,7 @@ climate_zone = cut(latitude, bins=[-90, -23.5, 23.5, 90],
 **Features Created:** `aridity_index`
 
 **Formula:**
+
 ```
 aridity_index = mean_annual_precip / (mean_annual_temp + 10)
 ```
@@ -256,6 +317,7 @@ aridity_index = mean_annual_precip / (mean_annual_temp + 10)
 **Scientific Basis:** The aridity index indicates water availability relative to temperature, affecting plant water use strategies and drought adaptations.
 
 **References:**
+
 - De Martonne, E. (1926). Une nouvelle fonction climatologique: L'indice d'aridité. *La Météorologie*, 2, 449-458.
 - Trabucco, A., & Zomer, R. J. (2009). Global aridity index (global-aridity) and global potential evapo-transpiration (global-PET) geospatial database. *CGIAR Consortium for Spatial Information*.
 
@@ -264,6 +326,7 @@ aridity_index = mean_annual_precip / (mean_annual_temp + 10)
 **Features Created:** `leaf_habit_code`
 
 **Mapping:**
+
 - cold deciduous: 1
 - warm deciduous: 2
 - evergreen: 3
@@ -272,6 +335,7 @@ aridity_index = mean_annual_precip / (mean_annual_temp + 10)
 **Scientific Basis:** Leaf habit determines seasonal patterns in transpiration, water use efficiency, and drought tolerance strategies.
 
 **References:**
+
 - Reich, P. B., et al. (1997). From tropics to tundra: global convergence in plant functioning. *Proceedings of the National Academy of Sciences*, 94(25), 13730-13734.
 - Givnish, T. J. (2002). Adaptive significance of evergreen vs. deciduous leaves: solving the triple paradox. *Silva Fennica*, 36(3), 703-743.
 
@@ -282,6 +346,7 @@ aridity_index = mean_annual_precip / (mean_annual_temp + 10)
 **Scientific Basis:** Different biomes and land cover types have distinct species compositions, environmental conditions, and transpiration patterns.
 
 **References:**
+
 - Olson, D. M., et al. (2001). Terrestrial ecoregions of the world: a new map of life on Earth. *BioScience*, 51(11), 933-938.
 - Friedl, M. A., et al. (2010). MODIS Collection 5 global land cover: algorithm refinements and characterization of new datasets. *Remote Sensing of Environment*, 114(1), 168-182.
 
@@ -290,6 +355,7 @@ aridity_index = mean_annual_precip / (mean_annual_temp + 10)
 **Features Created:** `tree_size_class`, `tree_age_class`
 
 **Formulas:**
+
 ```
 tree_size_class = cut(pl_dbh, bins=[0, 10, 30, 50, 100, 1000], 
                      labels=['Sapling', 'Small', 'Medium', 'Large', 'Very Large'])
@@ -300,6 +366,7 @@ tree_age_class = cut(pl_age, bins=[0, 20, 50, 100, 200, 1000],
 **Scientific Basis:** Tree size and age affect hydraulic architecture, water transport capacity, and transpiration rates through ontogenetic changes in plant structure.
 
 **References:**
+
 - Ryan, M. G., & Yoder, B. J. (1997). Hydraulic limits to tree height and tree growth. *BioScience*, 47(4), 235-242.
 - Phillips, N., et al. (2002). Canopy and hydraulic conductance in young, mature and old Douglas-fir trees. *Tree Physiology*, 22(2-3), 205-211.
 
@@ -308,6 +375,7 @@ tree_age_class = cut(pl_age, bins=[0, 20, 50, 100, 200, 1000],
 **Features Created:** `social_status_code`
 
 **Mapping:**
+
 - dominant: 3
 - codominant: 2
 - intermediate: 1
@@ -316,6 +384,7 @@ tree_age_class = cut(pl_age, bins=[0, 20, 50, 100, 200, 1000],
 **Scientific Basis:** Social status affects access to light and water resources, influencing transpiration rates and competitive interactions.
 
 **References:**
+
 - Oliver, C. D., & Larson, B. C. (1996). *Forest stand dynamics*. John Wiley & Sons.
 - Pretzsch, H. (2009). *Forest dynamics, growth and yield*. Springer.
 
@@ -324,6 +393,7 @@ tree_age_class = cut(pl_age, bins=[0, 20, 50, 100, 200, 1000],
 **Features Created:** `tree_volume_index`
 
 **Formula:**
+
 ```
 tree_volume_index = (pl_dbh²) × pl_height
 ```
@@ -331,6 +401,7 @@ tree_volume_index = (pl_dbh²) × pl_height
 **Scientific Basis:** Tree volume is related to biomass, water storage capacity, and hydraulic conductance, affecting transpiration patterns.
 
 **References:**
+
 - West, G. B., et al. (1999). A general model for the structure and allometry of plant vascular systems. *Nature*, 400(6745), 664-667.
 - Enquist, B. J., et al. (1999). Allometric scaling of production and life-history variation in vascular plants. *Nature*, 401(6756), 907-911.
 
@@ -339,6 +410,7 @@ tree_volume_index = (pl_dbh²) × pl_height
 **Features Created:** `timezone_offset`, `measurement_frequency`
 
 **Formulas:**
+
 ```
 timezone_offset = extract timezone offset from timezone string
 measurement_frequency = 60 / measurement_timestep
@@ -347,6 +419,7 @@ measurement_frequency = 60 / measurement_timestep
 **Scientific Basis:** Temporal context and measurement frequency affect data quality and temporal resolution of transpiration patterns.
 
 **References:**
+
 - Poyatos, R., et al. (2021). Global transpiration data from sap flow measurements: the SAPFLUXNET database. *Earth System Science Data*, 13(6), 2607-2649.
 
 ## 8. Categorical Encodings
@@ -356,9 +429,9 @@ measurement_frequency = 60 / measurement_timestep
 The pipeline includes comprehensive categorical encoding for the following variables:
 
 **Encoded Variables:**
+
 - `biome` → `biome_code`
 - `igbp_class` → `igbp_code`
-- `country` → `country_code`
 - `soil_texture` → `soil_texture_code`
 - `aspect` → `aspect_code`
 - `terrain` → `terrain_code`
@@ -368,10 +441,19 @@ The pipeline includes comprehensive categorical encoding for the following varia
 - `climate_zone` → `climate_zone_code`
 - `tree_size_class` → `tree_size_class_code`
 - `tree_age_class` → `tree_age_class_code`
+- `species_functional_group` → encoded groups (NEW)
+
+**Blocked Variables (Overfitting Protection):**
+
+- ~~`country` → `country_code`~~ **BLOCKED**
+- ~~`timezone` → `timezone_code`~~ **BLOCKED**
+- ~~`site_code` → `site_code_code`~~ **BLOCKED**
+- ~~`species_name` → `species_name_code`~~ **CONVERTED** to functional groups
 
 **Scientific Basis:** Categorical encoding converts text-based categorical variables into numeric representations suitable for machine learning while preserving the categorical nature of the data.
 
 **References:**
+
 - Potdar, K., et al. (2017). A comparative study of categorical variable encoding techniques for neural network classifiers. *International Journal of Computer Applications*, 175(4), 7-9.
 
 ## 9. Features Explicitly Removed
@@ -379,12 +461,18 @@ The pipeline includes comprehensive categorical encoding for the following varia
 The following features are explicitly removed from the final schema to ensure consistency and avoid problematic columns:
 
 **Removed Features:**
+
 - `pl_name` - High cardinality, inconsistent across sites
 - `swc_deep` - Not available in SAPFLUXNET dataset
 - `netrad` - Inconsistent across sites
 - `seasonal_leaf_area` - Inconsistent across sites
-- All interaction features - Commented out to reduce complexity
+- Country/site identity features - **BLOCKED** for overfitting protection (January 2025)
 - All redundant features - Can be computed during training
+
+**Re-enabled Features (January 2025):**
+
+- Key interaction features - **RESTORED**: `ppfd_efficiency`, `stomatal_conductance_proxy`, `wind_vpd_interaction`, `stomatal_control_index`, `light_efficiency`, `wind_stress`
+- Species functional groups - **NEW**: Species classified by functional groups instead of individual encoding
 
 **Scientific Rationale:** These features were removed to create a clean, consistent dataset that works reliably across all sites while maintaining scientific validity.
 
@@ -393,11 +481,13 @@ The following features are explicitly removed from the final schema to ensure co
 ### 10.1 Adaptive Feature Creation
 
 The pipeline uses adaptive feature creation based on:
+
 - Available memory
 - File size
 - System capabilities
 
 **Memory-Constrained Situations:**
+
 - Reduced lag windows (1-12 hours instead of 1-24 hours)
 - Reduced rolling windows (3-24 hours instead of 3-72 hours)
 - Streaming processing for large files
@@ -411,6 +501,7 @@ The pipeline uses adaptive feature creation based on:
 ### 10.3 Consistent Schema
 
 The pipeline ensures consistent schema across all sites by:
+
 - Adding missing columns with NaN values
 - Removing problematic columns
 - Standardizing data types

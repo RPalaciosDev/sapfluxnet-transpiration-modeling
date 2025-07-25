@@ -47,6 +47,16 @@ The pipeline processes SAPFLUXNET data with the following characteristics:
 - **Processing**: Adaptive memory management with streaming for large files
 - **Features**: Streamlined feature set focused on core environmental and physiological features
 
+## ⚠️ CRITICAL UPDATE (January 2025)
+
+**OVERFITTING PROTECTION IMPLEMENTED**: The pipeline now includes critical protections against site identity memorization and geographic proxy overfitting:
+
+- **BLOCKED FEATURES**: `country`, `timezone`, `site_code`, individual `species_name` encoding
+- **CONVERTED FEATURES**: Species names → Functional groups (needleleaf_evergreen, broadleaf_deciduous_temperate, etc.)  
+- **RE-ENABLED FEATURES**: Key physiological interactions (`ppfd_efficiency`, `stomatal_conductance_proxy`, `wind_vpd_interaction`, etc.)
+
+This prevents catastrophic spatial generalization failure while preserving scientifically meaningful features.
+
 ## Optimization Summary
 
 The pipeline has been optimized to leverage existing SAPFLUXNET data efficiently:
@@ -214,7 +224,7 @@ Rolling statistics (3, 6, 12, 24, 48, 72 hours) for key environmental variables:
 - `biome_code`: Encoded biome (1-15)
 - `igbp_class`: IGBP land cover classification
 - `igbp_code`: Encoded IGBP class (1-16)
-- `country`: Country name
+- ~~`country`: Country name~~ **BLOCKED** (overfitting protection)
 
 #### Derived Geographic Features
 
@@ -250,11 +260,14 @@ Rolling statistics (3, 6, 12, 24, 48, 72 hours) for key environmental variables:
 
 #### Species Characteristics
 
-- `species_name`: Tree species name
+- ~~`species_name`: Tree species name~~ **CONVERTED** to functional groups
+- `species_functional_group`: Species functional group classification (needleleaf_evergreen, broadleaf_deciduous_temperate, etc.)
 - `leaf_habit`: Leaf habit (evergreen/deciduous)
 - `leaf_habit_code`: Encoded leaf habit (1-4)
 - `n_trees`: Number of trees of this species
 - `species_basal_area_perc`: Species basal area percentage
+
+**Note:** Species are now classified into functional groups instead of individual species encoding to prevent site identity memorization while preserving ecological information.
 
 ### 10. Environmental Metadata Features
 
@@ -262,7 +275,7 @@ Rolling statistics (3, 6, 12, 24, 48, 72 hours) for key environmental variables:
 
 - `measurement_timestep`: Measurement timestep (minutes)
 - `measurement_frequency`: Measurements per hour
-- `timezone`: Timezone information
+- ~~`timezone`: Timezone information~~ **BLOCKED** (overfitting protection)
 - `timezone_offset`: Timezone offset (hours)
 - `daylight_time`: Daylight saving time indicator
 
