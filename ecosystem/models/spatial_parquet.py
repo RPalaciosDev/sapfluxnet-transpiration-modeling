@@ -186,14 +186,14 @@ class ParquetSpatialValidator:
         print(f"  💾 Available memory: {available_memory_gb:.1f} GB")
         print(f"  📊 Estimated memory needed: {estimated_memory_gb:.1f} GB")
         
-        # Use streaming if data is large relative to available memory
-        use_streaming = estimated_memory_gb > (available_memory_gb * 0.4)
+                 # Use streaming for large datasets (conservative thresholds)
+        use_streaming = (total_size_mb > 1000) or (total_rows > 500000)  # 1GB or 500K rows
         
         if use_streaming:
-            print(f"  💾 Using STREAMING approach (large cluster)")
+            print(f"  💾 Using STREAMING approach (large dataset: {total_size_mb:.1f} MB, {total_rows:,} rows)")
             return self._prepare_streaming_cluster_data(cluster_id, site_info), 'streaming'
         else:
-            print(f"  🚀 Using IN-MEMORY approach (small cluster)")
+            print(f"  🚀 Using IN-MEMORY approach (small dataset: {total_size_mb:.1f} MB, {total_rows:,} rows)")
             return self._load_cluster_data_in_memory(cluster_id, site_info), 'in_memory'
     
     def _load_cluster_data_in_memory(self, cluster_id, site_info):
