@@ -4,7 +4,10 @@ Tests spatial generalization of cluster-specific XGBoost models using Leave-One-
 
 NEW WORKFLOW (Updated Jan 2025):
 - Cluster assignments come from CSV files (not embedded in parquet files)
-- Compatible with the new non-destructive preprocessing workflow
+- Uses preprocessed libsvm files (same data used for training models)
+- Ensures training/validation data consistency through shared preprocessing
+- Supports both in-memory and streaming validation approaches
+- Site mapping reconstructed from metadata for Leave-One-Site-Out validation
 - No longer expects 'ecosystem_cluster' column in parquet files
 """
 
@@ -50,6 +53,7 @@ class ClusterSpatialValidator:
         self.parquet_dir = parquet_dir
         self.models_dir = models_dir
         self.results_dir = results_dir
+        self.preprocessed_dir = os.path.join(models_dir, 'preprocessed_libsvm')
         self.cluster_col = 'ecosystem_cluster'
         self.target_col = 'sap_flow'
         self.test_size = 0.2
@@ -61,12 +65,13 @@ class ClusterSpatialValidator:
         os.makedirs(results_dir, exist_ok=True)
         
         print(f"🌍 Cluster Spatial Validator initialized")
-        print(f"📁 Parquet directory: {parquet_dir}")
+        print(f"📁 Parquet directory: {parquet_dir} (fallback only)")
         print(f"🤖 Models directory: {models_dir}")
+        print(f"💾 Preprocessed directory: {self.preprocessed_dir}")
         print(f"📁 Results directory: {results_dir}")
         if force_streaming:
             print(f"⚠️  FORCED STREAMING MODE enabled")
-        print(f"💡 NEW WORKFLOW: Uses CSV cluster assignments (not parquet embedded clusters)")
+        print(f"💡 NEW WORKFLOW: Uses preprocessed libsvm files (ensures training/validation data consistency)")
     
     def load_cluster_assignments(self):
         """Load cluster assignments from the latest clustering results"""
@@ -124,79 +129,216 @@ class ClusterSpatialValidator:
         return models
     
     def load_cluster_data(self, cluster_id, cluster_sites):
-        """Load and prepare data for a specific cluster - MEMORY OPTIMIZED"""
-        print(f"📊 Loading data for cluster {cluster_id} ({len(cluster_sites)} sites)...")
+        """Load preprocessed libsvm data for a specific cluster"""
+        print(f"📊 Loading preprocessed data for cluster {cluster_id} ({len(cluster_sites)} sites)...")
         
-        # First pass: analyze data size and check availability
-        site_info = {}
-        total_estimated_rows = 0
+        # Check if preprocessed data exists
+        libsvm_file = os.path.join(self.preprocessed_dir, f'cluster_{cluster_id}_clean.svm')
+        metadata_file = os.path.join(self.preprocessed_dir, f'cluster_{cluster_id}_metadata.json')
         
-        for site in cluster_sites:
+        if not os.path.exists(libsvm_file):
+            print(f"  ❌ Preprocessed file not found: {libsvm_file}")
+            print(f"  💡 Run preprocessing first: python preprocess_cluster_data.py")
+            raise FileNotFoundError(f"Preprocessed data for cluster {cluster_id} not found")
+        
+        if not os.path.exists(metadata_file):
+            print(f"  ❌ Metadata file not found: {metadata_file}")
+            raise FileNotFoundError(f"Metadata for cluster {cluster_id} not found")
+        
+        # Load metadata
+        try:
+            with open(metadata_file, 'r') as f:
+                metadata = json.load(f)
+            
+            total_rows = metadata['total_rows']
+            feature_count = metadata['feature_count']
+            sites_processed = metadata.get('sites_processed', metadata.get('sites', []))
+            
+            print(f"  ✅ Found preprocessed data: {total_rows:,} rows, {feature_count} features")
+            print(f"  📊 Sites in preprocessed data: {len(sites_processed)}")
+            
+            # Check for missing sites
+            missing_sites = set(cluster_sites) - set(sites_processed)
+            if missing_sites:
+                print(f"  ⚠️  Warning: {len(missing_sites)} cluster sites not in preprocessed data: {missing_sites}")
+                print(f"      Missing sites: {missing_sites}")
+                
+            # Check for sites in preprocessed data but not in current cluster assignment
+            extra_sites = set(sites_processed) - set(cluster_sites)
+            if extra_sites:
+                print(f"  ℹ️  Note: {len(extra_sites)} sites in preprocessed data not in current cluster assignment")
+                print(f"      Extra sites: {extra_sites}")
+            
+            return self._load_preprocessed_cluster_data(cluster_id, libsvm_file, metadata, cluster_sites)
+            
+        except Exception as e:
+            print(f"  ❌ Error loading metadata: {e}")
+            raise
+    
+    def _load_preprocessed_cluster_data(self, cluster_id, libsvm_file, metadata, cluster_sites):
+        """Load preprocessed libsvm data and prepare for site-based validation"""
+        from sklearn.datasets import load_svmlight_file
+        
+        # Check file size to determine processing approach
+        file_size_gb = os.path.getsize(libsvm_file) / (1024**3)
+        available_memory = get_available_memory_gb()
+        
+        print(f"  📊 Libsvm file size: {file_size_gb:.2f} GB")
+        print(f"  💾 Available memory: {available_memory:.1f} GB")
+        
+        # Use streaming if file is large relative to available memory
+        use_streaming = file_size_gb > (available_memory * 0.4) or self.force_streaming
+        
+        if use_streaming:
+            print(f"  💾 Using STREAMING approach (large file or forced)")
+            return self._prepare_streaming_validation_from_libsvm(cluster_id, libsvm_file, metadata, cluster_sites), 'streaming'
+        else:
+            print(f"  🚀 Loading preprocessed data in memory")
+            return self._load_libsvm_with_site_mapping(cluster_id, libsvm_file, metadata, cluster_sites), 'in_memory'
+    
+    def _load_libsvm_with_site_mapping(self, cluster_id, libsvm_file, metadata, cluster_sites):
+        """Load libsvm data in memory and create site mapping for validation"""
+        from sklearn.datasets import load_svmlight_file
+        
+        # Load the preprocessed data
+        print(f"    📊 Loading libsvm file into memory...")
+        X, y = load_svmlight_file(libsvm_file)
+        X = X.toarray()  # Convert sparse to dense for easier manipulation
+        
+        total_rows = len(y)
+        feature_count = X.shape[1]
+        
+        print(f"    ✅ Loaded {total_rows:,} rows, {feature_count} features")
+        
+        # We need to map the rows back to sites somehow
+        # Since the preprocessed data doesn't contain site info, we need to reconstruct it
+        # by matching against the original data sizes from parquet files
+        
+        print(f"    🔄 Reconstructing site mapping from original data...")
+        
+        # Load site information from parquet files to create mapping
+        site_row_mapping = {}
+        current_row = 0
+        
+        sites_processed = metadata.get('sites_processed', metadata.get('sites', []))
+        
+        for site in sites_processed:
+            if site not in cluster_sites:
+                continue  # Skip sites not in current cluster assignment
+                
             parquet_file = os.path.join(self.parquet_dir, f'{site}_comprehensive.parquet')
             
             if not os.path.exists(parquet_file):
-                print(f"  ⚠️  Missing: {parquet_file}")
+                print(f"      ⚠️  Missing parquet file for site mapping: {parquet_file}")
                 continue
             
             try:
-                # Quick sample to check structure and estimate size
-                df_sample = pd.read_parquet(parquet_file, columns=[self.target_col, 'site'])
-                df_sample = df_sample.dropna(subset=[self.target_col])
+                # Count valid rows for this site (same logic as preprocessing)
+                df_site = pd.read_parquet(parquet_file, columns=[self.target_col])
+                df_site = df_site.dropna(subset=[self.target_col])
+                site_rows = len(df_site)
                 
-                if len(df_sample) == 0:
-                    print(f"  ⚠️  {site}: No valid data for cluster {cluster_id}")
-                    continue
+                if site_rows > 0:
+                    site_row_mapping[site] = {
+                        'start_row': current_row,
+                        'end_row': current_row + site_rows,
+                        'row_count': site_rows
+                    }
+                    current_row += site_rows
+                    
+                    print(f"      ✅ {site}: rows {site_row_mapping[site]['start_row']}-{site_row_mapping[site]['end_row']} ({site_rows:,} rows)")
                 
-                site_info[site] = {
-                    'file_path': parquet_file,
-                    'estimated_rows': len(df_sample)
-                }
-                total_estimated_rows += len(df_sample)
-                print(f"    ✅ {site}: ~{len(df_sample):,} rows")
-                
-                del df_sample
+                del df_site
                 gc.collect()
                 
             except Exception as e:
-                print(f"  ❌ Error analyzing {site}: {e}")
+                print(f"      ❌ Error mapping {site}: {e}")
                 continue
         
-        if not site_info:
-            raise ValueError(f"No valid data found for cluster {cluster_id}")
+        print(f"    📊 Mapped {len(site_row_mapping)} sites to {current_row:,} total rows")
         
-        print(f"  📊 Total estimated: {total_estimated_rows:,} rows from {len(site_info)} sites")
+        if current_row != total_rows:
+            print(f"    ⚠️  Warning: Row count mismatch. Expected {total_rows:,}, mapped {current_row:,}")
         
-        # Check if we should use in-memory or streaming approach
-        available_memory = get_available_memory_gb()
-        # Much more conservative estimate: account for pandas overhead, feature processing, and XGBoost
-        estimated_memory_gb = total_estimated_rows * 200 * 8 / (1024**3)  # More realistic estimate
+        # Create a DataFrame-like structure for compatibility with existing validation code
+        cluster_df = pd.DataFrame({
+            'site': np.concatenate([
+                [site] * mapping['row_count'] 
+                for site, mapping in site_row_mapping.items()
+            ]),
+            self.target_col: y
+        })
         
-        print(f"  💾 Estimated memory needed: {estimated_memory_gb:.1f} GB (conservative estimate)")
-        print(f"  💾 Available memory: {available_memory:.1f} GB")
+        # Store the feature matrix separately (we'll use it directly)
+        cluster_df._feature_matrix = X
+        cluster_df._feature_names = metadata.get('feature_names', [f'feature_{i}' for i in range(feature_count)])
         
-        # Much more aggressive threshold: use streaming if > 10% of RAM OR > 1M rows OR > 5GB estimated
-        use_streaming = (
-            self.force_streaming or
-            (estimated_memory_gb > available_memory * 0.1) or 
-            (total_estimated_rows > 1000000) or 
-            (estimated_memory_gb > 5.0)  # Force streaming if estimated > 5GB
-        )
+        print(f"    ✅ Created cluster dataframe: {len(cluster_df):,} rows, {len(site_row_mapping)} sites")
         
-        if use_streaming:
-            reason = []
-            if self.force_streaming:
-                reason.append("forced")
-            if estimated_memory_gb > available_memory * 0.1:
-                reason.append(f">{available_memory * 0.1:.1f}GB")
-            if total_estimated_rows > 1000000:
-                reason.append(">1M rows")
-            if estimated_memory_gb > 5.0:
-                reason.append(">5GB estimated")
-            print(f"  💾 Using STREAMING approach ({', '.join(reason)})")
-            return self._prepare_cluster_data_streaming(cluster_id, site_info)
-        else:
-            print(f"  🚀 Using IN-MEMORY approach (small dataset)")
-            return self._load_cluster_data_in_memory(cluster_id, site_info)
+        return cluster_df
+    
+    def _prepare_streaming_validation_from_libsvm(self, cluster_id, libsvm_file, metadata, cluster_sites):
+        """Prepare streaming validation using preprocessed libsvm file"""
+        print(f"    🔧 Preparing streaming validation from preprocessed data...")
+        
+        # For streaming, we'll work directly with the libsvm file
+        # and create temporary train/test files for each fold
+        
+        # First, we need to map line numbers in libsvm file to sites
+        print(f"    📊 Creating site-to-line mapping...")
+        
+        site_line_mapping = {}
+        current_line = 0
+        
+        sites_processed = metadata.get('sites_processed', metadata.get('sites', []))
+        
+        for site in sites_processed:
+            if site not in cluster_sites:
+                continue
+                
+            parquet_file = os.path.join(self.parquet_dir, f'{site}_comprehensive.parquet')
+            
+            if not os.path.exists(parquet_file):
+                continue
+            
+            try:
+                # Count valid rows for this site
+                df_site = pd.read_parquet(parquet_file, columns=[self.target_col])
+                df_site = df_site.dropna(subset=[self.target_col])
+                site_rows = len(df_site)
+                
+                if site_rows > 0:
+                    site_line_mapping[site] = {
+                        'start_line': current_line,
+                        'end_line': current_line + site_rows,
+                        'line_count': site_rows
+                    }
+                    current_line += site_rows
+                    
+                    print(f"      ✅ {site}: lines {site_line_mapping[site]['start_line']}-{site_line_mapping[site]['end_line']} ({site_rows:,} lines)")
+                
+                del df_site
+                gc.collect()
+                
+            except Exception as e:
+                print(f"      ❌ Error mapping {site}: {e}")
+                continue
+        
+        # Create temporary directory for this cluster
+        temp_dir = os.path.join(self.results_dir, f'temp_cluster_{cluster_id}')
+        os.makedirs(temp_dir, exist_ok=True)
+        
+        streaming_info = {
+            'libsvm_file': libsvm_file,
+            'site_line_mapping': site_line_mapping,
+            'temp_dir': temp_dir,
+            'cluster_id': cluster_id,
+            'metadata': metadata
+        }
+        
+        print(f"    ✅ Prepared streaming validation for {len(site_line_mapping)} sites")
+        
+        return streaming_info
     
     def _load_cluster_data_in_memory(self, cluster_id, site_info):
         """Load cluster data in memory (for smaller datasets)"""
@@ -289,11 +431,15 @@ class ClusterSpatialValidator:
             return self._validate_cluster_streaming(cluster_id, cluster_sites, model, cluster_data)
     
     def _validate_cluster_in_memory(self, cluster_id, cluster_sites, model, cluster_df):
-        """Perform validation with in-memory data"""
-        print(f"  🚀 Running in-memory validation...")
+        """Perform validation with in-memory preprocessed data"""
+        print(f"  🚀 Running in-memory validation with preprocessed data...")
         
-        # Prepare features once
-        X, y, feature_cols = self.prepare_features(cluster_df)
+        # Use the preprocessed feature matrix directly (no need for prepare_features)
+        X = cluster_df._feature_matrix
+        y = cluster_df[self.target_col].values
+        feature_cols = cluster_df._feature_names
+        
+        print(f"    📊 Using preprocessed features: {X.shape[1]} features, {len(y):,} samples")
         
         fold_results = []
         
@@ -354,28 +500,29 @@ class ClusterSpatialValidator:
         
         return self._calculate_cluster_summary(cluster_id, cluster_sites, fold_results)
     
-    def _validate_cluster_streaming(self, cluster_id, cluster_sites, model, cluster_info):
-        """Perform validation with streaming data processing"""
-        print(f"  💾 Running streaming validation...")
+    def _validate_cluster_streaming(self, cluster_id, cluster_sites, model, streaming_info):
+        """Perform validation with streaming preprocessed data processing"""
+        print(f"  💾 Running streaming validation with preprocessed data...")
         
-        site_info = cluster_info['site_info']
-        temp_dir = cluster_info['temp_dir']
+        libsvm_file = streaming_info['libsvm_file']
+        site_line_mapping = streaming_info['site_line_mapping']
+        temp_dir = streaming_info['temp_dir']
         
         fold_results = []
         
         try:
             # Leave-One-Site-Out validation
             for i, test_site in enumerate(cluster_sites):
-                if test_site not in site_info:
+                if test_site not in site_line_mapping:
                     print(f"  ⚠️  No data available for test site {test_site}")
                     continue
                 
                 print(f"\n--- Fold {i+1}/{len(cluster_sites)}: Test site {test_site} ---")
                 
                 try:
-                    # Create train/test data for this fold
-                    train_file, test_file, train_samples, test_samples = self._create_fold_files_streaming(
-                        cluster_id, test_site, site_info, temp_dir
+                    # Create train/test data for this fold from preprocessed libsvm file
+                    train_file, test_file, train_samples, test_samples = self._create_fold_files_from_libsvm(
+                        test_site, libsvm_file, site_line_mapping, temp_dir
                     )
                     
                     if train_samples == 0 or test_samples == 0:
@@ -488,6 +635,44 @@ class ClusterSpatialValidator:
                 except Exception as e:
                     print(f"    ❌ Error processing {site}: {e}")
                     continue
+        
+        return train_file, test_file, train_samples, test_samples
+    
+    def _create_fold_files_from_libsvm(self, test_site, libsvm_file, site_line_mapping, temp_dir):
+        """Create train/test libsvm files for a single fold from preprocessed data"""
+        train_file = os.path.join(temp_dir, f'fold_{test_site}_train.svm')
+        test_file = os.path.join(temp_dir, f'fold_{test_site}_test.svm')
+        
+        train_samples = 0
+        test_samples = 0
+        
+        # Get test site line range
+        if test_site not in site_line_mapping:
+            return train_file, test_file, 0, 0
+        
+        test_start = site_line_mapping[test_site]['start_line']
+        test_end = site_line_mapping[test_site]['end_line']
+        
+        print(f"    📊 Splitting libsvm file: test site {test_site} uses lines {test_start}-{test_end}")
+        
+        # Read the libsvm file and split by site
+        with open(libsvm_file, 'r') as input_file, \
+             open(train_file, 'w') as train_out, \
+             open(test_file, 'w') as test_out:
+            
+            for line_num, line in enumerate(input_file):
+                if line.strip():
+                    # Determine which file this line belongs to
+                    if test_start <= line_num < test_end:
+                        # This line belongs to test site
+                        test_out.write(line)
+                        test_samples += 1
+                    else:
+                        # This line belongs to training sites
+                        train_out.write(line)
+                        train_samples += 1
+        
+        print(f"    ✅ Created fold files: train={train_samples:,}, test={test_samples:,}")
         
         return train_file, test_file, train_samples, test_samples
     
