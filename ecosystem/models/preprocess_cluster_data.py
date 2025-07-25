@@ -390,6 +390,11 @@ class ClusterDataPreprocessor:
         total_rows = 0
         processed_sites = []
         
+        # Calculate cluster-wide sampling statistics if sampling is enabled
+        sampling_limits = None
+        if self.apply_sampling:
+            sampling_limits = self._calculate_cluster_sampling_limits(cluster_id, cluster_sites)
+        
         with open(libsvm_file, 'w') as output_file:
             for site_idx, site in enumerate(cluster_sites):
                 parquet_file = os.path.join(self.parquet_dir, f'{site}_comprehensive.parquet')
@@ -420,12 +425,12 @@ class ClusterDataPreprocessor:
                     if site_total_rows > self.chunk_size:
                         print(f"      🔄 Using chunked processing ({self.chunk_size:,} rows per chunk)")
                         site_rows_processed = self._process_site_chunked_to_libsvm(
-                            parquet_file, cluster_id, output_file, all_features
+                            parquet_file, cluster_id, output_file, all_features, sampling_limits
                         )
                     else:
                         print(f"      🔄 Loading site in memory")
                         site_rows_processed = self._process_site_in_memory_to_libsvm(
-                            parquet_file, cluster_id, output_file, all_features
+                            parquet_file, cluster_id, output_file, all_features, sampling_limits
                         )
                     
                     if site_rows_processed > 0:
@@ -476,7 +481,7 @@ class ClusterDataPreprocessor:
         
         return libsvm_file, metadata
 
-    def _process_site_chunked_to_libsvm(self, parquet_file, cluster_id, output_file, all_features):
+    def _process_site_chunked_to_libsvm(self, parquet_file, cluster_id, output_file, all_features, sampling_limits):
         """Process a large site in chunks to avoid memory issues"""
         total_processed = 0
         site_name = os.path.basename(parquet_file).replace('_comprehensive.parquet', '')
@@ -523,9 +528,19 @@ class ClusterDataPreprocessor:
         del site_chunks
         gc.collect()
         
-        # Apply balanced sampling if enabled
-        if self.apply_sampling:
-            df_site = self.apply_balanced_sampling_to_cluster_data(df_site, cluster_id)
+        # Apply sampling if limits are provided
+        if sampling_limits and site_name in sampling_limits:
+            target_size = sampling_limits[site_name]
+            current_size = len(df_site)
+            
+            if current_size > target_size:
+                print(f"        🎯 Applying sampling: {current_size:,} → {target_size:,}")
+                np.random.seed(self.sampling_seed)
+                df_site = df_site.sample(n=target_size, random_state=self.sampling_seed).reset_index(drop=True)
+            else:
+                print(f"        ✅ No sampling needed: {current_size:,} ≤ {target_size:,}")
+        elif self.apply_sampling:
+            print(f"        ⚠️  No sampling limit found for {site_name}")
         
         # Prepare features
         exclude_cols = ['TIMESTAMP', 'solar_TIMESTAMP', 'site', 'plant_id', 'Unnamed: 0', self.cluster_col]
@@ -568,7 +583,7 @@ class ClusterDataPreprocessor:
         
         return total_processed
 
-    def _process_site_in_memory_to_libsvm(self, parquet_file, cluster_id, output_file, all_features):
+    def _process_site_in_memory_to_libsvm(self, parquet_file, cluster_id, output_file, all_features, sampling_limits):
         """Process a small site in memory"""
         site_name = os.path.basename(parquet_file).replace('_comprehensive.parquet', '')
         
@@ -582,12 +597,19 @@ class ClusterDataPreprocessor:
             del df_site
             return 0
         
-        # Add site column for balanced sampling
-        df_site['site'] = site_name
-        
-        # Apply balanced sampling if enabled
-        if self.apply_sampling:
-            df_site = self.apply_balanced_sampling_to_cluster_data(df_site, cluster_id)
+        # Apply sampling if limits are provided
+        if sampling_limits and site_name in sampling_limits:
+            target_size = sampling_limits[site_name]
+            current_size = len(df_site)
+            
+            if current_size > target_size:
+                print(f"        🎯 Applying sampling: {current_size:,} → {target_size:,}")
+                np.random.seed(self.sampling_seed)
+                df_site = df_site.sample(n=target_size, random_state=self.sampling_seed).reset_index(drop=True)
+            else:
+                print(f"        ✅ No sampling needed: {current_size:,} ≤ {target_size:,}")
+        elif self.apply_sampling:
+            print(f"        ⚠️  No sampling limit found for {site_name}")
         
         # Prepare features
         exclude_cols = ['TIMESTAMP', 'solar_TIMESTAMP', 'site', 'plant_id', 'Unnamed: 0', self.cluster_col]
@@ -783,6 +805,61 @@ class ClusterDataPreprocessor:
         print(f"         New size range: {final_site_sizes.min()} - {final_site_sizes.max()}")
         
         return balanced_df
+
+    def _calculate_cluster_sampling_limits(self, cluster_id, cluster_sites):
+        """Calculate sampling limits for all sites in a cluster"""
+        print(f"      📊 Calculating cluster-wide sampling limits for cluster {cluster_id}...")
+        
+        site_sizes = {}
+        
+        # First pass: collect sample sizes for all sites in cluster
+        for site in cluster_sites:
+            parquet_file = os.path.join(self.parquet_dir, f'{site}_comprehensive.parquet')
+            
+            if not os.path.exists(parquet_file):
+                print(f"        ⚠️  Missing: {parquet_file}")
+                continue
+                
+            try:
+                # Load only target column to count valid rows
+                df_info = pd.read_parquet(parquet_file, columns=[self.target_col])
+                df_info = df_info.dropna(subset=[self.target_col])
+                site_sizes[site] = len(df_info)
+                del df_info
+                gc.collect()
+                
+            except Exception as e:
+                print(f"        ❌ Error analyzing {site}: {e}")
+                continue
+        
+        if len(site_sizes) <= 1:
+            print(f"        ℹ️  Only {len(site_sizes)} valid site(s) - no sampling limits needed")
+            return None
+        
+        # Calculate cluster statistics
+        sizes_array = np.array(list(site_sizes.values()))
+        median_size = int(np.median(sizes_array))
+        min_size = max(int(median_size * self.min_fraction), 1)
+        
+        print(f"        📈 Sites: {len(site_sizes)}, Median: {median_size:,}, Min threshold: {min_size:,}")
+        print(f"        📊 Size range: {sizes_array.min():,} - {sizes_array.max():,}")
+        
+        # Calculate sampling limits for each site
+        sampling_limits = {}
+        sites_to_downsample = 0
+        
+        for site, size in site_sizes.items():
+            if size > median_size:
+                sampling_limits[site] = median_size
+                sites_to_downsample += 1
+                print(f"          ↓ {site}: {size:,} → {median_size:,} (downsample)")
+            else:
+                sampling_limits[site] = size  # Keep original size
+                print(f"          = {site}: {size:,} → {size:,} (keep)")
+        
+        print(f"        🎯 Will downsample {sites_to_downsample}/{len(site_sizes)} sites")
+        
+        return sampling_limits
 
 def main():
     """Main function for cluster data preprocessing"""
