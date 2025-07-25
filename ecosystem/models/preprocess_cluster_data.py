@@ -389,6 +389,7 @@ class ClusterDataPreprocessor:
         all_features = []
         total_rows = 0
         processed_sites = []
+        per_site_rows = {}  # Track row counts per site for validation script
         
         # Calculate cluster-wide sampling statistics if sampling is enabled
         sampling_limits = None
@@ -436,6 +437,7 @@ class ClusterDataPreprocessor:
                     if site_rows_processed > 0:
                         total_rows += site_rows_processed
                         processed_sites.append(site)
+                        per_site_rows[site] = site_rows_processed  # Save for validation script
                         print(f"      ✅ {site}: {site_rows_processed:,} rows processed")
                     else:
                         print(f"      ⚠️  {site}: No rows processed after filtering/sampling")
@@ -460,6 +462,7 @@ class ClusterDataPreprocessor:
             'sites_requested': [str(site) for site in cluster_sites],
             'sites_processed': [str(site) for site in processed_sites],
             'sites_skipped': [str(site) for site in cluster_sites if site not in processed_sites],
+            'per_site_rows': {str(site): int(rows) for site, rows in per_site_rows.items()},  # For validation script
             'created_at': datetime.now().isoformat(),
             'chunk_size_used': int(self.chunk_size),
             'balanced_sampling_applied': bool(self.apply_sampling),

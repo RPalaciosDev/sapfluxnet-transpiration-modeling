@@ -216,28 +216,22 @@ class ClusterSpatialValidator:
         
         print(f"    🔄 Reconstructing site mapping from original data...")
         
-        # Load site information from parquet files to create mapping
+        # Use preprocessing metadata to get the correct row counts (after sampling)
         site_row_mapping = {}
         current_row = 0
         
+        # Check if metadata contains per-site row counts from preprocessing
         sites_processed = metadata.get('sites_processed', metadata.get('sites', []))
+        per_site_rows = metadata.get('per_site_rows', {})
         
-        for site in sites_processed:
-            if site not in cluster_sites:
-                continue  # Skip sites not in current cluster assignment
+        if per_site_rows:
+            # Use the exact row counts from preprocessing metadata
+            print(f"    📊 Using per-site row counts from preprocessing metadata")
+            for site in sites_processed:
+                if site not in cluster_sites:
+                    continue  # Skip sites not in current cluster assignment
                 
-            parquet_file = os.path.join(self.parquet_dir, f'{site}_comprehensive.parquet')
-            
-            if not os.path.exists(parquet_file):
-                print(f"      ⚠️  Missing parquet file for site mapping: {parquet_file}")
-                continue
-            
-            try:
-                # Count valid rows for this site (same logic as preprocessing)
-                df_site = pd.read_parquet(parquet_file, columns=[self.target_col])
-                df_site = df_site.dropna(subset=[self.target_col])
-                site_rows = len(df_site)
-                
+                site_rows = per_site_rows.get(site, 0)
                 if site_rows > 0:
                     site_row_mapping[site] = {
                         'start_row': current_row,
@@ -247,31 +241,89 @@ class ClusterSpatialValidator:
                     current_row += site_rows
                     
                     print(f"      ✅ {site}: rows {site_row_mapping[site]['start_row']}-{site_row_mapping[site]['end_row']} ({site_rows:,} rows)")
+        else:
+            # Fallback: estimate from preprocessed data proportionally
+            print(f"    📊 Estimating row counts proportionally from preprocessed data")
+            
+            # Get original row counts for proportion calculation
+            original_total = 0
+            original_site_counts = {}
+            
+            for site in sites_processed:
+                if site not in cluster_sites:
+                    continue
+                    
+                parquet_file = os.path.join(self.parquet_dir, f'{site}_comprehensive.parquet')
+                if not os.path.exists(parquet_file):
+                    continue
                 
-                del df_site
-                gc.collect()
-                
-            except Exception as e:
-                print(f"      ❌ Error mapping {site}: {e}")
-                continue
+                try:
+                    df_site = pd.read_parquet(parquet_file, columns=[self.target_col])
+                    df_site = df_site.dropna(subset=[self.target_col])
+                    original_rows = len(df_site)
+                    original_site_counts[site] = original_rows
+                    original_total += original_rows
+                    del df_site
+                    gc.collect()
+                except Exception as e:
+                    print(f"      ❌ Error reading {site}: {e}")
+                    continue
+            
+            # Distribute preprocessed rows proportionally
+            if original_total > 0:
+                for site in sites_processed:
+                    if site not in cluster_sites or site not in original_site_counts:
+                        continue
+                    
+                    # Calculate proportional rows in preprocessed data
+                    proportion = original_site_counts[site] / original_total
+                    site_rows = int(total_rows * proportion)
+                    
+                    if site_rows > 0:
+                        site_row_mapping[site] = {
+                            'start_row': current_row,
+                            'end_row': current_row + site_rows,
+                            'row_count': site_rows
+                        }
+                        current_row += site_rows
+                        
+                        print(f"      ✅ {site}: rows {site_row_mapping[site]['start_row']}-{site_row_mapping[site]['end_row']} ({site_rows:,} rows, {proportion:.1%})")
         
         print(f"    📊 Mapped {len(site_row_mapping)} sites to {current_row:,} total rows")
         
         if current_row != total_rows:
             print(f"    ⚠️  Warning: Row count mismatch. Expected {total_rows:,}, mapped {current_row:,}")
+            print(f"    💡 Using only the mapped {current_row:,} rows for validation")
+        
+        # Extract only the data that corresponds to the mapped sites
+        if current_row < total_rows:
+            # Only use the first current_row samples (corresponding to mapped sites)
+            X_mapped = X[:current_row]
+            y_mapped = y[:current_row]
+            print(f"    🔧 Trimmed data to {current_row:,} rows to match site mapping")
+        else:
+            X_mapped = X
+            y_mapped = y
+        
+        # Create site labels array
+        site_labels = np.concatenate([
+            [site] * mapping['row_count'] 
+            for site, mapping in site_row_mapping.items()
+        ])
+        
+        # Verify lengths match
+        if len(site_labels) != len(y_mapped):
+            raise ValueError(f"Site mapping length mismatch: {len(site_labels)} site labels vs {len(y_mapped)} target values")
         
         # Create a DataFrame-like structure for compatibility with existing validation code
         cluster_df = pd.DataFrame({
-            'site': np.concatenate([
-                [site] * mapping['row_count'] 
-                for site, mapping in site_row_mapping.items()
-            ]),
-            self.target_col: y
+            'site': site_labels,
+            self.target_col: y_mapped
         })
         
         # Store the feature matrix separately (we'll use it directly)
-        cluster_df._feature_matrix = X
-        cluster_df._feature_names = metadata.get('feature_names', [f'feature_{i}' for i in range(feature_count)])
+        cluster_df._feature_matrix = X_mapped
+        cluster_df._feature_names = metadata.get('feature_names', [f'feature_{i}' for i in range(X_mapped.shape[1])])
         
         print(f"    ✅ Created cluster dataframe: {len(cluster_df):,} rows, {len(site_row_mapping)} sites")
         
