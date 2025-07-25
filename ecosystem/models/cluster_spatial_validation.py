@@ -1,6 +1,11 @@
 """
 Within-Cluster Spatial Validation for Ecosystem-Based Models
 Tests spatial generalization of cluster-specific XGBoost models using Leave-One-Site-Out validation within each cluster
+
+NEW WORKFLOW (Updated Jan 2025):
+- Cluster assignments come from CSV files (not embedded in parquet files)
+- Compatible with the new non-destructive preprocessing workflow
+- No longer expects 'ecosystem_cluster' column in parquet files
 """
 
 import pandas as pd
@@ -61,6 +66,7 @@ class ClusterSpatialValidator:
         print(f"📁 Results directory: {results_dir}")
         if force_streaming:
             print(f"⚠️  FORCED STREAMING MODE enabled")
+        print(f"💡 NEW WORKFLOW: Uses CSV cluster assignments (not parquet embedded clusters)")
     
     def load_cluster_assignments(self):
         """Load cluster assignments from the latest clustering results"""
@@ -134,8 +140,7 @@ class ClusterSpatialValidator:
             
             try:
                 # Quick sample to check structure and estimate size
-                df_sample = pd.read_parquet(parquet_file, columns=[self.cluster_col, self.target_col, 'site'])
-                df_sample = df_sample[df_sample[self.cluster_col] == cluster_id]
+                df_sample = pd.read_parquet(parquet_file, columns=[self.target_col, 'site'])
                 df_sample = df_sample.dropna(subset=[self.target_col])
                 
                 if len(df_sample) == 0:
@@ -200,7 +205,7 @@ class ClusterSpatialValidator:
         for site, info in site_info.items():
             try:
                 df_site = pd.read_parquet(info['file_path'])
-                df_site = df_site[df_site[self.cluster_col] == cluster_id]
+                # No need to filter by cluster - we already know this site belongs to this cluster
                 df_site = df_site.dropna(subset=[self.target_col])
                 
                 if len(df_site) > 0:
@@ -237,7 +242,11 @@ class ClusterSpatialValidator:
     def prepare_features(self, df):
         """Prepare features for training (same as used in cluster training)"""
         # Exclude columns (same as in train_cluster_models.py)
-        exclude_cols = ['TIMESTAMP', 'solar_TIMESTAMP', 'site', 'plant_id', 'Unnamed: 0', self.cluster_col]
+        # Note: ecosystem_cluster column may not exist in parquet files (comes from CSV)
+        exclude_cols = ['TIMESTAMP', 'solar_TIMESTAMP', 'site', 'plant_id', 'Unnamed: 0']
+        if self.cluster_col in df.columns:
+            exclude_cols.append(self.cluster_col)
+        
         feature_cols = [col for col in df.columns 
                        if col not in exclude_cols + [self.target_col]
                        and not col.endswith('_flags')
@@ -447,7 +456,7 @@ class ClusterSpatialValidator:
                 try:
                     # Load site data
                     df_site = pd.read_parquet(info['file_path'])
-                    df_site = df_site[df_site[self.cluster_col] == cluster_id]
+                    # No need to filter by cluster - we already know this site belongs to this cluster
                     df_site = df_site.dropna(subset=[self.target_col])
                     
                     if len(df_site) == 0:
