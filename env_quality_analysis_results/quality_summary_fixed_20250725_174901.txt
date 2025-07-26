@@ -1,0 +1,411 @@
+SAPFLUXNET ENVIRONMENTAL DATA QUALITY SUMMARY (FIXED VERSION)
+======================================================================
+
+Total sites analyzed: 165
+Average quality score: 74.9/100
+Range: 20.4 to 100.0
+Sites with quality issues: 85
+Sites below quality threshold (70): 42
+
+ZERO VALUE ANALYSIS SUMMARY
+----------------------------------------
+
+Air Temperature (°C) (ta):
+  Sites analyzed: 165
+  Mean zero percentage: 0.0%
+  Maximum zero percentage: 0.7%
+  Sites above threshold (5.0%): 0
+
+Relative Humidity (%) (rh):
+  Sites analyzed: 163
+  Mean zero percentage: 0.0%
+  Maximum zero percentage: 0.5%
+  Sites above threshold (1.0%): 0
+
+Vapor Pressure Deficit (kPa) (vpd):
+  Sites analyzed: 163
+  Mean zero percentage: 6.5%
+  Maximum zero percentage: 47.2%
+  Sites above threshold (10.0%): 41
+
+PPFD (μmol m⁻² s⁻¹) (ppfd_in):
+  Sites analyzed: 140
+  Mean zero percentage: 23.7%
+  Maximum zero percentage: 52.0%
+  Sites above threshold (50.0%): 7
+
+Solar Radiation (W m⁻²) (sw_in):
+  Sites analyzed: 140
+  Mean zero percentage: 24.2%
+  Maximum zero percentage: 52.0%
+  Sites above threshold (50.0%): 5
+
+
+WORST SITES BY VARIABLE
+----------------------------------------
+
+Air Temperature (°C) - Worst sites:
+  1. DEU_HIN_OAK: 0.7%
+  2. DEU_HIN_TER: 0.7%
+  3. ESP_VAL_BAR: 0.5%
+  4. UZB_YAN_DIS: 0.5%
+  5. AUS_ELL_HB_HIG: 0.5%
+
+Relative Humidity (%) - Worst sites:
+  1. ESP_VAL_BAR: 0.5%
+  2. CHN_HOR_AFF: 0.2%
+  3. USA_HUY_LIN_NON: 0.0%
+  4. ARG_MAZ: 0.0%
+  5. ARG_TRE: 0.0%
+
+Vapor Pressure Deficit (kPa) - Worst sites:
+  1. MEX_VER_BSM: 47.2%
+  2. AUS_ELL_HB_HIG: 45.4%
+  3. AUS_ELL_MB_MOD: 45.4%
+  4. AUS_ELL_UNB: 45.4%
+  5. BRA_CAM: 35.9%
+
+PPFD (μmol m⁻² s⁻¹) - Worst sites:
+  1. CAN_TUR_P74: 52.0%
+  2. SWE_SKO_MIN: 51.9%
+  3. CAN_TUR_P39_POS: 51.9%
+  4. CAN_TUR_P39_PRE: 51.9%
+  5. COL_MAC_SAF_RAD: 50.7%
+
+Solar Radiation (W m⁻²) - Worst sites:
+  1. CAN_TUR_P74: 52.0%
+  2. SWE_SKO_MIN: 51.9%
+  3. COL_MAC_SAF_RAD: 50.7%
+  4. MDG_SEM_TAL: 50.3%
+  5. UZB_YAN_DIS: 50.1%
+
+
+TOP 20 MOST PROBLEMATIC SITES:
+----------------------------------------
+
+ 1. BRA_CAM
+    Quality Score: 20.4/100
+    Issues:
+      - WARNING: solar_TIMESTAMP has 100.0% missing data
+      - WARNING: solar_TIMESTAMP lost 100.0% of data during numeric conversion (likely mixed data types)
+      - CRITICAL: vpd has 35.9% zero values (threshold: 10.0%)
+      - WARNING: ppfd_in has 76.9% missing data
+      - WARNING: sw_in has 76.9% missing data
+
+ 2. MEX_VER_BSM
+    Quality Score: 29.4/100
+    Issues:
+      - WARNING: solar_TIMESTAMP has 100.0% missing data
+      - WARNING: solar_TIMESTAMP lost 100.0% of data during numeric conversion (likely mixed data types)
+      - CRITICAL: vpd has 47.2% zero values (threshold: 10.0%)
+
+ 3. AUS_ELL_HB_HIG
+    Quality Score: 32.1/100
+    Issues:
+      - WARNING: solar_TIMESTAMP has 100.0% missing data
+      - WARNING: solar_TIMESTAMP lost 100.0% of data during numeric conversion (likely mixed data types)
+      - CRITICAL: vpd has 45.4% zero values (threshold: 10.0%)
+
+ 4. AUS_ELL_MB_MOD
+    Quality Score: 32.1/100
+    Issues:
+      - WARNING: solar_TIMESTAMP has 100.0% missing data
+      - WARNING: solar_TIMESTAMP lost 100.0% of data during numeric conversion (likely mixed data types)
+      - CRITICAL: vpd has 45.4% zero values (threshold: 10.0%)
+
+ 5. AUS_ELL_UNB
+    Quality Score: 32.1/100
+    Issues:
+      - WARNING: solar_TIMESTAMP has 100.0% missing data
+      - WARNING: solar_TIMESTAMP lost 100.0% of data during numeric conversion (likely mixed data types)
+      - CRITICAL: vpd has 45.4% zero values (threshold: 10.0%)
+
+ 6. AUS_CAR_THI_00F
+    Quality Score: 33.2/100
+    Issues:
+      - WARNING: solar_TIMESTAMP has 100.0% missing data
+      - WARNING: solar_TIMESTAMP lost 100.0% of data during numeric conversion (likely mixed data types)
+      - WARNING: ta has 50.9% missing data
+      - WARNING: rh has 50.9% missing data
+      - WARNING: sw_in has 74.2% missing data
+      - WARNING: ws has 50.8% missing data
+      - WARNING: precip has 50.9% missing data
+      - WARNING: ppfd_in has 74.2% missing data
+      - CRITICAL: vpd has 25.0% zero values (threshold: 10.0%)
+      - WARNING: vpd has 50.9% missing data
+
+ 7. AUS_CAR_THI_0P0
+    Quality Score: 33.2/100
+    Issues:
+      - WARNING: solar_TIMESTAMP has 100.0% missing data
+      - WARNING: solar_TIMESTAMP lost 100.0% of data during numeric conversion (likely mixed data types)
+      - WARNING: ta has 50.9% missing data
+      - WARNING: rh has 50.9% missing data
+      - WARNING: sw_in has 74.5% missing data
+      - WARNING: ws has 50.8% missing data
+      - WARNING: precip has 50.9% missing data
+      - WARNING: ppfd_in has 74.5% missing data
+      - CRITICAL: vpd has 25.0% zero values (threshold: 10.0%)
+      - WARNING: vpd has 50.9% missing data
+
+ 8. AUS_CAR_THI_0PF
+    Quality Score: 33.2/100
+    Issues:
+      - WARNING: solar_TIMESTAMP has 100.0% missing data
+      - WARNING: solar_TIMESTAMP lost 100.0% of data during numeric conversion (likely mixed data types)
+      - WARNING: ta has 50.9% missing data
+      - WARNING: rh has 50.9% missing data
+      - WARNING: sw_in has 74.2% missing data
+      - WARNING: ws has 50.8% missing data
+      - WARNING: precip has 50.9% missing data
+      - WARNING: ppfd_in has 74.2% missing data
+      - CRITICAL: vpd has 25.0% zero values (threshold: 10.0%)
+      - WARNING: vpd has 50.9% missing data
+
+ 9. AUS_CAR_THI_CON
+    Quality Score: 33.2/100
+    Issues:
+      - WARNING: solar_TIMESTAMP has 100.0% missing data
+      - WARNING: solar_TIMESTAMP lost 100.0% of data during numeric conversion (likely mixed data types)
+      - WARNING: ta has 50.9% missing data
+      - WARNING: rh has 50.9% missing data
+      - WARNING: sw_in has 74.2% missing data
+      - WARNING: ws has 50.8% missing data
+      - WARNING: precip has 50.9% missing data
+      - WARNING: ppfd_in has 74.2% missing data
+      - CRITICAL: vpd has 25.0% zero values (threshold: 10.0%)
+      - WARNING: vpd has 50.9% missing data
+
+10. AUS_CAR_THI_T00
+    Quality Score: 33.2/100
+    Issues:
+      - WARNING: solar_TIMESTAMP has 100.0% missing data
+      - WARNING: solar_TIMESTAMP lost 100.0% of data during numeric conversion (likely mixed data types)
+      - WARNING: ta has 50.9% missing data
+      - WARNING: rh has 50.9% missing data
+      - WARNING: sw_in has 74.2% missing data
+      - WARNING: ws has 50.8% missing data
+      - WARNING: precip has 50.9% missing data
+      - WARNING: ppfd_in has 74.2% missing data
+      - CRITICAL: vpd has 25.0% zero values (threshold: 10.0%)
+      - WARNING: vpd has 50.9% missing data
+
+11. AUS_CAR_THI_T0F
+    Quality Score: 33.2/100
+    Issues:
+      - WARNING: solar_TIMESTAMP has 100.0% missing data
+      - WARNING: solar_TIMESTAMP lost 100.0% of data during numeric conversion (likely mixed data types)
+      - WARNING: ta has 50.9% missing data
+      - WARNING: rh has 50.9% missing data
+      - WARNING: sw_in has 74.2% missing data
+      - WARNING: ws has 50.8% missing data
+      - WARNING: precip has 50.9% missing data
+      - WARNING: ppfd_in has 74.2% missing data
+      - CRITICAL: vpd has 25.0% zero values (threshold: 10.0%)
+      - WARNING: vpd has 50.9% missing data
+
+12. AUS_CAR_THI_TP0
+    Quality Score: 33.2/100
+    Issues:
+      - WARNING: solar_TIMESTAMP has 100.0% missing data
+      - WARNING: solar_TIMESTAMP lost 100.0% of data during numeric conversion (likely mixed data types)
+      - WARNING: ta has 50.9% missing data
+      - WARNING: rh has 50.9% missing data
+      - WARNING: sw_in has 74.2% missing data
+      - WARNING: ws has 50.8% missing data
+      - WARNING: precip has 50.9% missing data
+      - WARNING: ppfd_in has 74.2% missing data
+      - CRITICAL: vpd has 25.0% zero values (threshold: 10.0%)
+      - WARNING: vpd has 50.9% missing data
+
+13. AUS_CAR_THI_TPF
+    Quality Score: 33.2/100
+    Issues:
+      - WARNING: solar_TIMESTAMP has 100.0% missing data
+      - WARNING: solar_TIMESTAMP lost 100.0% of data during numeric conversion (likely mixed data types)
+      - WARNING: ta has 50.9% missing data
+      - WARNING: rh has 50.9% missing data
+      - WARNING: sw_in has 74.2% missing data
+      - WARNING: ws has 50.8% missing data
+      - WARNING: precip has 50.9% missing data
+      - WARNING: ppfd_in has 74.2% missing data
+      - CRITICAL: vpd has 25.0% zero values (threshold: 10.0%)
+      - WARNING: vpd has 50.9% missing data
+
+14. MEX_VER_BSJ
+    Quality Score: 37.7/100
+    Issues:
+      - WARNING: solar_TIMESTAMP has 100.0% missing data
+      - WARNING: solar_TIMESTAMP lost 100.0% of data during numeric conversion (likely mixed data types)
+      - CRITICAL: vpd has 26.0% zero values (threshold: 10.0%)
+
+15. AUS_CAN_ST1_EUC
+    Quality Score: 41.3/100
+    Issues:
+      - WARNING: solar_TIMESTAMP has 100.0% missing data
+      - WARNING: solar_TIMESTAMP lost 100.0% of data during numeric conversion (likely mixed data types)
+      - CRITICAL: vpd has 28.8% zero values (threshold: 10.0%)
+
+16. AUS_CAN_ST2_MIX
+    Quality Score: 41.3/100
+    Issues:
+      - WARNING: solar_TIMESTAMP has 100.0% missing data
+      - WARNING: solar_TIMESTAMP lost 100.0% of data during numeric conversion (likely mixed data types)
+      - CRITICAL: vpd has 28.8% zero values (threshold: 10.0%)
+
+17. AUS_CAN_ST3_ACA
+    Quality Score: 41.3/100
+    Issues:
+      - WARNING: solar_TIMESTAMP has 100.0% missing data
+      - WARNING: solar_TIMESTAMP lost 100.0% of data during numeric conversion (likely mixed data types)
+      - CRITICAL: vpd has 28.8% zero values (threshold: 10.0%)
+
+18. CHE_PFY_CON
+    Quality Score: 46.8/100
+    Issues:
+      - WARNING: solar_TIMESTAMP has 100.0% missing data
+      - WARNING: solar_TIMESTAMP lost 100.0% of data during numeric conversion (likely mixed data types)
+      - CRITICAL: vpd has 26.9% zero values (threshold: 10.0%)
+      - WARNING: swc_shallow has 79.9% missing data
+
+19. CHE_PFY_IRR
+    Quality Score: 46.8/100
+    Issues:
+      - WARNING: solar_TIMESTAMP has 100.0% missing data
+      - WARNING: solar_TIMESTAMP lost 100.0% of data during numeric conversion (likely mixed data types)
+      - CRITICAL: vpd has 26.9% zero values (threshold: 10.0%)
+      - WARNING: swc_shallow has 79.8% missing data
+
+20. NLD_LOO
+    Quality Score: 47.8/100
+    Issues:
+      - WARNING: solar_TIMESTAMP has 100.0% missing data
+      - WARNING: solar_TIMESTAMP lost 100.0% of data during numeric conversion (likely mixed data types)
+      - CRITICAL: vpd has 30.4% zero values (threshold: 10.0%)
+
+
+GOOD QUALITY SITES (Score >= 70):
+----------------------------------------
+ 1. IDN_JAM_OIL: 100.0/100
+ 2. ZAF_RAD: 100.0/100
+ 3. ZAF_SOU_SOU: 100.0/100
+ 4. USA_TNB: 99.8/100
+ 5. USA_WVF: 98.6/100
+ 6. IDN_JAM_RUB: 98.5/100
+ 7. USA_TNP: 98.4/100
+ 8. USA_PAR_FER: 98.0/100
+ 9. RUS_FYO: 96.9/100
+10. USA_TNO: 96.1/100
+11. USA_TNY: 95.6/100
+12. USA_INM: 94.9/100
+13. ZAF_NOO_E3_IRR: 89.2/100
+14. ESP_SAN_A2_45I: 89.1/100
+15. ESP_SAN_B2_100: 89.1/100
+16. GUF_GUY_ST2: 88.7/100
+17. GUF_GUY_GUY: 88.3/100
+18. AUS_WOM: 88.1/100
+19. DEU_STE_4P5: 87.9/100
+20. SWE_NOR_ST1_AF1: 87.6/100
+21. SWE_NOR_ST1_AF2: 87.6/100
+22. CHE_DAV_SEE: 87.1/100
+23. ARG_MAZ: 87.0/100
+24. ARG_TRE: 87.0/100
+25. GBR_GUI_ST1: 87.0/100
+26. GBR_GUI_ST2: 87.0/100
+27. GBR_GUI_ST3: 87.0/100
+28. CHN_YUN_YUN: 86.9/100
+29. COL_MAC_SAF_RAD: 86.9/100
+30. ESP_MAJ_NOR_LM1: 86.9/100
+31. USA_SIL_OAK_POS: 86.8/100
+32. ESP_MAJ_MAI: 86.7/100
+33. ESP_CAN: 86.6/100
+34. NLD_SPE_DOU: 86.6/100
+35. PRT_MIT: 86.4/100
+36. USA_UMB_GIR: 86.2/100
+37. ITA_TOR: 86.0/100
+38. ESP_TIL_PIN: 85.8/100
+39. FIN_PET: 85.8/100
+40. USA_DUK_HAR: 85.8/100
+41. ESP_TIL_OAK: 85.7/100
+42. NZL_HUA_HUA: 85.7/100
+43. CHN_ARG_GWD: 85.6/100
+44. CHN_ARG_GWS: 85.6/100
+45. CHN_YIN_ST1: 85.6/100
+46. CHN_YIN_ST2_DRO: 85.6/100
+47. CHN_YIN_ST3_DRO: 85.6/100
+48. ESP_RIN: 85.6/100
+49. GBR_ABE_PLO: 85.6/100
+50. CAN_TUR_P39_POS: 85.4/100
+51. CAN_TUR_P39_PRE: 85.4/100
+52. USA_HUY_LIN_NON: 85.4/100
+53. USA_MOR_SF: 85.4/100
+54. HUN_SIK: 85.3/100
+55. ESP_SAN_B_100: 85.0/100
+56. GBR_DEV_CON: 85.0/100
+57. GBR_DEV_DRO: 85.0/100
+58. DEU_HIN_OAK: 84.9/100
+59. DEU_HIN_TER: 84.9/100
+60. ESP_TIL_MIX: 84.8/100
+61. CHN_HOR_AFF: 84.5/100
+62. ESP_SAN_A_45I: 84.1/100
+63. AUT_PAT_FOR: 83.8/100
+64. AUT_PAT_TRE: 83.8/100
+65. USA_PER_PER: 83.7/100
+66. UZB_YAN_DIS: 83.2/100
+67. USA_SIL_OAK_1PR: 82.9/100
+68. USA_SIL_OAK_2PR: 82.9/100
+69. ZAF_WEL_SOR: 82.9/100
+70. USA_UMB_CON: 82.8/100
+71. ESP_VAL_SOR: 82.5/100
+72. USA_SMI_SCB: 82.5/100
+73. THA_KHU: 81.9/100
+74. AUT_PAT_KRU: 81.8/100
+75. ESP_VAL_BAR: 81.3/100
+76. FRA_PUE: 81.2/100
+77. USA_NWH: 81.0/100
+78. MDG_SEM_TAL: 80.3/100
+79. FRA_HES_HE1_NON: 80.2/100
+80. AUS_MAR_UBD: 79.7/100
+81. AUS_MAR_UBW: 79.7/100
+82. AUT_TSC: 79.7/100
+83. USA_WIL_WC2: 79.5/100
+84. USA_SMI_SER: 79.4/100
+85. SWE_SKO_MIN: 79.3/100
+86. SEN_SOU_IRR: 79.2/100
+87. FRA_HES_HE2_NON: 79.1/100
+88. SEN_SOU_POS: 79.1/100
+89. FIN_HYY_SME: 78.7/100
+90. SWE_NOR_ST3: 78.7/100
+91. CAN_TUR_P74: 78.5/100
+92. IDN_PON_STE: 78.5/100
+93. SEN_SOU_PRE: 78.5/100
+94. SWE_NOR_ST4_AFT: 78.4/100
+95. USA_PJS_P12_AMB: 78.2/100
+96. USA_PJS_P04_AMB: 78.1/100
+97. SWE_SKY_38Y: 78.0/100
+98. SWE_SKY_68Y: 78.0/100
+99. USA_PJS_P08_AMB: 78.0/100
+100. RUS_CHE_Y4: 77.7/100
+101. SWE_NOR_ST1_BEF: 77.7/100
+102. SWE_NOR_ST5_REF: 77.1/100
+103. ZAF_FRA_FRA: 77.1/100
+104. AUS_KAR: 76.2/100
+105. MEX_COR_YP: 76.2/100
+106. USA_SYL_HL2: 75.5/100
+107. AUS_MAR_HSW_HIG: 75.3/100
+108. USA_WIL_WC1: 74.8/100
+109. SWE_NOR_ST4_BEF: 74.7/100
+110. BRA_SAN: 74.4/100
+111. USA_CHE_MAP: 74.4/100
+112. RUS_CHE_LOW: 74.0/100
+113. PRT_PIN: 73.7/100
+114. AUS_MAR_HSD_HIG: 73.6/100
+115. AUS_MAR_MSD_MOD: 73.6/100
+116. AUS_MAR_MSW_MOD: 73.6/100
+117. DEU_STE_2P3: 73.3/100
+118. CRI_TAM_TOW: 73.1/100
+119. ESP_YUN_T3_THI: 72.1/100
+120. USA_BNZ_BLA: 71.5/100
+121. USA_SWH: 71.4/100
+122. USA_SYL_HL1: 70.6/100
+123. ESP_RON_PIL: 70.0/100

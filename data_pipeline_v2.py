@@ -36,6 +36,32 @@ warnings.filterwarnings('ignore')
 #
 # ⚠️  DO NOT REMOVE THESE PROTECTIONS - They prevent catastrophic model failure
 # ===============================================================================
+#
+# ===============================================================================
+# 📅 TEMPORAL COVERAGE FILTERING IMPLEMENTED (January 2025)
+# ===============================================================================
+#
+# Added temporal coverage validation to improve spatial model performance by
+# excluding sites with insufficient data for robust spatial generalization.
+#
+# TEMPORAL COVERAGE REQUIREMENTS:
+# - EXCLUDED: Sites with <30 days temporal coverage (3 sites)
+#   └─ ARG_MAZ (12.0 days), ARG_TRE (13.0 days), COL_MAC_SAF_RAD (13.2 days)
+# - WARNING: Sites with 30-90 days temporal coverage (22 sites)
+#   └─ Processed with warnings about limited seasonal representation
+# - OPTIMAL: Sites with ≥90 days temporal coverage (140 sites)
+#   └─ Adequate seasonal representation for spatial modeling
+#
+# BENEFITS:
+# - Removes sites causing poor spatial validation performance due to 
+#   insufficient environmental gradient coverage
+# - Prevents overfitting to narrow temporal windows
+# - Improves model generalization across different time periods and conditions
+# - Maintains high-quality training data while providing clear warnings for 
+#   marginal sites
+#
+# ⚠️  Sites with moderate coverage (30-90 days) are processed with warnings
+# ===============================================================================
 
 class ProcessingConfig:
     """Configuration class for processing parameters - replaces hardcoded values"""
@@ -168,6 +194,22 @@ class MemoryEfficientSAPFLUXNETProcessor:
         'UZB_YAN_DIS'
     }
     
+    # Sites with insufficient temporal coverage (<30 days) - should be excluded from spatial modeling
+    SITES_WITH_INSUFFICIENT_TEMPORAL_COVERAGE = {
+        'ARG_MAZ',      # 12.0 days
+        'ARG_TRE',      # 13.0 days  
+        'COL_MAC_SAF_RAD'  # 13.2 days
+    }
+    
+    # Sites with moderate temporal coverage (30-90 days) - usable but with warnings
+    SITES_WITH_MODERATE_TEMPORAL_COVERAGE = {
+        'USA_CHE_MAP', 'AUS_BRI_BRI', 'CRI_TAM_TOW', 'CZE_LIZ_LES', 'RUS_CHE_LOW',
+        'SEN_SOU_IRR', 'MEX_VER_BSJ', 'MEX_VER_BSM', 'CHN_ARG_GWS', 'CHN_ARG_GWD',
+        'CHN_YIN_ST2_DRO', 'CHE_DAV_SEE', 'CHN_YIN_ST3_DRO', 'NLD_SPE_DOU',
+        'HUN_SIK', 'CHN_YIN_ST1', 'USA_HIL_HF1_PRE', 'USA_HIL_HF2', 'JPN_EBE_HYB',
+        'USA_NWH', 'FIN_PET', 'IDN_JAM_OIL'
+    }
+    
     # Sites with extremely high quality flag rates (>50%) - should be excluded
     EXTREMELY_PROBLEMATIC_SITES = {
         'IDN_PON_STE',  # 63.1% flag rate - Extremely poor quality
@@ -206,8 +248,11 @@ class MemoryEfficientSAPFLUXNETProcessor:
         'USA_SIL_OAK_POS',  # 3.5% flag rate - Moderate issues
     }
     
-    # Combined list of all problematic sites
+    # Combined list of all problematic sites (for quality flags only)
     PROBLEMATIC_SITES = EXTREMELY_PROBLEMATIC_SITES | HIGH_PROBLEMATIC_SITES | MODERATE_PROBLEMATIC_SITES
+    
+    # Combined list of all sites to exclude from processing
+    EXCLUDED_SITES = SITES_WITH_NO_VALID_DATA | SITES_WITH_INSUFFICIENT_TEMPORAL_COVERAGE
     
     def __init__(self, output_dir='comprehensive_processed', chunk_size=1000, max_memory_gb=12, force_reprocess=False, skip_problematic_sites=True, use_quality_flags=True, compress_output=False, optimize_io=True, export_format='csv', config_overrides=None):
         self.base_output_dir = output_dir
@@ -589,6 +634,32 @@ class MemoryEfficientSAPFLUXNETProcessor:
             print(f"  🚫 Skipping {site} - No valid sap flow data")
             return True
         
+        # Check if site has insufficient temporal coverage (<30 days) - always skip these
+        if site in self.SITES_WITH_INSUFFICIENT_TEMPORAL_COVERAGE:
+            print(f"  🚫 Skipping {site} - Insufficient temporal coverage (<30 days)")
+            return True
+        
+        # For sites not in predefined lists, calculate temporal coverage dynamically
+        if site not in self.SITES_WITH_MODERATE_TEMPORAL_COVERAGE:
+            temporal_info = self.calculate_temporal_coverage(site)
+            if temporal_info['valid']:
+                duration_days = temporal_info['days']
+                if duration_days < 30:
+                    print(f"  🚫 Skipping {site} - Insufficient temporal coverage ({duration_days:.1f} days < 30 days minimum)")
+                    return True
+                elif 30 <= duration_days < 90:
+                    print(f"  ⚠️  Processing {site} with temporal coverage warning - Moderate coverage ({duration_days:.1f} days)")
+                    print(f"      📅 Period: {temporal_info.get('start', 'Unknown')} to {temporal_info.get('end', 'Unknown')}")
+                    # Don't skip, but warn about moderate coverage
+                else:
+                    print(f"  ✅ {site} has adequate temporal coverage ({duration_days:.1f} days)")
+            else:
+                print(f"  ⚠️  Could not calculate temporal coverage for {site}: {temporal_info['reason']}")
+                # Continue processing if we can't calculate coverage
+        else:
+            # Site is in the predefined moderate coverage list
+            print(f"  ⚠️  Processing {site} with temporal coverage warning - Moderate coverage (30-90 days)")
+        
         # Check if site is problematic and should be skipped
         if self.skip_problematic_sites and site in self.PROBLEMATIC_SITES:
             if site in self.EXTREMELY_PROBLEMATIC_SITES:
@@ -719,6 +790,54 @@ class MemoryEfficientSAPFLUXNETProcessor:
         except Exception as e:
             return False
     
+    def calculate_temporal_coverage(self, site):
+        """Calculate temporal coverage duration for a site in days"""
+        try:
+            env_file = f'sapwood/{site}_env_data.csv'
+            
+            if not os.path.exists(env_file):
+                return {'valid': False, 'days': 0, 'reason': 'Environmental file not found'}
+            
+            # Read a small sample to get timestamp column and check structure
+            sample = pd.read_csv(env_file, nrows=100)
+            
+            if len(sample) == 0:
+                return {'valid': False, 'days': 0, 'reason': 'Empty environmental file'}
+            
+            # Find timestamp column
+            timestamp_cols = [col for col in sample.columns if 'timestamp' in col.lower() and not col.lower().startswith('solar')]
+            if not timestamp_cols:
+                return {'valid': False, 'days': 0, 'reason': 'No timestamp column found in environmental data'}
+            
+            timestamp_col = timestamp_cols[0]
+            
+            # Read first and last few rows to get time range (memory efficient)
+            try:
+                # Read first rows
+                first_chunk = pd.read_csv(env_file, nrows=50)
+                first_chunk[timestamp_col] = pd.to_datetime(first_chunk[timestamp_col])
+                start_time = first_chunk[timestamp_col].min()
+                
+                # Read last rows using tail approach
+                # For efficiency, read file in reverse to get last timestamp
+                total_lines = sum(1 for _ in open(env_file)) - 1  # -1 for header
+                skip_lines = max(0, total_lines - 50)  # Read last 50 lines
+                
+                last_chunk = pd.read_csv(env_file, skiprows=range(1, skip_lines + 1))
+                last_chunk[timestamp_col] = pd.to_datetime(last_chunk[timestamp_col])
+                end_time = last_chunk[timestamp_col].max()
+                
+                # Calculate duration
+                duration = (end_time - start_time).total_seconds() / (24 * 3600)  # Convert to days
+                
+                return {'valid': True, 'days': duration, 'reason': f'Duration: {duration:.1f} days', 'start': start_time, 'end': end_time}
+                
+            except Exception as e:
+                return {'valid': False, 'days': 0, 'reason': f'Error calculating duration: {str(e)}'}
+                
+        except Exception as e:
+            return {'valid': False, 'days': 0, 'reason': f'Error reading environmental file: {str(e)}'}
+
     def validate_sap_flow_data(self, sapf_file):
         """Quickly validate sap flow data before loading environmental data"""
         try:
@@ -2883,6 +3002,8 @@ def main():
         # Print excluded sites summary
         print(f"\n🚫 Excluded sites:")
         print(f"  - No valid sap flow data: {len(processor.SITES_WITH_NO_VALID_DATA)} sites")
+        print(f"  - Insufficient temporal coverage (<30 days): {len(processor.SITES_WITH_INSUFFICIENT_TEMPORAL_COVERAGE)} sites")
+        print(f"    └─ Sites: {', '.join(sorted(processor.SITES_WITH_INSUFFICIENT_TEMPORAL_COVERAGE))}")
         if processor.skip_problematic_sites:
             print(f"  - Extremely problematic (>50% flag rate): {len(processor.EXTREMELY_PROBLEMATIC_SITES)} sites")
             print(f"  - High problematic (20-50% flag rate): {len(processor.HIGH_PROBLEMATIC_SITES)} sites")
@@ -2891,6 +3012,11 @@ def main():
             print(f"  💡 Use --include-problematic to process problematic sites anyway")
         else:
             print(f"  - Problematic sites included: {len(processor.PROBLEMATIC_SITES)} sites")
+        
+        print(f"\n⚠️  Sites with moderate temporal coverage (30-90 days) processed with warnings:")
+        print(f"  - Count: {len(processor.SITES_WITH_MODERATE_TEMPORAL_COVERAGE)} sites")
+        print(f"  - These sites have adequate data but may have limited seasonal representation")
+        print(f"  - Sites: {', '.join(sorted(list(processor.SITES_WITH_MODERATE_TEMPORAL_COVERAGE)[:10]))}{'...' if len(processor.SITES_WITH_MODERATE_TEMPORAL_COVERAGE) > 10 else ''}")
         
     else:
         print(f"\n❌ Adaptive complete processing failed")

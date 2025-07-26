@@ -251,8 +251,6 @@ class ParquetSpatialValidator:
 
     def prepare_features(self, df):
         """Prepare features for training (same as used in cluster training)"""
-        print(f"    🔧 Preparing features from {len(df):,} rows...")
-        
         # Exclude columns (same as in train_cluster_models.py)
         exclude_cols = ['TIMESTAMP', 'solar_TIMESTAMP', 'site', 'plant_id', 'Unnamed: 0', self.cluster_col]
         
@@ -260,8 +258,6 @@ class ParquetSpatialValidator:
                        if col not in exclude_cols + [self.target_col]
                        and not col.endswith('_flags')
                        and not col.endswith('_md')]
-        
-        print(f"    📊 Using {len(feature_cols)} features")
         
         # Extract and clean features
         X_df = df[feature_cols].copy()
@@ -277,8 +273,6 @@ class ParquetSpatialValidator:
         # Fill remaining NaN values with 0
         X = X_df.fillna(0).values
         y = df[self.target_col].values
-        
-        print(f"    ✅ Prepared features: shape {X.shape}, target shape {y.shape}")
         
         return X, y, feature_cols
 

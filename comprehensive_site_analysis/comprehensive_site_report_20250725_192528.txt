@@ -1,0 +1,55 @@
+COMPREHENSIVE SAPFLUXNET SITE ANALYSIS REPORT
+============================================================
+
+Analysis Focus: Site representativeness for spatial modeling
+Identifies: Temporal coverage, data quality, and outlier characteristics
+
+Sites analyzed: 165
+Successful analyses: 165
+Average modeling suitability: 88.7/100
+Range: 67.5 to 100.0
+
+MODELING SUITABILITY CATEGORIES:
+----------------------------------------
+EXCELLENT: 148 sites
+  First 10: AUS_CAN_ST1_EUC, AUS_CAN_ST2_MIX, AUS_CAN_ST3_ACA, AUS_CAR_THI_00F, AUS_CAR_THI_0P0, AUS_CAR_THI_0PF, AUS_CAR_THI_CON, AUS_CAR_THI_T00, AUS_CAR_THI_T0F, AUS_CAR_THI_TP0
+GOOD: 17 sites
+  First 10: ARG_MAZ, ARG_TRE, AUS_BRI_BRI, CHE_LOT_NOR, COL_MAC_SAF_RAD, CZE_LIZ_LES, ESP_YUN_C1, ESP_YUN_C2, ESP_YUN_T1_THI, JPN_EBE_HYB
+MARGINAL: 0 sites
+POOR: 0 sites
+
+SITES WITH POOR TEMPORAL COVERAGE (< 30 days):
+---------------------------------------------
+ARG_MAZ: 12.0 days
+ARG_TRE: 13.0 days
+COL_MAC_SAF_RAD: 13.2 days
+
+SITES WITH INCOMPLETE ENVIRONMENTAL DATA (< 80% critical variables):
+-----------------------------------------------------------------
+USA_WIL_WC2: 20.0% coverage
+AUS_KAR: 60.0% coverage
+AUT_PAT_FOR: 60.0% coverage
+AUT_PAT_KRU: 60.0% coverage
+AUT_PAT_TRE: 60.0% coverage
+AUT_TSC: 60.0% coverage
+CHE_LOT_NOR: 60.0% coverage
+CHE_PFY_CON: 60.0% coverage
+CHE_PFY_IRR: 60.0% coverage
+ESP_RON_PIL: 60.0% coverage
+ESP_VAL_BAR: 60.0% coverage
+ESP_YUN_C1: 60.0% coverage
+ESP_YUN_C2: 60.0% coverage
+ESP_YUN_T1_THI: 60.0% coverage
+ESP_YUN_T3_THI: 60.0% coverage
+GUF_NOU_PET: 60.0% coverage
+IDN_PON_STE: 60.0% coverage
+JPN_EBE_HYB: 60.0% coverage
+JPN_EBE_SUG: 60.0% coverage
+MEX_VER_BSJ: 60.0% coverage
+MEX_VER_BSM: 60.0% coverage
+RUS_CHE_LOW: 60.0% coverage
+USA_MOR_SF: 60.0% coverage
+USA_SMI_SCB: 60.0% coverage
+USA_SMI_SER: 60.0% coverage
+USA_SYL_HL1: 60.0% coverage
+
