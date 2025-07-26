@@ -73,14 +73,14 @@ warnings.filterwarnings('ignore')
 class ProcessingConfig:
     """Configuration class for processing parameters - replaces hardcoded values"""
     
-    # Memory thresholds (GB) - More aggressive for better memory management
+    # Memory thresholds (GB) - Same as v2 for compatibility
     MEMORY_THRESHOLDS = {
-        'critical': 0.5,      # Critical memory situation - aggressive cleanup
-        'low': 1.0,           # Low memory situation - moderate cleanup
-        'moderate': 2.0,      # Moderate memory situation - light cleanup
-        'streaming_low': 2.0, # Use streaming for low memory
-        'streaming_medium': 4.0, # Use streaming for medium memory
-        'memory_threshold': 4.0,  # Threshold for switching to aggressive memory management (all features still created)
+        'critical': 1.0,      # Critical memory situation - aggressive cleanup
+        'low': 2.0,           # Low memory situation - moderate cleanup
+        'moderate': 4.0,      # Moderate memory situation - light cleanup
+        'streaming_low': 4.0, # Use streaming for low memory
+        'streaming_medium': 6.0, # Use streaming for medium memory
+        'memory_threshold': 6.0,  # Threshold for switching to aggressive memory management (all features still created)
     }
     
     # File size thresholds (MB)
@@ -91,15 +91,15 @@ class ProcessingConfig:
         'very_large': 500,    # Very large files - aggressive streaming
     }
     
-    # Chunk size settings - Reduced for better memory management
+    # Chunk size settings - Same as v2 for compatibility
     CHUNK_SIZES = {
-        'min': 5000,          # Minimum chunk size (rows) - reduced from 10000
-        'max': 100000,        # Maximum chunk size (rows) - reduced from 200000
-        'very_low_memory': 250,   # Very low memory chunk size - reduced from 500
-        'low_memory': 500,        # Low memory chunk size - reduced from 1000
-        'medium_memory': 1000,    # Medium memory chunk size - reduced from 1500
-        'high_memory': 1500,      # High memory chunk size - reduced from 2000
-        'large_dataset': 50000,   # Large dataset minimum chunk size - reduced from 100000
+        'min': 10000,         # Minimum chunk size (rows)
+        'max': 200000,        # Maximum chunk size (rows)
+        'very_low_memory': 500,   # Very low memory chunk size
+        'low_memory': 1000,       # Low memory chunk size
+        'medium_memory': 1500,    # Medium memory chunk size
+        'high_memory': 2000,      # High memory chunk size
+        'large_dataset': 100000,  # Large dataset minimum chunk size
     }
     
     # Row limits for memory-constrained situations
@@ -568,21 +568,18 @@ class MemoryEfficientSAPFLUXNETProcessor:
         # Check current memory usage
         current_memory_gb = psutil.virtual_memory().available / (1024**3)
         
-        # More aggressive cleanup strategy
+        # Only force cleanup if memory is actually low
         if current_memory_gb < ProcessingConfig.get_memory_threshold('critical'):
-            # Critical memory situation - very aggressive cleanup
-            for i in range(5):
-                gc.collect()
-        elif current_memory_gb < ProcessingConfig.get_memory_threshold('low'):
-            # Low memory situation - aggressive cleanup
+            # Critical memory situation - aggressive cleanup
             for i in range(3):
                 gc.collect()
+        elif current_memory_gb < ProcessingConfig.get_memory_threshold('low'):
+            # Low memory situation - moderate cleanup
+            gc.collect()
         elif current_memory_gb < ProcessingConfig.get_memory_threshold('moderate'):
-            # Moderate memory situation - moderate cleanup
+            # Moderate memory situation - light cleanup
             gc.collect()
-        else:
-            # Even when memory is good, do light cleanup to prevent accumulation
-            gc.collect()
+        # If memory is good (>4GB available), skip cleanup to avoid performance impact
     
     def get_all_sites(self):
         """Get all sites from sapwood directory"""
@@ -2419,13 +2416,106 @@ class MemoryEfficientSAPFLUXNETProcessor:
             print(f"  ❌ No valid data after merging for {site}")
             return None
         
-        # Use consolidated feature engineering
-        merged = self.create_all_features(merged, metadata, timestamp_col, processing_mode='standard')
+        # Create features using adaptive settings (v2 approach for better memory management)
+        
+        # Stage 1: Enhanced temporal features
+        merged = self.create_advanced_temporal_features(merged, timestamp_col)
+        self.check_memory_usage()
+        
+        # Stage 2: Basic rolling features (adaptive) - use existing function for memory efficiency
+        env_cols = ['ta', 'rh', 'vpd', 'sw_in', 'ws', 'precip', 'swc_shallow', 'ppfd_in']
+        merged = self.create_rolling_features_adaptive(merged, env_cols)
+        self.check_memory_usage()
+        
+        # Stage 3: Lagged features (adaptive)
+        merged = self.create_lagged_features_adaptive(merged, env_cols)
+        self.check_memory_usage()
+        
+        # Stage 4: Basic interaction features (memory-efficient subset)
+        merged = self.create_interaction_features(merged)
+        self.check_memory_usage()
+        
+        # Stage 5: Advanced features (ALL sites - with memory management)
+        available_memory_gb = psutil.virtual_memory().available / (1024**3)
+        dataset_size = len(merged)
+        
+        print(f"    🔧 Creating advanced features for {site} ({dataset_size:,} rows, {available_memory_gb:.1f}GB available)")
+        
+        try:
+            # Force memory cleanup before advanced features
+            gc.collect()
+            
+            # Advanced rolling features (enhanced with longer windows)
+            merged = self.create_advanced_rolling_features(merged)
+            self.check_memory_usage()
+            
+            # Rate of change features
+            merged = self.create_rate_of_change_features(merged)
+            self.check_memory_usage()
+            
+            # Cumulative features
+            merged = self.create_cumulative_features(merged)
+            self.check_memory_usage()
+            
+            print(f"    ✅ Advanced features created for {site} ({len(merged):,} rows)")
+            
+        except Exception as e:
+            print(f"    ❌ Advanced features failed for {site}: {e}")
+            print(f"    🔄 Retrying with streaming approach...")
+            
+            # If advanced features fail, try streaming approach for large sites
+            if dataset_size > 50000:
+                try:
+                    # Process in chunks for large sites
+                    chunk_size = min(10000, dataset_size // 10)
+                    advanced_features = []
+                    
+                    for i in range(0, dataset_size, chunk_size):
+                        chunk = merged.iloc[i:i+chunk_size].copy()
+                        
+                        # Create advanced features for chunk
+                        chunk = self.create_advanced_rolling_features(chunk)
+                        chunk = self.create_rate_of_change_features(chunk)
+                        chunk = self.create_cumulative_features(chunk)
+                        
+                        advanced_features.append(chunk)
+                        
+                        # Memory cleanup
+                        del chunk
+                        gc.collect()
+                    
+                    # Combine chunks
+                    merged = pd.concat(advanced_features, ignore_index=True)
+                    del advanced_features
+                    gc.collect()
+                    
+                    print(f"    ✅ Advanced features created via streaming for {site}")
+                    
+                except Exception as e2:
+                    print(f"    ❌ Streaming approach also failed for {site}: {e2}")
+                    print(f"    📊 Continuing with basic feature set only")
+                    gc.collect()
+            else:
+                print(f"    📊 Continuing with basic feature set only")
+                gc.collect()
+        
+        # Stage 5: Domain-specific features (adaptive)
+        if self.adaptive_settings['create_domain_features']:
+            merged = self.create_domain_specific_features(merged)
+            self.check_memory_usage()
+        
+        # Stage 6: Metadata features
+        merged = self.create_metadata_features(merged, metadata)
+        self.check_memory_usage()
+        
+        # Encode categorical features
+        merged = self.encode_categorical_features(merged)
+        self.check_memory_usage()
         
         # Add site identifier
         merged['site'] = site
         
-        # Add seasonality features (for ecosystem clustering) - after site is added
+        # Stage 7: Seasonality features (for ecosystem clustering) - after site is added
         merged = self.create_seasonality_features(merged)
         self.check_memory_usage()
         
