@@ -73,14 +73,14 @@ warnings.filterwarnings('ignore')
 class ProcessingConfig:
     """Configuration class for processing parameters - replaces hardcoded values"""
     
-    # Memory thresholds (GB)
+    # Memory thresholds (GB) - More aggressive for better memory management
     MEMORY_THRESHOLDS = {
-        'critical': 1.0,      # Critical memory situation - aggressive cleanup
-        'low': 2.0,           # Low memory situation - moderate cleanup
-        'moderate': 4.0,      # Moderate memory situation - light cleanup
-        'streaming_low': 4.0, # Use streaming for low memory
-        'streaming_medium': 6.0, # Use streaming for medium memory
-        'memory_threshold': 6.0,  # Threshold for switching to aggressive memory management (all features still created)
+        'critical': 0.5,      # Critical memory situation - aggressive cleanup
+        'low': 1.0,           # Low memory situation - moderate cleanup
+        'moderate': 2.0,      # Moderate memory situation - light cleanup
+        'streaming_low': 2.0, # Use streaming for low memory
+        'streaming_medium': 4.0, # Use streaming for medium memory
+        'memory_threshold': 4.0,  # Threshold for switching to aggressive memory management (all features still created)
     }
     
     # File size thresholds (MB)
@@ -91,15 +91,15 @@ class ProcessingConfig:
         'very_large': 500,    # Very large files - aggressive streaming
     }
     
-    # Chunk size settings
+    # Chunk size settings - Reduced for better memory management
     CHUNK_SIZES = {
-        'min': 10000,         # Minimum chunk size (rows)
-        'max': 200000,        # Maximum chunk size (rows)
-        'very_low_memory': 500,   # Very low memory chunk size
-        'low_memory': 1000,       # Low memory chunk size
-        'medium_memory': 1500,    # Medium memory chunk size
-        'high_memory': 2000,      # High memory chunk size
-        'large_dataset': 100000,  # Large dataset minimum chunk size
+        'min': 5000,          # Minimum chunk size (rows) - reduced from 10000
+        'max': 100000,        # Maximum chunk size (rows) - reduced from 200000
+        'very_low_memory': 250,   # Very low memory chunk size - reduced from 500
+        'low_memory': 500,        # Low memory chunk size - reduced from 1000
+        'medium_memory': 1000,    # Medium memory chunk size - reduced from 1500
+        'high_memory': 1500,      # High memory chunk size - reduced from 2000
+        'large_dataset': 50000,   # Large dataset minimum chunk size - reduced from 100000
     }
     
     # Row limits for memory-constrained situations
@@ -568,18 +568,21 @@ class MemoryEfficientSAPFLUXNETProcessor:
         # Check current memory usage
         current_memory_gb = psutil.virtual_memory().available / (1024**3)
         
-        # Only force cleanup if memory is actually low
+        # More aggressive cleanup strategy
         if current_memory_gb < ProcessingConfig.get_memory_threshold('critical'):
-            # Critical memory situation - aggressive cleanup
-            for i in range(3):
+            # Critical memory situation - very aggressive cleanup
+            for i in range(5):
                 gc.collect()
         elif current_memory_gb < ProcessingConfig.get_memory_threshold('low'):
-            # Low memory situation - moderate cleanup
-            gc.collect()
+            # Low memory situation - aggressive cleanup
+            for i in range(3):
+                gc.collect()
         elif current_memory_gb < ProcessingConfig.get_memory_threshold('moderate'):
-            # Moderate memory situation - light cleanup
+            # Moderate memory situation - moderate cleanup
             gc.collect()
-        # If memory is good (>4GB available), skip cleanup to avoid performance impact
+        else:
+            # Even when memory is good, do light cleanup to prevent accumulation
+            gc.collect()
     
     def get_all_sites(self):
         """Get all sites from sapwood directory"""
@@ -1185,6 +1188,9 @@ class MemoryEfficientSAPFLUXNETProcessor:
         if data is None:
             return None
         
+        # Memory cleanup after loading
+        self.check_memory_usage()
+        
         # Fix column naming issues
         if 'TIMESTAMP_solar' in data.columns:
             data = data.rename(columns={'TIMESTAMP_solar': 'solar_TIMESTAMP'})
@@ -1236,11 +1242,17 @@ class MemoryEfficientSAPFLUXNETProcessor:
                     
                     return data_clean
                 else:
+                    # Memory cleanup even when no flags
+                    self.check_memory_usage()
                     return data
                     
             except Exception as e:
+                # Memory cleanup on error
+                self.check_memory_usage()
                 return data
         else:
+            # Memory cleanup when no flags file
+            self.check_memory_usage()
             return data
     
     def create_all_features(self, df, metadata, timestamp_col, processing_mode='standard'):
@@ -1258,7 +1270,8 @@ class MemoryEfficientSAPFLUXNETProcessor:
         """
         print("    🔧 Engineering Features...")
         
-        features = df.copy()
+        # Use in-place operations to avoid unnecessary copying
+        features = df
         
         # Phase 1: Temporal Features
         features = self.create_advanced_temporal_features(features, timestamp_col)
@@ -2259,9 +2272,15 @@ class MemoryEfficientSAPFLUXNETProcessor:
                 successful_sites.append(site)
                 self.stats['successful_sites'] += 1
                 
+                # Memory cleanup after successful processing
+                self.force_memory_cleanup()
+                
             else:
                 failed_sites.append(site)
                 self.stats['failed_sites'] += 1
+                
+                # Memory cleanup after failed processing too
+                self.force_memory_cleanup()
         
         print(f"\n{'='*60}")
         print(f"🎉 ADAPTIVE COMPLETE PROCESSING COMPLETE!")
@@ -2355,7 +2374,7 @@ class MemoryEfficientSAPFLUXNETProcessor:
         # Use the validated columns from earlier
         sapf_cols = sapf_validation['columns']
         
-        # Optimized merging using time-based indexing
+        # Optimized merging using time-based indexing with memory management
         
         # Convert timestamps to datetime for efficient merging
         env_data[timestamp_col] = pd.to_datetime(env_data[timestamp_col])
@@ -2365,6 +2384,10 @@ class MemoryEfficientSAPFLUXNETProcessor:
         env_data_indexed = env_data.set_index(timestamp_col)
         sapf_data_indexed = sapf_data.set_index(sapf_timestamp_col)
         
+        # Clean up original dataframes immediately
+        del env_data, sapf_data
+        self.check_memory_usage()
+        
         # Melt sap flow data with indexed timestamp
         sapf_long = sapf_data_indexed[sapf_cols].reset_index().melt(
             id_vars=[sapf_timestamp_col], 
@@ -2372,6 +2395,10 @@ class MemoryEfficientSAPFLUXNETProcessor:
             var_name='plant_id', 
             value_name='sap_flow'
         )
+        
+        # Clean up sapf_data_indexed immediately after melting
+        del sapf_data_indexed
+        self.check_memory_usage()
         
         # Merge using indexed join (more memory efficient)
         merged = sapf_long.merge(
@@ -2382,7 +2409,7 @@ class MemoryEfficientSAPFLUXNETProcessor:
         )
         
         # Clean up intermediate dataframes
-        del sapf_long, env_data, sapf_data, env_data_indexed, sapf_data_indexed
+        del sapf_long, env_data_indexed
         self.check_memory_usage()
         
         # Remove rows with missing sap flow data
