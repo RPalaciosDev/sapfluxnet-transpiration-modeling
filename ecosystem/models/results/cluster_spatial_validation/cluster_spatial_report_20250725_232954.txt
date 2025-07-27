@@ -1,0 +1,38 @@
+SAPFLUXNET Cluster-Based Spatial Validation Report
+============================================================
+Generated: 2025-07-25 23:53:51.091549
+Method: Leave-One-Site-Out within each ecosystem cluster
+Purpose: Test spatial generalization of cluster-specific models
+
+Cluster Performance Summary:
+------------------------------
+Cluster 0:
+  Sites: 13/13
+  Test R²: -2.0591 ± 9.0955
+  Test RMSE: 1.9104 ± 0.6746
+
+Cluster 1:
+  Sites: 20/20
+  Test R²: 0.6283 ± 0.4212
+  Test RMSE: 2.6285 ± 1.3194
+
+Cluster 2:
+  Sites: 19/19
+  Test R²: -3.2414 ± 10.7185
+  Test RMSE: 5.2607 ± 2.1890
+
+Cluster 3:
+  Sites: 22/22
+  Test R²: -8.4017 ± 12.8652
+  Test RMSE: 5.5162 ± 3.3423
+
+Cluster 4:
+  Sites: 13/13
+  Test R²: -442.2700 ± 1520.5133
+  Test RMSE: 1.9461 ± 0.6388
+
+Overall Performance:
+--------------------
+Average Test R² across clusters: -91.0688
+Average Test RMSE across clusters: 3.4524
+Total successful folds: 87/87
