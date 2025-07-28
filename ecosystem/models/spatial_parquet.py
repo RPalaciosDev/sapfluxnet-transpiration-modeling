@@ -26,6 +26,8 @@ import gc
 import psutil
 import argparse
 import shutil
+import json
+from sklearn.metrics import r2_score
 
 warnings.filterwarnings('ignore')
 
@@ -48,13 +50,16 @@ class ParquetSpatialValidator:
     
     def __init__(self, parquet_dir='../../processed_parquet', 
                  models_dir='./results/cluster_models',
-                 results_dir='./results/parquet_spatial_validation'):
+                 results_dir='./results/parquet_spatial_validation',
+                 optimize_hyperparams=False):
         self.parquet_dir = parquet_dir
         self.models_dir = models_dir
         self.results_dir = results_dir
         self.cluster_col = 'ecosystem_cluster'
         self.target_col = 'sap_flow'
         self.timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        self.optimize_hyperparams = optimize_hyperparams
+        self.optimized_params = {}
         
         # Create results directory
         os.makedirs(results_dir, exist_ok=True)
@@ -441,21 +446,33 @@ class ParquetSpatialValidator:
                     dtest = xgb.DMatrix(f"{test_file}?format=libsvm")
                     
                     # CRITICAL FIX: RETRAIN model for this fold to eliminate data leakage
-                    xgb_params = {
-                        'objective': 'reg:squarederror',
-                        'eval_metric': 'rmse',
-                        'max_depth': 8,
-                        'learning_rate': 0.1,
-                        'subsample': 0.8,
-                        'colsample_bytree': 0.8,
-                        'random_state': 42
-                    }
+                    # Use optimized parameters if available, otherwise defaults
+                    if cluster_id in self.optimized_params:
+                        xgb_params = self.optimized_params[cluster_id].copy()
+                        xgb_params.update({
+                            'objective': 'reg:squarederror',
+                            'eval_metric': 'rmse',
+                            'random_state': 42
+                        })
+                        print(f"    🎯 Using optimized parameters for cluster {cluster_id}")
+                    else:
+                        xgb_params = {
+                            'objective': 'reg:squarederror',
+                            'eval_metric': 'rmse',
+                            'max_depth': 8,
+                            'learning_rate': 0.1,
+                            'subsample': 0.8,
+                            'colsample_bytree': 0.8,
+                            'random_state': 42
+                        }
                     
                     # Train new model ONLY on training sites for this fold
+                    # Use optimized n_estimators if available
+                    n_estimators = xgb_params.pop('n_estimators', 100)
                     fold_model = xgb.train(
                         params=xgb_params,
                         dtrain=dtrain,
-                        num_boost_round=100,
+                        num_boost_round=n_estimators,
                         verbose_eval=False
                     )
                     
@@ -547,6 +564,159 @@ class ParquetSpatialValidator:
         print(f"    ✅ Created fold files: train={train_samples:,}, test={test_samples:,}")
         
         return train_file, test_file, train_samples, test_samples
+    
+    def find_existing_results_file(self):
+        """Find the existing spatial validation results file"""
+        pattern = os.path.join(self.results_dir, 'parquet_spatial_fold_results_*')
+        files = glob.glob(pattern)
+        
+        if not files:
+            raise FileNotFoundError(f"No results file found matching pattern: {pattern}")
+        
+        if len(files) > 1:
+            # Get the most recent file
+            files.sort(key=os.path.getmtime, reverse=True)
+            print(f"⚠️  Multiple results files found, using most recent: {os.path.basename(files[0])}")
+        
+        return files[0]
+    
+    def optimize_cluster_hyperparameters(self, cluster_id, sample_train_file, sample_test_file):
+        """Run hyperparameter optimization for a cluster using Optuna"""
+        try:
+            import optuna
+        except ImportError:
+            print("❌ Optuna not installed. Install with: pip install optuna")
+            return None
+        
+        print(f"🔧 Optimizing hyperparameters for cluster {cluster_id}...")
+        
+        def objective(trial):
+            params = {
+                'objective': 'reg:squarederror',
+                'eval_metric': 'rmse',
+                'max_depth': trial.suggest_int('max_depth', 4, 10),
+                'learning_rate': trial.suggest_float('learning_rate', 0.05, 0.2),
+                'subsample': trial.suggest_float('subsample', 0.7, 0.9),
+                'colsample_bytree': trial.suggest_float('colsample_bytree', 0.7, 0.9),
+                'min_child_weight': trial.suggest_int('min_child_weight', 1, 7),
+                'reg_alpha': trial.suggest_float('reg_alpha', 0, 5),
+                'reg_lambda': trial.suggest_float('reg_lambda', 1, 5),
+                'random_state': 42
+            }
+            
+            dtrain = xgb.DMatrix(f"{sample_train_file}?format=libsvm")
+            dtest = xgb.DMatrix(f"{sample_test_file}?format=libsvm")
+            
+            model = xgb.train(
+                params=params,
+                dtrain=dtrain,
+                num_boost_round=trial.suggest_int('n_estimators', 50, 150),
+                verbose_eval=False
+            )
+            
+            y_pred = model.predict(dtest)
+            y_actual = self._load_targets_from_libsvm(sample_test_file)
+            
+            return r2_score(y_actual, y_pred)
+        
+        study = optuna.create_study(direction='maximize', 
+                                  study_name=f'cluster_{cluster_id}_optimization')
+        study.optimize(objective, n_trials=50, show_progress_bar=False)
+        
+        print(f"  🎯 Best R² for cluster {cluster_id}: {study.best_value:.4f}")
+        print(f"  📊 Best parameters: {study.best_params}")
+        
+        return study.best_params
+    
+    def run_hyperparameter_optimization_phase(self):
+        """Run hyperparameter optimization based on existing results"""
+        print("\n🔧 HYPERPARAMETER OPTIMIZATION PHASE")
+        print("="*60)
+        
+        # Find existing results file
+        try:
+            results_file = self.find_existing_results_file()
+            print(f"📊 Using results from: {os.path.basename(results_file)}")
+        except FileNotFoundError as e:
+            print(f"❌ {e}")
+            print("💡 Run spatial validation first to generate results file")
+            return False
+        
+        # Load results to identify clusters
+        results_df = pd.read_csv(results_file)
+        clusters = results_df['cluster'].unique()
+        
+        print(f"🎯 Optimizing hyperparameters for {len(clusters)} clusters...")
+        
+        # Load cluster assignments
+        cluster_assignments, _ = self.load_cluster_assignments()
+        
+        # Group sites by cluster
+        sites_by_cluster = {}
+        for site, cluster_id in cluster_assignments.items():
+            if cluster_id not in sites_by_cluster:
+                sites_by_cluster[cluster_id] = []
+            sites_by_cluster[cluster_id].append(site)
+        
+        # Optimize each cluster using sample data
+        for cluster_id in clusters:
+            if cluster_id not in sites_by_cluster:
+                print(f"⚠️  No sites found for cluster {cluster_id}")
+                continue
+            
+            cluster_sites = sites_by_cluster[cluster_id]
+            
+            try:
+                # Get site info for this cluster
+                site_info = {}
+                for site in cluster_sites[:3]:  # Use first 3 sites for optimization
+                    parquet_file = os.path.join(self.parquet_dir, f'{site}_comprehensive.parquet')
+                    if os.path.exists(parquet_file):
+                        site_info[site] = {'file_path': parquet_file}
+                
+                if len(site_info) < 2:
+                    print(f"⚠️  Not enough sites for cluster {cluster_id} optimization")
+                    continue
+                
+                # Create sample train/test files
+                temp_dir = os.path.join(self.results_dir, f'temp_optimization_cluster_{cluster_id}')
+                os.makedirs(temp_dir, exist_ok=True)
+                
+                sample_sites = list(site_info.keys())
+                test_site = sample_sites[0]
+                
+                sample_train_file, sample_test_file, _, _ = self._create_fold_files_from_parquet(
+                    test_site, site_info, temp_dir
+                )
+                
+                # Run optimization
+                optimal_params = self.optimize_cluster_hyperparameters(
+                    cluster_id, sample_train_file, sample_test_file
+                )
+                
+                if optimal_params:
+                    self.optimized_params[cluster_id] = optimal_params
+                
+                # Clean up temp files
+                shutil.rmtree(temp_dir)
+                
+            except Exception as e:
+                print(f"❌ Error optimizing cluster {cluster_id}: {e}")
+                continue
+        
+        if self.optimized_params:
+            print(f"\n✅ Optimization completed for {len(self.optimized_params)} clusters")
+            
+            # Save optimized parameters
+            opt_params_file = os.path.join(self.results_dir, f'optimized_params_{self.timestamp}.json')
+            with open(opt_params_file, 'w') as f:
+                json.dump(self.optimized_params, f, indent=2)
+            print(f"💾 Optimized parameters saved to: {opt_params_file}")
+            
+            return True
+        else:
+            print("❌ No clusters were successfully optimized")
+            return False
     
     def _process_site_chunked_for_fold(self, parquet_file, site, test_site, train_out, test_out):
         """Process site in chunks like train_cluster_models.py does"""
@@ -643,6 +813,12 @@ class ParquetSpatialValidator:
         print("=" * 60)
         print(f"Started at: {datetime.now()}")
         print("Purpose: Test spatial generalization using raw parquet data")
+        
+        # Run hyperparameter optimization if requested
+        if self.optimize_hyperparams:
+            optimization_success = self.run_hyperparameter_optimization_phase()
+            if not optimization_success:
+                print("⚠️  Continuing with default parameters...")
         
         try:
             # Load cluster assignments
@@ -776,6 +952,8 @@ def main():
                         help="Directory containing cluster models")
     parser.add_argument('--results-dir', default='./results/parquet_spatial_validation',
                         help="Directory to save validation results")
+    parser.add_argument('--optimize-hyperparams', action='store_true',
+                        help="Run hyperparameter optimization based on existing results")
     
     args = parser.parse_args()
     
@@ -783,7 +961,8 @@ def main():
         validator = ParquetSpatialValidator(
             parquet_dir=args.parquet_dir,
             models_dir=args.models_dir,
-            results_dir=args.results_dir
+            results_dir=args.results_dir,
+            optimize_hyperparams=args.optimize_hyperparams
         )
         
         fold_results, cluster_summaries = validator.run_validation()
