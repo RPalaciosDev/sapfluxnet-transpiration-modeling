@@ -281,7 +281,7 @@ class ParquetSpatialValidator:
         
         return X, y, feature_cols
 
-    def validate_cluster_spatially(self, cluster_id, cluster_sites, model):
+    def validate_cluster_spatially(self, cluster_id, cluster_sites):
         """Perform Leave-One-Site-Out validation within a cluster - CORRECTED (no data leakage)"""
         print(f"\n{'='*60}")
         print(f"SPATIAL VALIDATION FOR CLUSTER {cluster_id} (PARQUET)")
@@ -301,12 +301,12 @@ class ParquetSpatialValidator:
         
         if data_mode == 'in_memory':
             cluster_df, successful_sites = cluster_data
-            return self._validate_cluster_in_memory_parquet(cluster_id, successful_sites, model, cluster_df)
+            return self._validate_cluster_in_memory_parquet(cluster_id, successful_sites, cluster_df)
         else:  # streaming mode
             streaming_info, successful_sites = cluster_data
-            return self._validate_cluster_streaming_parquet(cluster_id, successful_sites, model, streaming_info)
+            return self._validate_cluster_streaming_parquet(cluster_id, successful_sites, streaming_info)
     
-    def _validate_cluster_in_memory_parquet(self, cluster_id, successful_sites, model, cluster_df):
+    def _validate_cluster_in_memory_parquet(self, cluster_id, successful_sites, cluster_df):
         """Perform validation with in-memory parquet data"""
         print(f"  🚀 Running in-memory validation with parquet data...")
         
@@ -406,7 +406,7 @@ class ParquetSpatialValidator:
         
         return self._calculate_cluster_summary(cluster_id, successful_sites, fold_results)
     
-    def _validate_cluster_streaming_parquet(self, cluster_id, successful_sites, model, streaming_info):
+    def _validate_cluster_streaming_parquet(self, cluster_id, successful_sites, streaming_info):
         """Perform validation with streaming parquet data processing"""
         print(f"  💾 Running streaming validation with parquet data...")
         
@@ -614,8 +614,7 @@ class ParquetSpatialValidator:
             # Load cluster assignments
             cluster_assignments, cluster_counts = self.load_cluster_assignments()
             
-            # Load cluster models
-            models = self.load_cluster_models()
+            # Note: We don't load pre-trained models since we retrain for each fold
             
             # Group sites by cluster
             sites_by_cluster = {}
@@ -629,16 +628,11 @@ class ParquetSpatialValidator:
             cluster_summaries = []
             
             for cluster_id in sorted(sites_by_cluster.keys()):
-                if cluster_id not in models:
-                    print(f"\n⚠️  No model found for cluster {cluster_id}, skipping...")
-                    continue
-                
                 cluster_sites = sites_by_cluster[cluster_id]
-                model = models[cluster_id]
                 
                 log_memory_usage(f"Before cluster {cluster_id} validation")
                 
-                result = self.validate_cluster_spatially(cluster_id, cluster_sites, model)
+                result = self.validate_cluster_spatially(cluster_id, cluster_sites)
                 
                 if result is not None:
                     fold_results, cluster_summary = result
