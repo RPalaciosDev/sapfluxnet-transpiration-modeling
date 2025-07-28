@@ -530,34 +530,15 @@ class ParquetSpatialValidator:
         with open(train_file, 'w') as train_out, open(test_file, 'w') as test_out:
             for site, info in site_info.items():
                 try:
-                    # Load site data
-                    df_site = pd.read_parquet(info['file_path'])
-                    df_site = df_site.dropna(subset=[self.target_col])
-                    
-                    if len(df_site) == 0:
-                        continue
-                    
-                    # Prepare features
-                    X, y, _ = self.prepare_features(df_site)
-                    
-                    # Write to appropriate file
-                    output_file = test_out if site == test_site else train_out
-                    
-                    # Convert to libsvm format and write
-                    for j in range(len(X)):
-                        line_parts = [str(y[j])]
-                        for k, value in enumerate(X[j]):
-                            if value != 0:  # Sparse format
-                                line_parts.append(f"{k}:{value}")
-                        output_file.write(' '.join(line_parts) + '\n')
+                    # MEMORY FIX: Use chunked processing like train_cluster_models.py
+                    site_samples = self._process_site_chunked_for_fold(
+                        info['file_path'], site, test_site, train_out, test_out
+                    )
                     
                     if site == test_site:
-                        test_samples += len(X)
+                        test_samples += site_samples
                     else:
-                        train_samples += len(X)
-                    
-                    del df_site, X, y
-                    gc.collect()
+                        train_samples += site_samples
                     
                 except Exception as e:
                     print(f"      ❌ Error processing {site}: {e}")
@@ -566,6 +547,59 @@ class ParquetSpatialValidator:
         print(f"    ✅ Created fold files: train={train_samples:,}, test={test_samples:,}")
         
         return train_file, test_file, train_samples, test_samples
+    
+    def _process_site_chunked_for_fold(self, parquet_file, site, test_site, train_out, test_out):
+        """Process site in chunks like train_cluster_models.py does"""
+        import pyarrow.parquet as pq
+        
+        # Read parquet table for chunked processing
+        parquet_table = pq.read_table(parquet_file)
+        total_rows = len(parquet_table)
+        chunk_size = 50000  # Conservative chunk size like train_cluster_models.py
+        
+        total_processed = 0
+        
+        # Process in chunks
+        for start_idx in range(0, total_rows, chunk_size):
+            end_idx = min(start_idx + chunk_size, total_rows)
+            
+            # Read chunk
+            chunk_table = parquet_table.slice(start_idx, end_idx - start_idx)
+            df_chunk = chunk_table.to_pandas()
+            
+            # Drop missing targets
+            df_chunk = df_chunk.dropna(subset=[self.target_col])
+            
+            if len(df_chunk) == 0:
+                del df_chunk
+                continue
+            
+            # Prepare features (same as before)
+            X, y, _ = self.prepare_features(df_chunk)
+            
+            # Write to appropriate file
+            output_file = test_out if site == test_site else train_out
+            
+            # Convert to libsvm format and write
+            for j in range(len(X)):
+                line_parts = [str(y[j])]
+                for k, value in enumerate(X[j]):
+                    if value != 0:  # Sparse format
+                        line_parts.append(f"{k}:{value}")
+                output_file.write(' '.join(line_parts) + '\n')
+            
+            chunk_processed = len(X)
+            total_processed += chunk_processed
+            
+            # Clean up chunk immediately
+            del df_chunk, X, y
+            gc.collect()
+        
+        # Clean up parquet table
+        del parquet_table
+        gc.collect()
+        
+        return total_processed
     
     def _load_targets_from_libsvm(self, libsvm_file):
         """Load only target values from libsvm file"""
