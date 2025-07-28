@@ -197,8 +197,10 @@ class ParquetSpatialValidator:
         print(f"  📊 Estimated memory needed: {estimated_memory_gb:.1f} GB")
         
         # Adaptive streaming threshold based on available memory
-        if available_memory_gb > 100:  # High memory system (like yours with 128GB)
-            use_streaming = (total_size_mb > 10000) or (total_rows > 5000000)  # 10GB or 5M rows
+        if available_memory_gb > 400:  # Ultra-high memory system (like yours with 545GB!)
+            use_streaming = (total_size_mb > 50000) or (total_rows > 20000000)  # 50GB or 20M rows
+        elif available_memory_gb > 100:  # High memory system 
+            use_streaming = (total_size_mb > 20000) or (total_rows > 10000000)  # 20GB or 10M rows
         elif available_memory_gb > 50:  # Medium-high memory system  
             use_streaming = (total_size_mb > 5000) or (total_rows > 2000000)  # 5GB or 2M rows
         elif available_memory_gb > 20:  # Medium memory system
