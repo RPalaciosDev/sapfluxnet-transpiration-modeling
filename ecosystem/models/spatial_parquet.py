@@ -456,8 +456,9 @@ class ParquetSpatialValidator:
                     
                     # CRITICAL FIX: RETRAIN model for this fold to eliminate data leakage
                     # Use optimized parameters if available, otherwise defaults
-                    if cluster_id in self.optimized_params:
-                        xgb_params = self.optimized_params[cluster_id].copy()
+                    cluster_key = str(int(cluster_id))  # Convert to string for consistency
+                    if cluster_key in self.optimized_params:
+                        xgb_params = self.optimized_params[cluster_key].copy()
                         xgb_params.update({
                             'objective': 'reg:squarederror',
                             'eval_metric': 'rmse',
@@ -704,7 +705,7 @@ class ParquetSpatialValidator:
                 )
                 
                 if optimal_params:
-                    self.optimized_params[cluster_id] = optimal_params
+                    self.optimized_params[str(int(cluster_id))] = optimal_params
                 
                 # Clean up temp files
                 shutil.rmtree(temp_dir)
