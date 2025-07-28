@@ -2304,6 +2304,28 @@ class MemoryEfficientSAPFLUXNETProcessor:
         """Process a single site with adaptive settings determined on-the-fly"""
         
         try:
+            # Check for extremely large datasets and force streaming mode
+            env_file = f'sapwood/{site}_env_data.csv'
+            sapf_file = f'sapwood/{site}_sapf_data.csv'
+            
+            if os.path.exists(env_file) and os.path.exists(sapf_file):
+                env_size_mb = os.path.getsize(env_file) / (1024**2)
+                sapf_size_mb = os.path.getsize(sapf_file) / (1024**2)
+                total_size_mb = env_size_mb + sapf_size_mb
+                
+                print(f"    📊 Dataset size: {total_size_mb:.1f}MB (env: {env_size_mb:.1f}MB, sapf: {sapf_size_mb:.1f}MB)")
+                
+                # Force streaming mode for very large datasets
+                if total_size_mb > 50:  # If total size > 50MB, force streaming
+                    print(f"    💾 Very large dataset detected - forcing streaming mode")
+                    self.adaptive_settings['use_streaming'] = True
+                    self.adaptive_settings['processing_mode'] = 'streaming'
+                
+                # Skip extremely large datasets that might cause memory issues
+                if total_size_mb > 100:  # If total size > 100MB, skip entirely
+                    print(f"    ⚠️  Extremely large dataset detected ({total_size_mb:.1f}MB) - skipping to prevent memory issues")
+                    return None
+            
             # Determine optimal settings for this site
             if not self.determine_adaptive_settings(site):
                 return None

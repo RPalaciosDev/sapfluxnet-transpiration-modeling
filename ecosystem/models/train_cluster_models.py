@@ -824,7 +824,7 @@ class MemoryOptimizedClusterTrainer:
         return metrics
     
     def _save_model_and_importance(self, cluster_id, model, feature_cols, metrics):
-        """Save model and feature importance"""
+        """Save model and feature importance with mapping"""
         # Save model
         model_path = os.path.join(self.results_dir, f'xgb_model_cluster_{cluster_id}_{self.timestamp}.json')
         model.save_model(model_path)
@@ -840,11 +840,89 @@ class MemoryOptimizedClusterTrainer:
                 'importance': list(importance.values())
             }).sort_values('importance', ascending=False)
             
+            # Save basic importance file
             importance_path = os.path.join(self.results_dir, f'feature_importance_cluster_{cluster_id}_{self.timestamp}.csv')
             importance_df.to_csv(importance_path, index=False)
             print(f"  💾 Feature importance saved: {importance_path}")
+            
+            # Create mapped version with descriptions and categories
+            mapped_importance = self._map_feature_importance(importance_df, cluster_id)
+            if mapped_importance is not None:
+                mapped_path = os.path.join(self.results_dir, f'feature_importance_cluster_{cluster_id}_{self.timestamp}_mapped.csv')
+                mapped_importance.to_csv(mapped_path, index=False)
+                print(f"  📊 Mapped feature importance saved: {mapped_path}")
+                
+                # Print top features summary
+                print(f"  🏆 Top 10 features for cluster {cluster_id}:")
+                for i, row in mapped_importance.head(10).iterrows():
+                    print(f"    {row['feature_index']}: {row['feature_name']} ({row['category']}) - {row['importance_score']:.2f}")
+                
         except Exception as e:
             print(f"  ⚠️  Could not save feature importance: {e}")
+    
+    def _map_feature_importance(self, importance_df, cluster_id):
+        """Map feature importance using the v2 feature mapping"""
+        try:
+            # Try to load the feature mapping from the feature_importance directory
+            mapping_paths = [
+                '../../feature_importance/feature_mapping_v2_final.csv',
+                '../../feature_importance/xgboost_scripts/feature_mapping_v2_complete.csv',
+                '../feature_importance/feature_mapping_v2_final.csv',
+                './feature_importance/feature_mapping_v2_final.csv'
+            ]
+            
+            mapping_file = None
+            for path in mapping_paths:
+                if os.path.exists(path):
+                    mapping_file = path
+                    break
+            
+            if mapping_file is None:
+                print(f"  ⚠️  Feature mapping file not found. Tried paths: {mapping_paths}")
+                print(f"  💡 To enable feature mapping, ensure feature_mapping_v2_final.csv exists in feature_importance directory")
+                return None
+            
+            # Load the feature mapping
+            df_mapping = pd.read_csv(mapping_file)
+            mapping_dict = dict(zip(df_mapping['feature_index'], df_mapping['feature_name']))
+            desc_dict = dict(zip(df_mapping['feature_index'], df_mapping['description']))
+            cat_dict = dict(zip(df_mapping['feature_index'], df_mapping['category']))
+            
+            # Map feature names and add descriptions/categories
+            mapped_results = []
+            
+            for _, row in importance_df.iterrows():
+                feature_index = row['feature_index']
+                importance_score = row['importance']
+                
+                # Get mapped information
+                feature_name = mapping_dict.get(feature_index, row['feature_name'])
+                description = desc_dict.get(feature_index, "No description available")
+                category = cat_dict.get(feature_index, "Unknown category")
+                
+                mapped_results.append({
+                    'feature_index': feature_index,
+                    'feature_name': feature_name,
+                    'description': description,
+                    'category': category,
+                    'importance_score': importance_score
+                })
+            
+            # Create DataFrame and sort by importance
+            df_mapped = pd.DataFrame(mapped_results)
+            df_mapped = df_mapped.sort_values('importance_score', ascending=False)
+            
+            # Print summary by category
+            category_importance = df_mapped.groupby('category')['importance_score'].sum().sort_values(ascending=False)
+            print(f"  📊 Total importance by category for cluster {cluster_id}:")
+            for category, total_importance in category_importance.head(5).items():
+                print(f"    {category}: {total_importance:.2f}")
+            
+            return df_mapped
+            
+        except Exception as e:
+            print(f"  ⚠️  Could not map feature importance: {e}")
+            return None
     
     def train_all_cluster_models(self, force_reprocess=False):
         """Train models for all clusters with two-stage approach"""

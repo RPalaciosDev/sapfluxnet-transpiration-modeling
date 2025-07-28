@@ -1,0 +1,273 @@
+feature_index,feature_name,description,category
+f0,ta,Air temperature,Environmental
+f1,rh,Relative humidity,Environmental
+f2,sw_in,Shortwave incoming radiation,Environmental
+f3,ws,Wind speed,Environmental
+f4,precip,Precipitation,Environmental
+f5,ppfd_in,Photosynthetic photon flux density,Environmental
+f6,vpd,Vapor pressure deficit,Environmental
+f7,ext_rad,Extraterrestrial radiation,Environmental
+f8,hour,Hour of day,Temporal
+f9,day_of_year,Day of year,Temporal
+f10,month,Month,Temporal
+f11,year,Year,Temporal
+f12,day_of_week,Day of week,Temporal
+f13,hour_sin,Sine of hour (cyclical),Temporal
+f14,hour_cos,Cosine of hour (cyclical),Temporal
+f15,day_sin,Sine of day of year (cyclical),Temporal
+f16,day_cos,Cosine of day of year (cyclical),Temporal
+f17,month_sin,Sine of month (cyclical),Temporal
+f18,month_cos,Cosine of month (cyclical),Temporal
+f19,solar_hour,Solar hour,Temporal
+f20,solar_day_of_year,Solar day of year,Temporal
+f21,solar_hour_sin,Sine of solar hour,Temporal
+f22,solar_hour_cos,Cosine of solar hour,Temporal
+f23,solar_day_sin,Sine of solar day,Temporal
+f24,solar_day_cos,Cosine of solar day,Temporal
+f25,is_daylight,Daylight indicator (6-18h),Temporal
+f26,is_peak_sunlight,Peak sunlight indicator (10-16h),Temporal
+f27,is_weekend,Weekend indicator,Temporal
+f28,is_morning,Morning indicator (6-12h),Temporal
+f29,is_afternoon,Afternoon indicator (12-18h),Temporal
+f30,is_night,Night indicator,Temporal
+f31,is_spring,Spring season indicator,Temporal
+f32,is_summer,Summer season indicator,Temporal
+f33,is_autumn,Autumn season indicator,Temporal
+f34,is_winter,Winter season indicator,Temporal
+f35,hours_since_sunrise,Hours since sunrise,Temporal
+f36,hours_since_sunset,Hours since sunset,Temporal
+f37,ta_mean_3h,Temperature 3h-hour mean,Rolling
+f38,ta_std_3h,Temperature 3h-hour standard deviation,Rolling
+f39,ta_mean_6h,Temperature 6h-hour mean,Rolling
+f40,ta_std_6h,Temperature 6h-hour standard deviation,Rolling
+f41,ta_mean_12h,Temperature 12h-hour mean,Rolling
+f42,ta_std_12h,Temperature 12h-hour standard deviation,Rolling
+f43,ta_mean_24h,Temperature 24h-hour mean,Rolling
+f44,ta_std_24h,Temperature 24h-hour standard deviation,Rolling
+f45,ta_mean_48h,Temperature 48h-hour mean,Rolling
+f46,ta_std_48h,Temperature 48h-hour standard deviation,Rolling
+f47,ta_mean_72h,Temperature 72h-hour mean,Rolling
+f48,ta_std_72h,Temperature 72h-hour standard deviation,Rolling
+f49,ta_mean_168h,Temperature 168h-hour mean,Rolling
+f50,ta_std_168h,Temperature 168h-hour standard deviation,Rolling
+f51,ta_mean_336h,Temperature 336h-hour mean,Rolling
+f52,ta_std_336h,Temperature 336h-hour standard deviation,Rolling
+f53,ta_mean_720h,Temperature 720h-hour mean,Rolling
+f54,ta_std_720h,Temperature 720h-hour standard deviation,Rolling
+f55,vpd_mean_3h,VPD 3h-hour mean,Rolling
+f56,vpd_std_3h,VPD 3h-hour standard deviation,Rolling
+f57,vpd_mean_6h,VPD 6h-hour mean,Rolling
+f58,vpd_std_6h,VPD 6h-hour standard deviation,Rolling
+f59,vpd_mean_12h,VPD 12h-hour mean,Rolling
+f60,vpd_std_12h,VPD 12h-hour standard deviation,Rolling
+f61,vpd_mean_24h,VPD 24h-hour mean,Rolling
+f62,vpd_std_24h,VPD 24h-hour standard deviation,Rolling
+f63,vpd_mean_48h,VPD 48h-hour mean,Rolling
+f64,vpd_std_48h,VPD 48h-hour standard deviation,Rolling
+f65,vpd_mean_72h,VPD 72h-hour mean,Rolling
+f66,vpd_std_72h,VPD 72h-hour standard deviation,Rolling
+f67,vpd_mean_168h,VPD 168h-hour mean,Rolling
+f68,vpd_std_168h,VPD 168h-hour standard deviation,Rolling
+f69,vpd_mean_336h,VPD 336h-hour mean,Rolling
+f70,vpd_std_336h,VPD 336h-hour standard deviation,Rolling
+f71,vpd_mean_720h,VPD 720h-hour mean,Rolling
+f72,vpd_std_720h,VPD 720h-hour standard deviation,Rolling
+f73,sw_in_mean_3h,Shortwave radiation 3h-hour mean,Rolling
+f74,sw_in_std_3h,Shortwave radiation 3h-hour standard deviation,Rolling
+f75,sw_in_mean_6h,Shortwave radiation 6h-hour mean,Rolling
+f76,sw_in_std_6h,Shortwave radiation 6h-hour standard deviation,Rolling
+f77,sw_in_mean_12h,Shortwave radiation 12h-hour mean,Rolling
+f78,sw_in_std_12h,Shortwave radiation 12h-hour standard deviation,Rolling
+f79,sw_in_mean_24h,Shortwave radiation 24h-hour mean,Rolling
+f80,sw_in_std_24h,Shortwave radiation 24h-hour standard deviation,Rolling
+f81,sw_in_mean_48h,Shortwave radiation 48h-hour mean,Rolling
+f82,sw_in_std_48h,Shortwave radiation 48h-hour standard deviation,Rolling
+f83,sw_in_mean_72h,Shortwave radiation 72h-hour mean,Rolling
+f84,sw_in_std_72h,Shortwave radiation 72h-hour standard deviation,Rolling
+f85,sw_in_mean_168h,Shortwave radiation 168h-hour mean,Rolling
+f86,sw_in_std_168h,Shortwave radiation 168h-hour standard deviation,Rolling
+f87,sw_in_mean_336h,Shortwave radiation 336h-hour mean,Rolling
+f88,sw_in_std_336h,Shortwave radiation 336h-hour standard deviation,Rolling
+f89,sw_in_mean_720h,Shortwave radiation 720h-hour mean,Rolling
+f90,sw_in_std_720h,Shortwave radiation 720h-hour standard deviation,Rolling
+f91,rh_mean_3h,Relative humidity 3h-hour mean,Rolling
+f92,rh_std_3h,Relative humidity 3h-hour standard deviation,Rolling
+f93,rh_mean_6h,Relative humidity 6h-hour mean,Rolling
+f94,rh_std_6h,Relative humidity 6h-hour standard deviation,Rolling
+f95,rh_mean_12h,Relative humidity 12h-hour mean,Rolling
+f96,rh_std_12h,Relative humidity 12h-hour standard deviation,Rolling
+f97,rh_mean_24h,Relative humidity 24h-hour mean,Rolling
+f98,rh_std_24h,Relative humidity 24h-hour standard deviation,Rolling
+f99,rh_mean_48h,Relative humidity 48h-hour mean,Rolling
+f100,rh_std_48h,Relative humidity 48h-hour standard deviation,Rolling
+f101,rh_mean_72h,Relative humidity 72h-hour mean,Rolling
+f102,rh_std_72h,Relative humidity 72h-hour standard deviation,Rolling
+f103,rh_mean_168h,Relative humidity 168h-hour mean,Rolling
+f104,rh_std_168h,Relative humidity 168h-hour standard deviation,Rolling
+f105,rh_mean_336h,Relative humidity 336h-hour mean,Rolling
+f106,rh_std_336h,Relative humidity 336h-hour standard deviation,Rolling
+f107,rh_mean_720h,Relative humidity 720h-hour mean,Rolling
+f108,rh_std_720h,Relative humidity 720h-hour standard deviation,Rolling
+f109,ta_lag_1h,Temperature lag 1h,Lagged
+f110,ta_lag_2h,Temperature lag 2h,Lagged
+f111,ta_lag_3h,Temperature lag 3h,Lagged
+f112,ta_lag_6h,Temperature lag 6h,Lagged
+f113,ta_lag_12h,Temperature lag 12h,Lagged
+f114,ta_lag_24h,Temperature lag 24h,Lagged
+f115,rh_lag_1h,Relative humidity lag 1h,Lagged
+f116,rh_lag_2h,Relative humidity lag 2h,Lagged
+f117,rh_lag_3h,Relative humidity lag 3h,Lagged
+f118,rh_lag_6h,Relative humidity lag 6h,Lagged
+f119,rh_lag_12h,Relative humidity lag 12h,Lagged
+f120,rh_lag_24h,Relative humidity lag 24h,Lagged
+f121,vpd_lag_1h,VPD lag 1h,Lagged
+f122,vpd_lag_2h,VPD lag 2h,Lagged
+f123,vpd_lag_3h,VPD lag 3h,Lagged
+f124,vpd_lag_6h,VPD lag 6h,Lagged
+f125,vpd_lag_12h,VPD lag 12h,Lagged
+f126,vpd_lag_24h,VPD lag 24h,Lagged
+f127,sw_in_lag_1h,Shortwave radiation lag 1h,Lagged
+f128,sw_in_lag_2h,Shortwave radiation lag 2h,Lagged
+f129,sw_in_lag_3h,Shortwave radiation lag 3h,Lagged
+f130,sw_in_lag_6h,Shortwave radiation lag 6h,Lagged
+f131,sw_in_lag_12h,Shortwave radiation lag 12h,Lagged
+f132,sw_in_lag_24h,Shortwave radiation lag 24h,Lagged
+f133,ws_lag_1h,Wind speed lag 1h,Lagged
+f134,ws_lag_2h,Wind speed lag 2h,Lagged
+f135,ws_lag_3h,Wind speed lag 3h,Lagged
+f136,ws_lag_6h,Wind speed lag 6h,Lagged
+f137,ws_lag_12h,Wind speed lag 12h,Lagged
+f138,ws_lag_24h,Wind speed lag 24h,Lagged
+f139,precip_lag_1h,Precipitation lag 1h,Lagged
+f140,precip_lag_2h,Precipitation lag 2h,Lagged
+f141,precip_lag_3h,Precipitation lag 3h,Lagged
+f142,precip_lag_6h,Precipitation lag 6h,Lagged
+f143,precip_lag_12h,Precipitation lag 12h,Lagged
+f144,precip_lag_24h,Precipitation lag 24h,Lagged
+f145,swc_shallow_lag_1h,Soil water content lag 1h,Lagged
+f146,swc_shallow_lag_2h,Soil water content lag 2h,Lagged
+f147,swc_shallow_lag_3h,Soil water content lag 3h,Lagged
+f148,swc_shallow_lag_6h,Soil water content lag 6h,Lagged
+f149,swc_shallow_lag_12h,Soil water content lag 12h,Lagged
+f150,swc_shallow_lag_24h,Soil water content lag 24h,Lagged
+f151,ppfd_in_lag_1h,PPFD lag 1h,Lagged
+f152,ppfd_in_lag_2h,PPFD lag 2h,Lagged
+f153,ppfd_in_lag_3h,PPFD lag 3h,Lagged
+f154,ppfd_in_lag_6h,PPFD lag 6h,Lagged
+f155,ppfd_in_lag_12h,PPFD lag 12h,Lagged
+f156,ppfd_in_lag_24h,PPFD lag 24h,Lagged
+f157,rh_min_72h,Relative humidity 72h-hour minimum,Rolling
+f158,rh_max_72h,Relative humidity 72h-hour maximum,Rolling
+f159,rh_range_72h,Relative humidity 72h-hour range,Rolling
+f160,rh_min_168h,Relative humidity 168h-hour minimum,Rolling
+f161,rh_max_168h,Relative humidity 168h-hour maximum,Rolling
+f162,rh_range_168h,Relative humidity 168h-hour range,Rolling
+f163,rh_min_336h,Relative humidity 336h-hour minimum,Rolling
+f164,rh_max_336h,Relative humidity 336h-hour maximum,Rolling
+f165,rh_range_336h,Relative humidity 336h-hour range,Rolling
+f166,sw_in_min_72h,Shortwave radiation 72h-hour minimum,Rolling
+f167,sw_in_max_72h,Shortwave radiation 72h-hour maximum,Rolling
+f168,sw_in_range_72h,Shortwave radiation 72h-hour range,Rolling
+f169,sw_in_min_168h,Shortwave radiation 168h-hour minimum,Rolling
+f170,sw_in_max_168h,Shortwave radiation 168h-hour maximum,Rolling
+f171,sw_in_range_168h,Shortwave radiation 168h-hour range,Rolling
+f172,sw_in_min_336h,Shortwave radiation 336h-hour minimum,Rolling
+f173,sw_in_max_336h,Shortwave radiation 336h-hour maximum,Rolling
+f174,sw_in_range_336h,Shortwave radiation 336h-hour range,Rolling
+f175,vpd_min_72h,VPD 72h-hour minimum,Rolling
+f176,vpd_max_72h,VPD 72h-hour maximum,Rolling
+f177,vpd_range_72h,VPD 72h-hour range,Rolling
+f178,vpd_min_168h,VPD 168h-hour minimum,Rolling
+f179,vpd_max_168h,VPD 168h-hour maximum,Rolling
+f180,vpd_range_168h,VPD 168h-hour range,Rolling
+f181,vpd_min_336h,VPD 336h-hour minimum,Rolling
+f182,vpd_max_336h,VPD 336h-hour maximum,Rolling
+f183,vpd_range_336h,VPD 336h-hour range,Rolling
+f184,ta_min_72h,Temperature 72h-hour minimum,Rolling
+f185,ta_max_72h,Temperature 72h-hour maximum,Rolling
+f186,ta_range_72h,Temperature 72h-hour range,Rolling
+f187,ta_min_168h,Temperature 168h-hour minimum,Rolling
+f188,ta_max_168h,Temperature 168h-hour maximum,Rolling
+f189,ta_range_168h,Temperature 168h-hour range,Rolling
+f190,ta_min_336h,Temperature 336h-hour minimum,Rolling
+f191,ta_max_336h,Temperature 336h-hour maximum,Rolling
+f192,ta_range_336h,Temperature 336h-hour range,Rolling
+f193,rh_rate_1h,Relative humidity rate of change 1h,Rate of Change
+f194,rh_rate_6h,Relative humidity rate of change 6h,Rate of Change
+f195,rh_rate_24h,Relative humidity rate of change 24h,Rate of Change
+f196,sw_in_rate_1h,Shortwave radiation rate of change 1h,Rate of Change
+f197,sw_in_rate_6h,Shortwave radiation rate of change 6h,Rate of Change
+f198,sw_in_rate_24h,Shortwave radiation rate of change 24h,Rate of Change
+f199,vpd_rate_1h,VPD rate of change 1h,Rate of Change
+f200,vpd_rate_6h,VPD rate of change 6h,Rate of Change
+f201,vpd_rate_24h,VPD rate of change 24h,Rate of Change
+f202,ta_rate_1h,Temperature rate of change 1h,Rate of Change
+f203,ta_rate_6h,Temperature rate of change 6h,Rate of Change
+f204,ta_rate_24h,Temperature rate of change 24h,Rate of Change
+f205,precip_cum_24h,Cumulative precipitation 24h,Cumulative
+f206,precip_cum_72h,Cumulative precipitation 72h,Cumulative
+f207,precip_cum_168h,Cumulative precipitation 168h,Cumulative
+f208,sw_in_cum_24h,Cumulative shortwave radiation 24h,Cumulative
+f209,sw_in_cum_72h,Cumulative shortwave radiation 72h,Cumulative
+f210,vpd_ppfd_interaction,VPD × PPFD interaction,Interaction
+f211,vpd_ta_interaction,VPD × Temperature interaction,Interaction
+f212,temp_humidity_ratio,Temperature/humidity ratio,Interaction
+f213,light_efficiency,Light efficiency,Other
+f214,wind_vpd_interaction,Wind × VPD interaction,Interaction
+f215,radiation_temp_interaction,Radiation × temperature interaction,Interaction
+f216,ppfd_efficiency,PPFD efficiency,Other
+f217,temp_deviation,Temperature deviation from optimal (25°C),Domain
+f218,stomatal_conductance_proxy,Stomatal conductance proxy,Other
+f219,wind_stress,Wind stress,Other
+f220,stomatal_control_index,Stomatal control index,Interaction
+f221,latitude,Latitude,Geographic
+f222,longitude,Longitude,Geographic
+f223,elevation,Elevation,Geographic
+f224,mean_annual_temp,Mean Annual Temp,Other
+f225,mean_annual_precip,Mean Annual Precip,Other
+f226,is_inside_country,Is Inside Country,Temporal
+f227,stand_age,Stand Age,Structural
+f228,basal_area,Basal Area,Structural
+f229,tree_density,Tree Density,Structural
+f230,stand_height,Stand Height,Structural
+f231,leaf_area_index,Leaf Area Index,Interaction
+f232,soil_depth,Soil Depth,Soil
+f233,n_trees,N Trees,Other
+f234,measurement_timestep,Measurement Timestep,Metadata
+f235,pl_age,Pl Age,Structural
+f236,pl_dbh,Pl Dbh,Structural
+f237,pl_height,Pl Height,Structural
+f238,pl_leaf_area,Pl Leaf Area,Structural
+f239,pl_bark_thick,Pl Bark Thick,Structural
+f240,pl_sapw_area,Pl Sapw Area,Structural
+f241,pl_sapw_depth,Pl Sapw Depth,Structural
+f242,climate_zone_code,Climate Zone Code,Climate
+f243,latitude_abs,Latitude Abs,Other
+f244,aridity_index,Aridity Index,Interaction
+f245,leaf_habit_code,Leaf Habit Code,Ecological
+f246,biome_code,Biome Code,Ecological
+f247,igbp_code,Igbp Code,Ecological
+f248,social_status_code,Social Status Code,Identity
+f249,sapwood_leaf_ratio,Sapwood to leaf area ratio,Interaction
+f250,tree_volume_index,Tree Volume Index,Interaction
+f251,timezone_offset,Timezone Offset,Other
+f252,measurement_frequency,Measurement Frequency,Metadata
+f253,koppen_geiger_code_encoded,Koppen Geiger Code Encoded,Climate
+f254,igbp_class_code,Igbp Class Code,Ecological
+f255,soil_texture_code,Soil Texture Code,Soil
+f256,terrain_code,Terrain Code,Identity
+f257,growth_condition_code,Growth Condition Code,Identity
+f258,pl_social_code,Pl Social Code,Structural
+f259,tree_size_class_code,Tree Size Class Code,Structural
+f260,tree_age_class_code,Tree Age Class Code,Structural
+f261,species_functional_group_code,Species Functional Group Code,Ecological
+f262,pl_species_code,Pl Species Code,Ecological
+f263,swc_shallow,Soil water content (shallow),Environmental
+f264,clay_percentage,Clay Percentage,Soil
+f265,sand_percentage,Sand Percentage,Soil
+f266,silt_percentage,Silt Percentage,Soil
+f267,water_stress_index,Water stress index,Interaction
+f268,temp_soil_interaction,Temperature × soil interaction,Interaction
+f269,humidity_soil_interaction,Humidity × soil interaction,Interaction
+f270,seasonal_temp_range,Seasonal temperature range,Temporal
+f271,seasonal_precip_range,Seasonal precipitation range,Temporal

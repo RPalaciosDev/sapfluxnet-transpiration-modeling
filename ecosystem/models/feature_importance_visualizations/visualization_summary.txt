@@ -1,0 +1,37 @@
+FEATURE IMPORTANCE VISUALIZATION SUMMARY
+==================================================
+
+Analysis Date: 2025-07-28 01:19:24
+Data Source: Cluster models from 20250726_112236
+
+GENERATED VISUALIZATIONS:
+-------------------------
+2D Visualizations:
+  • top_features_comparison.png - Top 15 features per cluster
+  • category_distributions.png - Feature category analysis
+  • importance_heatmap.png - Cross-cluster feature heatmap
+  • category_importance.png - Total importance by category
+  • importance_distributions.png - Statistical distributions
+
+3D Interactive Visualizations:
+  • 3d_feature_space.html - Feature importance space
+  • 3d_category_analysis.html - Category-level analysis
+  • 3d_cluster_comparison.html - Cluster strategy comparison
+
+KEY FINDINGS:
+------------
+Cluster 0 (Interaction-Driven):
+  • Top feature: temp_soil_interaction (303,925)
+  • Total features: 269
+  • Most common category: Rolling
+
+Cluster 1 (Time-Lag Dependent):
+  • Top feature: ppfd_in_lag_2h (162,287)
+  • Total features: 267
+  • Most common category: Rolling
+
+Cluster 2 (Structure & Dynamics):
+  • Top feature: basal_area (145,990)
+  • Total features: 271
+  • Most common category: Rolling
+

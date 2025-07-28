@@ -1,0 +1,303 @@
+feature_name,description
+ta,Air temperature
+rh,Relative humidity
+vpd,Vapor pressure deficit
+sw_in,Shortwave incoming radiation
+ws,Wind speed
+precip,Precipitation
+ppfd_in,Photosynthetic photon flux density
+ext_rad,Extraterrestrial radiation
+swc_shallow,Soil water content (shallow)
+hour,Hour of day
+day_of_year,Day of year
+month,Month
+year,Year
+day_of_week,Day of week
+hour_sin,Sine of hour (cyclical)
+hour_cos,Cosine of hour (cyclical)
+day_sin,Sine of day of year (cyclical)
+day_cos,Cosine of day of year (cyclical)
+month_sin,Sine of month (cyclical)
+month_cos,Cosine of month (cyclical)
+solar_hour,Solar hour
+solar_day_of_year,Solar day of year
+solar_hour_sin,Sine of solar hour
+solar_hour_cos,Cosine of solar hour
+solar_day_sin,Sine of solar day
+solar_day_cos,Cosine of solar day
+is_daylight,Daylight indicator (6-18h)
+is_peak_sunlight,Peak sunlight indicator (10-16h)
+is_weekend,Weekend indicator
+is_morning,Morning indicator (6-12h)
+is_afternoon,Afternoon indicator (12-18h)
+is_night,Night indicator
+is_spring,Spring season indicator
+is_summer,Summer season indicator
+is_autumn,Autumn season indicator
+is_winter,Winter season indicator
+hours_since_sunrise,Hours since sunrise
+hours_since_sunset,Hours since sunset
+vpd_ppfd_interaction,VPD × PPFD interaction
+vpd_ta_interaction,VPD × Temperature interaction
+temp_humidity_ratio,Temperature/humidity ratio
+water_stress_index,Water stress index
+ppfd_efficiency,PPFD efficiency
+stomatal_conductance_proxy,Stomatal conductance proxy
+wind_stress,Wind stress
+wind_vpd_interaction,Wind × VPD interaction
+temp_soil_interaction,Temperature × soil interaction
+humidity_soil_interaction,Humidity × soil interaction
+radiation_temp_interaction,Radiation × temperature interaction
+stomatal_control_index,Stomatal control index
+light_efficiency,Light efficiency
+ta_rate_1h,Temperature rate of change 1h
+ta_rate_6h,Temperature rate of change 6h
+ta_rate_24h,Temperature rate of change 24h
+vpd_rate_1h,VPD rate of change 1h
+vpd_rate_6h,VPD rate of change 6h
+vpd_rate_24h,VPD rate of change 24h
+sw_in_rate_1h,Shortwave radiation rate of change 1h
+sw_in_rate_6h,Shortwave radiation rate of change 6h
+sw_in_rate_24h,Shortwave radiation rate of change 24h
+rh_rate_1h,Relative humidity rate of change 1h
+rh_rate_6h,Relative humidity rate of change 6h
+rh_rate_24h,Relative humidity rate of change 24h
+precip_cum_24h,Cumulative precipitation 24h
+precip_cum_72h,Cumulative precipitation 72h
+precip_cum_168h,Cumulative precipitation 168h
+sw_in_cum_24h,Cumulative shortwave radiation 24h
+sw_in_cum_72h,Cumulative shortwave radiation 72h
+seasonal_temp_range,Seasonal temperature range
+seasonal_precip_range,Seasonal precipitation range
+temp_deviation,Temperature deviation from optimal (25°C)
+tree_size_factor,Tree size factor (log of DBH)
+sapwood_leaf_ratio,Sapwood to leaf area ratio
+transpiration_capacity,Transpiration capacity
+ta_lag_1h,Temperature lag 1h
+ta_lag_2h,Temperature lag 2h
+ta_lag_3h,Temperature lag 3h
+ta_lag_6h,Temperature lag 6h
+ta_lag_12h,Temperature lag 12h
+ta_lag_24h,Temperature lag 24h
+rh_lag_1h,Relative humidity lag 1h
+rh_lag_2h,Relative humidity lag 2h
+rh_lag_3h,Relative humidity lag 3h
+rh_lag_6h,Relative humidity lag 6h
+rh_lag_12h,Relative humidity lag 12h
+rh_lag_24h,Relative humidity lag 24h
+vpd_lag_1h,VPD lag 1h
+vpd_lag_2h,VPD lag 2h
+vpd_lag_3h,VPD lag 3h
+vpd_lag_6h,VPD lag 6h
+vpd_lag_12h,VPD lag 12h
+vpd_lag_24h,VPD lag 24h
+sw_in_lag_1h,Shortwave radiation lag 1h
+sw_in_lag_2h,Shortwave radiation lag 2h
+sw_in_lag_3h,Shortwave radiation lag 3h
+sw_in_lag_6h,Shortwave radiation lag 6h
+sw_in_lag_12h,Shortwave radiation lag 12h
+sw_in_lag_24h,Shortwave radiation lag 24h
+ws_lag_1h,Wind speed lag 1h
+ws_lag_2h,Wind speed lag 2h
+ws_lag_3h,Wind speed lag 3h
+ws_lag_6h,Wind speed lag 6h
+ws_lag_12h,Wind speed lag 12h
+ws_lag_24h,Wind speed lag 24h
+precip_lag_1h,Precipitation lag 1h
+precip_lag_2h,Precipitation lag 2h
+precip_lag_3h,Precipitation lag 3h
+precip_lag_6h,Precipitation lag 6h
+precip_lag_12h,Precipitation lag 12h
+precip_lag_24h,Precipitation lag 24h
+swc_shallow_lag_1h,Soil water content lag 1h
+swc_shallow_lag_2h,Soil water content lag 2h
+swc_shallow_lag_3h,Soil water content lag 3h
+swc_shallow_lag_6h,Soil water content lag 6h
+swc_shallow_lag_12h,Soil water content lag 12h
+swc_shallow_lag_24h,Soil water content lag 24h
+ppfd_in_lag_1h,PPFD lag 1h
+ppfd_in_lag_2h,PPFD lag 2h
+ppfd_in_lag_3h,PPFD lag 3h
+ppfd_in_lag_6h,PPFD lag 6h
+ppfd_in_lag_12h,PPFD lag 12h
+ppfd_in_lag_24h,PPFD lag 24h
+ta_mean_3h,Temperature 3h-hour mean
+ta_std_3h,Temperature 3h-hour standard deviation
+ta_min_3h,Temperature 3h-hour minimum
+ta_max_3h,Temperature 3h-hour maximum
+ta_range_3h,Temperature 3h-hour range
+ta_mean_6h,Temperature 6h-hour mean
+ta_std_6h,Temperature 6h-hour standard deviation
+ta_min_6h,Temperature 6h-hour minimum
+ta_max_6h,Temperature 6h-hour maximum
+ta_range_6h,Temperature 6h-hour range
+ta_mean_12h,Temperature 12h-hour mean
+ta_std_12h,Temperature 12h-hour standard deviation
+ta_min_12h,Temperature 12h-hour minimum
+ta_max_12h,Temperature 12h-hour maximum
+ta_range_12h,Temperature 12h-hour range
+ta_mean_24h,Temperature 24h-hour mean
+ta_std_24h,Temperature 24h-hour standard deviation
+ta_min_24h,Temperature 24h-hour minimum
+ta_max_24h,Temperature 24h-hour maximum
+ta_range_24h,Temperature 24h-hour range
+ta_mean_48h,Temperature 48h-hour mean
+ta_std_48h,Temperature 48h-hour standard deviation
+ta_min_48h,Temperature 48h-hour minimum
+ta_max_48h,Temperature 48h-hour maximum
+ta_range_48h,Temperature 48h-hour range
+ta_mean_72h,Temperature 72h-hour mean
+ta_std_72h,Temperature 72h-hour standard deviation
+ta_min_72h,Temperature 72h-hour minimum
+ta_max_72h,Temperature 72h-hour maximum
+ta_range_72h,Temperature 72h-hour range
+ta_mean_168h,Temperature 168h-hour mean
+ta_std_168h,Temperature 168h-hour standard deviation
+ta_min_168h,Temperature 168h-hour minimum
+ta_max_168h,Temperature 168h-hour maximum
+ta_range_168h,Temperature 168h-hour range
+ta_mean_336h,Temperature 336h-hour mean
+ta_std_336h,Temperature 336h-hour standard deviation
+ta_min_336h,Temperature 336h-hour minimum
+ta_max_336h,Temperature 336h-hour maximum
+ta_range_336h,Temperature 336h-hour range
+ta_mean_720h,Temperature 720h-hour mean
+ta_std_720h,Temperature 720h-hour standard deviation
+ta_min_720h,Temperature 720h-hour minimum
+ta_max_720h,Temperature 720h-hour maximum
+ta_range_720h,Temperature 720h-hour range
+vpd_mean_3h,VPD 3h-hour mean
+vpd_std_3h,VPD 3h-hour standard deviation
+vpd_min_3h,VPD 3h-hour minimum
+vpd_max_3h,VPD 3h-hour maximum
+vpd_range_3h,VPD 3h-hour range
+vpd_mean_6h,VPD 6h-hour mean
+vpd_std_6h,VPD 6h-hour standard deviation
+vpd_min_6h,VPD 6h-hour minimum
+vpd_max_6h,VPD 6h-hour maximum
+vpd_range_6h,VPD 6h-hour range
+vpd_mean_12h,VPD 12h-hour mean
+vpd_std_12h,VPD 12h-hour standard deviation
+vpd_min_12h,VPD 12h-hour minimum
+vpd_max_12h,VPD 12h-hour maximum
+vpd_range_12h,VPD 12h-hour range
+vpd_mean_24h,VPD 24h-hour mean
+vpd_std_24h,VPD 24h-hour standard deviation
+vpd_min_24h,VPD 24h-hour minimum
+vpd_max_24h,VPD 24h-hour maximum
+vpd_range_24h,VPD 24h-hour range
+vpd_mean_48h,VPD 48h-hour mean
+vpd_std_48h,VPD 48h-hour standard deviation
+vpd_min_48h,VPD 48h-hour minimum
+vpd_max_48h,VPD 48h-hour maximum
+vpd_range_48h,VPD 48h-hour range
+vpd_mean_72h,VPD 72h-hour mean
+vpd_std_72h,VPD 72h-hour standard deviation
+vpd_min_72h,VPD 72h-hour minimum
+vpd_max_72h,VPD 72h-hour maximum
+vpd_range_72h,VPD 72h-hour range
+vpd_mean_168h,VPD 168h-hour mean
+vpd_std_168h,VPD 168h-hour standard deviation
+vpd_min_168h,VPD 168h-hour minimum
+vpd_max_168h,VPD 168h-hour maximum
+vpd_range_168h,VPD 168h-hour range
+vpd_mean_336h,VPD 336h-hour mean
+vpd_std_336h,VPD 336h-hour standard deviation
+vpd_min_336h,VPD 336h-hour minimum
+vpd_max_336h,VPD 336h-hour maximum
+vpd_range_336h,VPD 336h-hour range
+vpd_mean_720h,VPD 720h-hour mean
+vpd_std_720h,VPD 720h-hour standard deviation
+vpd_min_720h,VPD 720h-hour minimum
+vpd_max_720h,VPD 720h-hour maximum
+vpd_range_720h,VPD 720h-hour range
+sw_in_mean_3h,Shortwave radiation 3h-hour mean
+sw_in_std_3h,Shortwave radiation 3h-hour standard deviation
+sw_in_min_3h,Shortwave radiation 3h-hour minimum
+sw_in_max_3h,Shortwave radiation 3h-hour maximum
+sw_in_range_3h,Shortwave radiation 3h-hour range
+sw_in_mean_6h,Shortwave radiation 6h-hour mean
+sw_in_std_6h,Shortwave radiation 6h-hour standard deviation
+sw_in_min_6h,Shortwave radiation 6h-hour minimum
+sw_in_max_6h,Shortwave radiation 6h-hour maximum
+sw_in_range_6h,Shortwave radiation 6h-hour range
+sw_in_mean_12h,Shortwave radiation 12h-hour mean
+sw_in_std_12h,Shortwave radiation 12h-hour standard deviation
+sw_in_min_12h,Shortwave radiation 12h-hour minimum
+sw_in_max_12h,Shortwave radiation 12h-hour maximum
+sw_in_range_12h,Shortwave radiation 12h-hour range
+sw_in_mean_24h,Shortwave radiation 24h-hour mean
+sw_in_std_24h,Shortwave radiation 24h-hour standard deviation
+sw_in_min_24h,Shortwave radiation 24h-hour minimum
+sw_in_max_24h,Shortwave radiation 24h-hour maximum
+sw_in_range_24h,Shortwave radiation 24h-hour range
+sw_in_mean_48h,Shortwave radiation 48h-hour mean
+sw_in_std_48h,Shortwave radiation 48h-hour standard deviation
+sw_in_min_48h,Shortwave radiation 48h-hour minimum
+sw_in_max_48h,Shortwave radiation 48h-hour maximum
+sw_in_range_48h,Shortwave radiation 48h-hour range
+sw_in_mean_72h,Shortwave radiation 72h-hour mean
+sw_in_std_72h,Shortwave radiation 72h-hour standard deviation
+sw_in_min_72h,Shortwave radiation 72h-hour minimum
+sw_in_max_72h,Shortwave radiation 72h-hour maximum
+sw_in_range_72h,Shortwave radiation 72h-hour range
+sw_in_mean_168h,Shortwave radiation 168h-hour mean
+sw_in_std_168h,Shortwave radiation 168h-hour standard deviation
+sw_in_min_168h,Shortwave radiation 168h-hour minimum
+sw_in_max_168h,Shortwave radiation 168h-hour maximum
+sw_in_range_168h,Shortwave radiation 168h-hour range
+sw_in_mean_336h,Shortwave radiation 336h-hour mean
+sw_in_std_336h,Shortwave radiation 336h-hour standard deviation
+sw_in_min_336h,Shortwave radiation 336h-hour minimum
+sw_in_max_336h,Shortwave radiation 336h-hour maximum
+sw_in_range_336h,Shortwave radiation 336h-hour range
+sw_in_mean_720h,Shortwave radiation 720h-hour mean
+sw_in_std_720h,Shortwave radiation 720h-hour standard deviation
+sw_in_min_720h,Shortwave radiation 720h-hour minimum
+sw_in_max_720h,Shortwave radiation 720h-hour maximum
+sw_in_range_720h,Shortwave radiation 720h-hour range
+rh_mean_3h,Relative humidity 3h-hour mean
+rh_std_3h,Relative humidity 3h-hour standard deviation
+rh_min_3h,Relative humidity 3h-hour minimum
+rh_max_3h,Relative humidity 3h-hour maximum
+rh_range_3h,Relative humidity 3h-hour range
+rh_mean_6h,Relative humidity 6h-hour mean
+rh_std_6h,Relative humidity 6h-hour standard deviation
+rh_min_6h,Relative humidity 6h-hour minimum
+rh_max_6h,Relative humidity 6h-hour maximum
+rh_range_6h,Relative humidity 6h-hour range
+rh_mean_12h,Relative humidity 12h-hour mean
+rh_std_12h,Relative humidity 12h-hour standard deviation
+rh_min_12h,Relative humidity 12h-hour minimum
+rh_max_12h,Relative humidity 12h-hour maximum
+rh_range_12h,Relative humidity 12h-hour range
+rh_mean_24h,Relative humidity 24h-hour mean
+rh_std_24h,Relative humidity 24h-hour standard deviation
+rh_min_24h,Relative humidity 24h-hour minimum
+rh_max_24h,Relative humidity 24h-hour maximum
+rh_range_24h,Relative humidity 24h-hour range
+rh_mean_48h,Relative humidity 48h-hour mean
+rh_std_48h,Relative humidity 48h-hour standard deviation
+rh_min_48h,Relative humidity 48h-hour minimum
+rh_max_48h,Relative humidity 48h-hour maximum
+rh_range_48h,Relative humidity 48h-hour range
+rh_mean_72h,Relative humidity 72h-hour mean
+rh_std_72h,Relative humidity 72h-hour standard deviation
+rh_min_72h,Relative humidity 72h-hour minimum
+rh_max_72h,Relative humidity 72h-hour maximum
+rh_range_72h,Relative humidity 72h-hour range
+rh_mean_168h,Relative humidity 168h-hour mean
+rh_std_168h,Relative humidity 168h-hour standard deviation
+rh_min_168h,Relative humidity 168h-hour minimum
+rh_max_168h,Relative humidity 168h-hour maximum
+rh_range_168h,Relative humidity 168h-hour range
+rh_mean_336h,Relative humidity 336h-hour mean
+rh_std_336h,Relative humidity 336h-hour standard deviation
+rh_min_336h,Relative humidity 336h-hour minimum
+rh_max_336h,Relative humidity 336h-hour maximum
+rh_range_336h,Relative humidity 336h-hour range
+rh_mean_720h,Relative humidity 720h-hour mean
+rh_std_720h,Relative humidity 720h-hour standard deviation
+rh_min_720h,Relative humidity 720h-hour minimum
+rh_max_720h,Relative humidity 720h-hour maximum
+rh_range_720h,Relative humidity 720h-hour range

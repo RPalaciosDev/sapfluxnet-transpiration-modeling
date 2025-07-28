@@ -7,6 +7,11 @@ PARQUET WORKFLOW (Comparison Version):
 - Cluster assignments come from CSV files  
 - Applies features preparation on-the-fly
 - For comparison with preprocessed libsvm approach
+
+IMPORTANT: CORRECTED VERSION - Eliminates Data Leakage
+- Retrains models for each LOSO fold instead of using pre-trained models
+- Each fold uses a model trained ONLY on the training sites for that fold
+- Ensures true spatial validation without test site contamination
 """
 
 import pandas as pd
@@ -277,7 +282,7 @@ class ParquetSpatialValidator:
         return X, y, feature_cols
 
     def validate_cluster_spatially(self, cluster_id, cluster_sites, model):
-        """Perform Leave-One-Site-Out validation within a cluster - MEMORY OPTIMIZED"""
+        """Perform Leave-One-Site-Out validation within a cluster - CORRECTED (no data leakage)"""
         print(f"\n{'='*60}")
         print(f"SPATIAL VALIDATION FOR CLUSTER {cluster_id} (PARQUET)")
         print(f"{'='*60}")
@@ -342,9 +347,31 @@ class ParquetSpatialValidator:
                 dtrain = xgb.DMatrix(X_train, label=y_train)
                 dtest = xgb.DMatrix(X_test, label=y_test)
                 
-                # Make predictions
-                y_pred_train = model.predict(dtrain)
-                y_pred_test = model.predict(dtest)
+                # CRITICAL FIX: RETRAIN model for this fold to eliminate data leakage
+                xgb_params = {
+                    'objective': 'reg:squarederror',
+                    'eval_metric': 'rmse',
+                    'max_depth': 8,
+                    'learning_rate': 0.1,
+                    'subsample': 0.8,
+                    'colsample_bytree': 0.8,
+                    'random_state': 42
+                }
+                
+                # Train new model ONLY on training sites for this fold
+                fold_model = xgb.train(
+                    params=xgb_params,
+                    dtrain=dtrain,
+                    num_boost_round=100,
+                    verbose_eval=False
+                )
+                
+                # Make predictions with fold-specific model
+                y_pred_train = fold_model.predict(dtrain)
+                y_pred_test = fold_model.predict(dtest)
+                
+                # Clean up fold-specific model
+                del fold_model
                 
                 # Calculate metrics
                 fold_metrics = {
@@ -413,9 +440,31 @@ class ParquetSpatialValidator:
                     dtrain = xgb.DMatrix(f"{train_file}?format=libsvm")
                     dtest = xgb.DMatrix(f"{test_file}?format=libsvm")
                     
-                    # Make predictions
-                    y_pred_train = model.predict(dtrain)
-                    y_pred_test = model.predict(dtest)
+                    # CRITICAL FIX: RETRAIN model for this fold to eliminate data leakage
+                    xgb_params = {
+                        'objective': 'reg:squarederror',
+                        'eval_metric': 'rmse',
+                        'max_depth': 8,
+                        'learning_rate': 0.1,
+                        'subsample': 0.8,
+                        'colsample_bytree': 0.8,
+                        'random_state': 42
+                    }
+                    
+                    # Train new model ONLY on training sites for this fold
+                    fold_model = xgb.train(
+                        params=xgb_params,
+                        dtrain=dtrain,
+                        num_boost_round=100,
+                        verbose_eval=False
+                    )
+                    
+                    # Make predictions with fold-specific model
+                    y_pred_train = fold_model.predict(dtrain)
+                    y_pred_test = fold_model.predict(dtest)
+                    
+                    # Clean up fold-specific model
+                    del fold_model
                     
                     # Load actual targets for metrics
                     y_train_actual = self._load_targets_from_libsvm(train_file)
