@@ -180,6 +180,17 @@ class OutlierFilteredEcosystemClusterer:
         # Prepare numeric features
         X_numeric = sites_df[numeric_features].values
         
+        # Handle missing values in numeric features
+        print(f"  🔍 Checking for missing values...")
+        missing_counts = np.isnan(X_numeric).sum(axis=0)
+        for i, feature in enumerate(numeric_features):
+            if missing_counts[i] > 0:
+                print(f"    ⚠️  {feature}: {missing_counts[i]} missing values")
+                # Fill with median
+                median_val = np.nanmedian(X_numeric[:, i])
+                X_numeric[:, i] = np.where(np.isnan(X_numeric[:, i]), median_val, X_numeric[:, i])
+                print(f"      ✅ Filled with median: {median_val:.4f}")
+        
         # Prepare categorical features
         X_categorical = None
         if categorical_features:
@@ -202,6 +213,13 @@ class OutlierFilteredEcosystemClusterer:
         else:
             X = X_numeric
             print(f"  📊 Using only numeric features: {X.shape[1]} total")
+        
+        # Final check for any remaining NaN values
+        if np.isnan(X).any():
+            print(f"  🚨 WARNING: Still have NaN values after processing!")
+            # Fill any remaining NaNs with 0
+            X = np.nan_to_num(X, nan=0.0)
+            print(f"  ✅ Filled remaining NaNs with 0")
         
         # Standardize features
         scaler = StandardScaler()
@@ -302,6 +320,11 @@ class OutlierFilteredEcosystemClusterer:
         """Select the best clustering strategy"""
         print(f"\n🏆 Selecting best clustering strategy...")
         
+        if not strategies:
+            print(f"  ❌ No successful clustering strategies found!")
+            print(f"  💡 This usually means all strategies failed due to data issues")
+            raise ValueError("No successful clustering strategies found. Check data quality and missing values.")
+        
         # Filter strategies with reasonable balance
         balanced_strategies = [s for s in strategies if s['balance_ratio'] > 0.1]
         
@@ -325,7 +348,7 @@ class OutlierFilteredEcosystemClusterer:
                   f"balance_score={strategy['balance_score']:.3f}, clusters={strategy['n_clusters']}, "
                   f"final_score={strategy['final_score']:.3f}")
         
-        return balanced_strategies[0] if balanced_strategies else strategies[0]
+        return balanced_strategies[0]
     
     def save_clustering_results(self, best_strategy, sites):
         """Save clustering results"""
