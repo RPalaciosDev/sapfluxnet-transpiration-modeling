@@ -188,8 +188,8 @@ class OutlierFilteredEcosystemClusterer:
             categorical_data = []
             
             for col in categorical_features:
-                # Fill missing values with 'Unknown'
-                col_data = sites_df[col].fillna('Unknown')
+                # Fill missing values with 'Unknown' and convert everything to strings
+                col_data = sites_df[col].fillna('Unknown').astype(str)
                 encoded = le.fit_transform(col_data)
                 categorical_data.append(encoded)
             
