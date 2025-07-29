@@ -27,7 +27,7 @@ class AdvancedEcosystemClusterer:
     Advanced ecosystem clustering with multiple strategies for better balance
     """
     
-    def __init__(self, data_dir='../../processed_parquet', output_dir='../evaluation/clustering_results', feature_set='advanced'):
+    def __init__(self, data_dir='../../processed_parquet', output_dir='../evaluation/clustering_results', feature_set='hybrid'):
         self.data_dir = data_dir
         self.output_dir = output_dir
         self.timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
@@ -410,8 +410,8 @@ class AdvancedEcosystemClusterer:
             try:
                 X_scaled = scaler.fit_transform(X)
                 
-                # Try different numbers of clusters (more granular for global diversity)
-                for n_clusters in [5, 6, 7, 8, 9, 10]:
+                # Try different numbers of clusters (test both original and granular)
+                for n_clusters in [3, 4, 5, 6, 7, 8, 9, 10]:
                     kmeans = KMeans(n_clusters=n_clusters, random_state=self.random_seed, n_init=10)
                     labels = kmeans.fit_predict(X_scaled)
                     
@@ -443,7 +443,7 @@ class AdvancedEcosystemClusterer:
         
         for linkage_method in linkage_methods:
             try:
-                for n_clusters in [5, 6, 7, 8, 9, 10]:
+                for n_clusters in [3, 4, 5, 6, 7, 8, 9, 10]:
                     hierarchical = AgglomerativeClustering(n_clusters=n_clusters, linkage=linkage_method)
                     labels = hierarchical.fit_predict(X_scaled)
                     
@@ -470,7 +470,7 @@ class AdvancedEcosystemClusterer:
         
         # Strategy 3: Gaussian Mixture Models
         print("  🎲 Strategy 3: Gaussian Mixture Models")
-        for n_clusters in [5, 6, 7, 8, 9, 10]:
+        for n_clusters in [3, 4, 5, 6, 7, 8, 9, 10]:
             try:
                 gmm = GaussianMixture(n_components=n_clusters, random_state=self.random_seed)
                 labels = gmm.fit_predict(X_scaled)
@@ -818,7 +818,7 @@ def main():
     
     parser = argparse.ArgumentParser(description="Advanced Ecosystem Clustering")
     parser.add_argument('--feature-set', type=str, default='hybrid', choices=['core', 'advanced', 'hybrid'],
-                        help="Feature set to use for clustering: 'core', 'advanced', or 'hybrid' (recommended default)")
+                        help="Feature set to use for clustering: 'core', 'advanced', or 'hybrid' (default and recommended)")
     args = parser.parse_args()
     feature_set = args.feature_set
     
