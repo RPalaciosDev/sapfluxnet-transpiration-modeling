@@ -51,7 +51,8 @@ class ParquetSpatialValidator:
     def __init__(self, parquet_dir='../../processed_parquet', 
                  models_dir='./results/cluster_models',
                  results_dir='./results/parquet_spatial_validation',
-                 optimize_hyperparams=False):
+                 optimize_hyperparams=False,
+                 force_gpu=False):
         self.parquet_dir = parquet_dir
         self.models_dir = models_dir
         self.results_dir = results_dir
@@ -64,16 +65,98 @@ class ParquetSpatialValidator:
         # GPU Detection and Configuration
         self.use_gpu = False
         self.gpu_id = 0
+        self.force_gpu = force_gpu
+        
+        # Check CUDA availability first
+        print("🔍 Checking GPU and CUDA availability...")
+        
+        # Check if CUDA is available
+        cuda_available = False
+        try:
+            import subprocess
+            result = subprocess.run(['nvidia-smi'], capture_output=True, text=True, timeout=5)
+            if result.returncode == 0:
+                cuda_available = True
+                print("  ✅ NVIDIA GPU detected via nvidia-smi")
+                # Extract GPU info from nvidia-smi output
+                lines = result.stdout.split('\n')
+                for line in lines:
+                    if 'GeForce' in line or 'Tesla' in line or 'Quadro' in line or 'RTX' in line:
+                        gpu_name = line.split('|')[1].strip() if '|' in line else line.strip()
+                        print(f"  🎮 GPU: {gpu_name}")
+                        break
+            else:
+                print("  ❌ nvidia-smi not found or failed")
+        except (subprocess.TimeoutExpired, FileNotFoundError, Exception) as e:
+            print(f"  ⚠️  Could not run nvidia-smi: {e}")
+        
+        # Try XGBoost GPU detection
         try:
             import xgboost as xgb
-            if xgb.gpu.is_supported():
+            print(f"  📦 XGBoost version: {xgb.__version__}")
+            
+            # Method 1: Try creating a GPU model (most reliable)
+            try:
+                import numpy as np
+                test_data = np.random.rand(10, 5)
+                test_labels = np.random.rand(10)
+                test_dmatrix = xgb.DMatrix(test_data, label=test_labels)
+                
+                # Try to train a small model with GPU
+                gpu_params = {
+                    'objective': 'reg:squarederror',
+                    'tree_method': 'gpu_hist',
+                    'gpu_id': 0,
+                    'verbosity': 0
+                }
+                
+                print("  🧪 Testing GPU training...")
+                test_model = xgb.train(gpu_params, test_dmatrix, num_boost_round=1, verbose_eval=False)
                 self.use_gpu = True
-                print("🚀 GPU acceleration detected and enabled!")
-                print(f"💾 GPU will be used for XGBoost training (gpu_id={self.gpu_id})")
-            else:
-                print("💻 GPU not supported, using CPU-only mode")
+                print("  🚀 GPU acceleration VERIFIED and enabled!")
+                print(f"  💾 GPU will be used for XGBoost training (gpu_id={self.gpu_id})")
+                
+                # Clean up test objects
+                del test_model, test_dmatrix, test_data, test_labels
+                
+            except Exception as gpu_test_error:
+                print(f"  ❌ GPU training test failed: {gpu_test_error}")
+                
+                # If forced, try anyway
+                if self.force_gpu:
+                    print("  🔧 Force GPU flag set - enabling GPU despite test failure")
+                    self.use_gpu = True
+                else:
+                    # Method 2: Check if XGBoost was compiled with GPU support
+                    try:
+                        # This will raise an exception if GPU not supported
+                        test_regressor = xgb.XGBRegressor(tree_method='gpu_hist', gpu_id=0)
+                        print("  ⚠️  XGBoost has GPU support but test failed")
+                        if cuda_available:
+                            print("  🔧 CUDA is available - enabling GPU anyway")
+                            self.use_gpu = True
+                        else:
+                            print("  ❌ No CUDA detected - staying with CPU")
+                            self.use_gpu = False
+                        del test_regressor
+                    except Exception as compile_error:
+                        print(f"  ❌ XGBoost not compiled with GPU support: {compile_error}")
+                        self.use_gpu = False
+                
+        except ImportError:
+            print("  ❌ XGBoost not installed")
+            self.use_gpu = False
         except Exception as e:
-            print(f"💻 GPU detection failed, using CPU-only mode: {e}")
+            print(f"  ❌ GPU detection failed: {e}")
+            self.use_gpu = False
+        
+        # Final status
+        if self.use_gpu:
+            print("  🎯 FINAL STATUS: GPU acceleration ENABLED")
+        else:
+            print("  🎯 FINAL STATUS: CPU-only mode")
+            if self.force_gpu:
+                print("  ⚠️  Note: GPU was forced but detection failed - errors may occur")
         
         # Create results directory
         os.makedirs(results_dir, exist_ok=True)
@@ -391,7 +474,7 @@ class ParquetSpatialValidator:
                         'random_state': 42,
                         'verbosity': 1
                     }
-                    print(f"    🚀 Using GPU acceleration for cluster {cluster_id}")
+                    print(f"    🚀 Using GPU acceleration for cluster {cluster_id} (tree_method=gpu_hist)")
                 else:
                     xgb_params = {
                         'objective': 'reg:squarederror',
@@ -405,7 +488,7 @@ class ParquetSpatialValidator:
                         'n_jobs': -1,                   # Use all CPU cores
                         'verbosity': 1
                     }
-                    print(f"    💻 Using CPU for cluster {cluster_id}")
+                    print(f"    💻 Using CPU for cluster {cluster_id} (tree_method=hist)")
                 
                 # Train new model ONLY on training sites for this fold
                 # Use more boost rounds on GPU for better performance
@@ -515,7 +598,7 @@ class ParquetSpatialValidator:
                                 'random_state': 42,
                                 'verbosity': 1
                             })
-                        print(f"    🎯 Using optimized parameters for cluster {cluster_id} ({'GPU' if self.use_gpu else 'CPU'})")
+                        print(f"    🎯 Using optimized parameters for cluster {cluster_id} ({'GPU tree_method=gpu_hist' if self.use_gpu else 'CPU tree_method=hist'})")
                     else:
                         # Default parameters optimized for GPU or CPU
                         if self.use_gpu:
@@ -531,7 +614,7 @@ class ParquetSpatialValidator:
                                 'random_state': 42,
                                 'verbosity': 1
                             }
-                            print(f"    🚀 Using GPU defaults for cluster {cluster_id}")
+                            print(f"    🚀 Using GPU defaults for cluster {cluster_id} (tree_method=gpu_hist)")
                         else:
                             xgb_params = {
                                 'objective': 'reg:squarederror',
@@ -545,7 +628,7 @@ class ParquetSpatialValidator:
                                 'n_jobs': -1,
                                 'verbosity': 1
                             }
-                            print(f"    💻 Using CPU defaults for cluster {cluster_id}")
+                            print(f"    💻 Using CPU defaults for cluster {cluster_id} (tree_method=hist)")
                     
                     # Train new model ONLY on training sites for this fold
                     # Use optimized n_estimators if available, otherwise GPU-optimized defaults
@@ -1066,6 +1149,8 @@ def main():
                         help="Directory to save validation results")
     parser.add_argument('--optimize-hyperparams', action='store_true',
                         help="Run hyperparameter optimization based on existing results")
+    parser.add_argument('--force-gpu', action='store_true',
+                        help="Force GPU usage even if detection fails (use with caution)")
     
     args = parser.parse_args()
     
@@ -1074,7 +1159,8 @@ def main():
             parquet_dir=args.parquet_dir,
             models_dir=args.models_dir,
             results_dir=args.results_dir,
-            optimize_hyperparams=args.optimize_hyperparams
+            optimize_hyperparams=args.optimize_hyperparams,
+            force_gpu=args.force_gpu
         )
         
         fold_results, cluster_summaries = validator.run_validation()
