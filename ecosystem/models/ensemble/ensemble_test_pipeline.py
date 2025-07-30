@@ -342,30 +342,37 @@ class EnsembleTestPipeline:
         if len(df) == 0:
             raise ValueError(f"No valid data found for site {site}")
         
-        # Prepare features (remove target, identifiers, timestamps, flags)
+        # Prepare features - MATCH TRAINING PIPELINE EXACTLY
         exclude_cols = [
-            self.target_col, 'site', 'timestamp', 'date', 'datetime',
-            'year', 'month', 'day', 'hour'
+            self.target_col, 'site', 'TIMESTAMP', 'solar_TIMESTAMP', 
+            'plant_id', 'Unnamed: 0'
         ]
         
-        # Remove flag columns
-        flag_cols = [col for col in df.columns if 'flag' in col.lower()]
-        exclude_cols.extend(flag_cols)
+        # Also remove any columns ending with specific suffixes (like training pipeline)
+        exclude_suffixes = ['_flags', '_md']
         
-        # Remove timestamp-related columns (case-insensitive)
-        timestamp_keywords = ['timestamp', 'date', 'datetime', 'time']
-        timestamp_cols = [col for col in df.columns 
-                         if any(keyword.lower() in col.lower() for keyword in timestamp_keywords)]
-        exclude_cols.extend(timestamp_cols)
-        
-        feature_cols = [col for col in df.columns if col not in exclude_cols]
+        feature_cols = []
+        for col in df.columns:
+            if col in exclude_cols:
+                continue
+            if any(col.endswith(suffix) for suffix in exclude_suffixes):
+                continue
+            feature_cols.append(col)
         
         X = df[feature_cols].copy()
         y = df[self.target_col].copy()
         
-        # Handle any remaining NaN values - only for numeric columns
-        numeric_cols = X.select_dtypes(include=[np.number]).columns
-        X[numeric_cols] = X[numeric_cols].fillna(X[numeric_cols].mean())
+        # Handle data types and NaN values - MATCH TRAINING PIPELINE EXACTLY
+        # Convert boolean columns to numeric (True=1, False=0)
+        for col in X.columns:
+            if X[col].dtype == bool:
+                X[col] = X[col].astype(int)
+            elif X[col].dtype == 'object':
+                # Try to convert object columns to numeric, fill non-numeric with 0
+                X[col] = pd.to_numeric(X[col], errors='coerce').fillna(0)
+        
+        # Fill remaining NaN values with 0 (EXACTLY like training pipeline)
+        X = X.fillna(0)
         
         return X, y, feature_cols
 
