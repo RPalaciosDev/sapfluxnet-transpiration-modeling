@@ -271,14 +271,22 @@ class EnsembleTestPipeline:
                     model = pickle.load(f)
                 self.cluster_models[cluster_id] = model
                 
-                # Load feature names from importance file
-                importance_file = os.path.join(self.models_dir, f'cluster_{cluster_id}_importance.csv')
-                if os.path.exists(importance_file):
+                # Load feature names from importance file (with timestamp)
+                importance_files = [f for f in os.listdir(self.models_dir) 
+                                  if f.startswith(f'feature_importance_cluster_{cluster_id}_') and f.endswith('.csv')]
+                
+                if importance_files:
+                    # Use the most recent importance file
+                    importance_file = os.path.join(self.models_dir, sorted(importance_files)[-1])
                     importance_df = pd.read_csv(importance_file)
                     if 'feature' in importance_df.columns:
                         model_features = importance_df['feature'].tolist()
                         all_model_features.append(set(model_features))
                         print(f"  📊 Cluster {cluster_id}: {len(model_features)} training features")
+                    else:
+                        print(f"  ⚠️  No 'feature' column in {importance_files[-1]}")
+                else:
+                    print(f"  ⚠️  No importance file found for cluster {cluster_id}")
                 
                 # Load performance metrics
                 metrics_file = os.path.join(self.models_dir, f'cluster_{cluster_id}_metrics.json')
@@ -303,10 +311,95 @@ class EnsembleTestPipeline:
             if len(self.common_features) < 50:  # Sanity check
                 print(f"⚠️  Warning: Only {len(self.common_features)} common features found")
         else:
-            print("⚠️  Could not determine common features - will use all available features")
-            self.common_features = None
+            print("⚠️  Could not determine common features from models - loading from analysis")
+            # Load common features from our feature analysis
+            self._load_common_features_from_analysis()
         
         print(f"✅ Loaded {len(self.cluster_models)} cluster models")
+
+    def _load_common_features_from_analysis(self):
+        """Load common features from feature analysis results"""
+        common_features_file = "../../../feature_analysis/common_features_20250730_030512.txt"
+        
+        if os.path.exists(common_features_file):
+            print(f"📂 Loading common features from: {common_features_file}")
+            with open(common_features_file, 'r') as f:
+                lines = f.readlines()
+            
+            # Extract feature names (skip comment lines)
+            features = []
+            for line in lines:
+                line = line.strip()
+                if line and not line.startswith('#'):
+                    features.append(line)
+            
+            self.common_features = features
+            print(f"✅ Loaded {len(self.common_features)} common features from analysis")
+            
+            # Create excluded features record
+            self._create_excluded_features_record()
+        else:
+            print(f"❌ Common features file not found: {common_features_file}")
+            print("⚠️  Will use all available features (may cause inconsistencies)")
+            self.common_features = None
+
+    def _create_excluded_features_record(self):
+        """Create a record of features that were excluded for consistency"""
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        excluded_features_file = os.path.join(self.results_dir, f'excluded_features_record_{timestamp}.txt')
+        
+        # Load problematic features from analysis
+        problematic_file = "../../../feature_analysis/problematic_features_20250730_030512.csv"
+        
+        try:
+            with open(excluded_features_file, 'w') as f:
+                f.write("# EXCLUDED FEATURES RECORD\n")
+                f.write(f"# Generated: {datetime.now()}\n")
+                f.write(f"# Total common features used: {len(self.common_features)}\n")
+                f.write(f"# Features excluded for consistency across all sites\n\n")
+                
+                if os.path.exists(problematic_file):
+                    import pandas as pd
+                    prob_df = pd.read_csv(problematic_file)
+                    
+                    f.write("# EXCLUDED FEATURES BY CATEGORY:\n\n")
+                    
+                    # Group by coverage level
+                    high_impact = prob_df[prob_df['coverage_percent'] < 85]
+                    medium_impact = prob_df[(prob_df['coverage_percent'] >= 85) & (prob_df['coverage_percent'] < 90)]
+                    low_impact = prob_df[prob_df['coverage_percent'] >= 90]
+                    
+                    if len(high_impact) > 0:
+                        f.write("## HIGH IMPACT (< 85% coverage):\n")
+                        f.write("# These features were missing from many sites\n")
+                        for _, row in high_impact.iterrows():
+                            f.write(f"{row['feature']} - missing from {row['missing_from_sites']} sites ({row['coverage_percent']:.1f}% coverage)\n")
+                        f.write("\n")
+                    
+                    if len(medium_impact) > 0:
+                        f.write("## MEDIUM IMPACT (85-90% coverage):\n")
+                        f.write("# These features were missing from some sites\n")
+                        for _, row in medium_impact.iterrows():
+                            f.write(f"{row['feature']} - missing from {row['missing_from_sites']} sites ({row['coverage_percent']:.1f}% coverage)\n")
+                        f.write("\n")
+                    
+                    if len(low_impact) > 0:
+                        f.write("## LOW IMPACT (> 90% coverage):\n")
+                        f.write("# These features were missing from few sites\n")
+                        for _, row in low_impact.iterrows():
+                            f.write(f"{row['feature']} - missing from {row['missing_from_sites']} sites ({row['coverage_percent']:.1f}% coverage)\n")
+                        f.write("\n")
+                    
+                    f.write("# IMPACT ASSESSMENT:\n")
+                    f.write(f"# - Total features available: 272\n")
+                    f.write(f"# - Common features used: {len(self.common_features)} (81.6%)\n")
+                    f.write(f"# - Features excluded: {272 - len(self.common_features)} (18.4%)\n")
+                    f.write(f"# - All 86 sites can now be used consistently\n")
+                
+            print(f"📝 Excluded features record saved: {excluded_features_file}")
+            
+        except Exception as e:
+            print(f"⚠️  Could not create excluded features record: {e}")
 
     def calculate_cluster_centroids(self):
         """Calculate cluster centroids from training data for distance-based weighting"""

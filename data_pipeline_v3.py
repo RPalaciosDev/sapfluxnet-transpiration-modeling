@@ -2173,6 +2173,9 @@ class MemoryEfficientSAPFLUXNETProcessor:
             required_cols = ['site', 'month', 'ta', 'precip']
             missing_cols = [col for col in required_cols if col not in df.columns]
             if missing_cols:
+                # Add seasonal features with default values for consistency
+                df['seasonal_temp_range'] = 0.0
+                df['seasonal_precip_range'] = 0.0
                 return df
             
             # Calculate seasonal ranges for each site
@@ -2202,6 +2205,11 @@ class MemoryEfficientSAPFLUXNETProcessor:
             return df
             
         except Exception as e:
+            # Add seasonal features with default values for consistency
+            if 'seasonal_temp_range' not in df.columns:
+                df['seasonal_temp_range'] = 0.0
+            if 'seasonal_precip_range' not in df.columns:
+                df['seasonal_precip_range'] = 0.0
             return df
 
     # NOTE: apply_balanced_sampling method removed - cannot work during data processing
