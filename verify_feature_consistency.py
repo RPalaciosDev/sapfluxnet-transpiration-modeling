@@ -34,8 +34,9 @@ def verify_feature_consistency():
     for file_path in parquet_files:
         try:
             # Read just the schema, not the data
-            df = pd.read_parquet(file_path, nrows=0)  # Just get columns
-            col_count = len(df.columns)
+            import pyarrow.parquet as pq
+            parquet_file = pq.ParquetFile(file_path)
+            col_count = len(parquet_file.schema.names)
             site_name = file_path.stem
             
             column_counts[site_name] = col_count
