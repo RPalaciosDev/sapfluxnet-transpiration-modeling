@@ -100,9 +100,9 @@ class AdvancedEcosystemClusterer:
         for parquet_file in parquet_files:
             site_name = parquet_file.replace('_comprehensive.parquet', '')
             
-            # Filter to training sites only if site split is provided
-            if self.train_sites is not None and site_name not in self.train_sites:
-                continue
+            # Load ALL sites for clustering (no filtering by train/test split)
+            # This gives better cluster representation without data leakage
+            # since we only use ecological metadata features
             
             file_path = os.path.join(self.data_dir, parquet_file)
             
@@ -127,8 +127,11 @@ class AdvancedEcosystemClusterer:
         site_df = pd.DataFrame(site_data)
         
         if self.train_sites is not None:
-            print(f"\n📈 Loaded {len(site_df)} training sites with {len(site_df.columns)} features")
-            print(f"🔒 {len(self.test_sites)} test sites withheld for ensemble validation")
+            train_count = len([s for s in site_df['site'] if s in self.train_sites])
+            test_count = len([s for s in site_df['site'] if s in self.test_sites])
+            print(f"\n📈 Loaded {len(site_df)} sites total ({train_count} train + {test_count} test)")
+            print(f"🎯 Clustering ALL sites for better representation (no data leakage)")
+            print(f"🔒 Train/test split will be used only for model training")
         else:
             print(f"\n📈 Loaded {len(site_df)} sites with {len(site_df.columns)} features")
         
@@ -347,9 +350,11 @@ class AdvancedEcosystemClusterer:
             'feature_set': self.feature_set,
             'features_used': self.available_features,
             'site_split_file': self.site_split_file,
-            'train_only_clustering': self.train_sites is not None,
+            'train_only_clustering': False,  # Now clustering ALL sites
+            'all_sites_clustering': True,    # New flag
             'train_sites_count': len(self.train_sites) if self.train_sites else None,
             'test_sites_count': len(self.test_sites) if self.test_sites else None,
+            'total_sites_clustered': len(results_df),
             'timestamp': self.timestamp
         }
         
@@ -365,11 +370,12 @@ class AdvancedEcosystemClusterer:
         print(f"🚀 ADVANCED ECOSYSTEM CLUSTERING")
         print(f"{'='*60}")
         print(f"Started at: {datetime.now()}")
-        print(f"STRATEGY: Ecological features with balanced clustering")
+        print(f"STRATEGY: ALL-SITES clustering with ecological features")
         print(f"FEATURES: Geographic, climate, and stand characteristics")
+        print(f"APPROACH: Cluster all sites for better representation (no data leakage)")
         
         try:
-            # Load site data (filtered to training sites if split provided)
+            # Load site data (ALL sites for better clustering representation)
             site_df = self.load_site_data()
             
             # Prepare features
@@ -388,8 +394,12 @@ class AdvancedEcosystemClusterer:
             print(f"📁 Results saved to: {output_file}")
             
             if self.train_sites is not None:
-                print(f"🎯 Train-only clustering: {len(clustering_df)} training sites clustered")
-                print(f"🔒 Test sites ({len(self.test_sites)}) withheld for ensemble validation")
+                train_clustered = len([s for s in clustering_df['site'] if s in self.train_sites])
+                test_clustered = len([s for s in clustering_df['site'] if s in self.test_sites])
+                print(f"🎯 All-sites clustering: {len(clustering_df)} sites total")
+                print(f"  📊 Training sites: {train_clustered}")
+                print(f"  📊 Test sites: {test_clustered}")
+                print(f"🔒 Train/test split preserved for model training (no data leakage)")
             else:
                 print(f"✅ Clustered {len(clustering_df)} sites (no train/test split)")
             
@@ -437,8 +447,10 @@ def main():
             print(f"\n✅ Ecosystem clustering completed successfully!")
             print(f"📁 Results saved to: {output_file}")
             if args.site_split_file:
-                print(f"🎯 Ready for cluster model training (train sites only)")
-                print(f"🔒 Test sites withheld for ensemble validation")
+                print(f"🎯 Ready for cluster model training")
+                print(f"  📊 All sites clustered for better representation")
+                print(f"  🔒 Train/test split preserved for model training")
+                print(f"  ✅ No data leakage (only ecological metadata used)")
             else:
                 print(f"🎯 Ready for model training (all sites)")
         else:

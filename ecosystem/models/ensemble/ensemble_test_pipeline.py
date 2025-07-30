@@ -114,6 +114,8 @@ class EnsembleTestPipeline:
         self._load_cluster_assignments()
         self._create_results_dir()
         
+        # Note: Adaptive outlier threshold will be calculated after cluster centroids are loaded
+        
         print(f"🚀 ENSEMBLE TESTING PIPELINE INITIALIZED")
         print(f"=" * 60)
         print(f"🎮 GPU enabled: {self.use_gpu}")
@@ -309,6 +311,86 @@ class EnsembleTestPipeline:
         
         print(f"✅ Loaded {len(self.cluster_models)} cluster models")
 
+    def _calculate_adaptive_outlier_threshold(self):
+        """Calculate adaptive outlier threshold based on training site distances to centroids"""
+        print(f"🎯 Calculating adaptive outlier threshold...")
+        
+        if not self.cluster_centroids:
+            print(f"  ⚠️  No cluster centroids available, using default threshold {self.outlier_threshold}")
+            return
+        
+        # Features used for distance calculation (same as in calculate_cluster_centroids)
+        centroid_features = [
+            'longitude', 'latitude', 'elevation', 
+            'mean_annual_temp', 'mean_annual_precip',
+            'seasonal_temp_range', 'seasonal_precip_range'
+        ]
+        
+        training_distances = []
+        
+        # Calculate distances from each training site to its assigned cluster centroid
+        for cluster_id, sites in self.cluster_assignments.items():
+            if cluster_id not in self.cluster_centroids:
+                continue
+                
+            cluster_centroid = self.cluster_centroids[cluster_id]
+            
+            for site in sites:
+                if site not in self.train_sites:  # Only use training sites
+                    continue
+                    
+                try:
+                    # Load site data
+                    parquet_file = os.path.join(self.parquet_dir, f'{site}_comprehensive.parquet')
+                    if not os.path.exists(parquet_file):
+                        continue
+                        
+                    df = pd.read_parquet(parquet_file)
+                    if len(df) == 0:
+                        continue
+                    
+                    # Extract site features (mean values)
+                    site_features = []
+                    for feature in centroid_features:
+                        if feature in df.columns:
+                            site_features.append(df[feature].mean())
+                        else:
+                            site_features.append(0.0)
+                    
+                    # Calculate distance to assigned cluster centroid
+                    distance = np.linalg.norm(np.array(site_features) - cluster_centroid)
+                    training_distances.append(distance)
+                    
+                except Exception as e:
+                    print(f"    ⚠️  Error processing training site {site}: {e}")
+                    continue
+        
+        if len(training_distances) == 0:
+            print(f"  ⚠️  No training distances calculated, using default threshold {self.outlier_threshold}")
+            return
+        
+        training_distances = np.array(training_distances)
+        
+        # Calculate statistics
+        mean_dist = np.mean(training_distances)
+        std_dist = np.std(training_distances)
+        percentile_95 = np.percentile(training_distances, 95)
+        percentile_99 = np.percentile(training_distances, 99)
+        
+        # Use 95th percentile as the threshold (more conservative than 99th)
+        adaptive_threshold = percentile_95
+        
+        print(f"  📊 Training distance statistics:")
+        print(f"    Mean: {mean_dist:.3f}")
+        print(f"    Std: {std_dist:.3f}")
+        print(f"    95th percentile: {percentile_95:.3f}")
+        print(f"    99th percentile: {percentile_99:.3f}")
+        print(f"  🎯 Adaptive threshold (95th percentile): {adaptive_threshold:.3f}")
+        print(f"  🔄 Changed from fixed threshold: {self.outlier_threshold:.3f}")
+        
+        # Update the threshold
+        self.outlier_threshold = adaptive_threshold
+
     def _load_common_features_from_analysis(self):
         """Load common features from feature analysis results"""
         common_features_file = "../../../feature_analysis/common_features_20250730_030512.txt"
@@ -439,6 +521,9 @@ class EnsembleTestPipeline:
                 print(f"    ❌ Cluster {cluster_id}: No valid data for centroid calculation")
         
         print(f"✅ Calculated {len(self.cluster_centroids)} cluster centroids")
+        
+        # Now calculate adaptive outlier threshold based on training data
+        self._calculate_adaptive_outlier_threshold()
 
     def load_test_site_data(self, site):
         """Load and prepare data for a test site"""
