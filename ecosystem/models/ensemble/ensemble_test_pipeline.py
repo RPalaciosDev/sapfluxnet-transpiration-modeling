@@ -575,7 +575,7 @@ class EnsembleTestPipeline:
         print(f"    🔍 Model loaded successfully")
         
         # DEBUG: Check for feature alignment and data quality issues
-        print(f"    🔍 Model expects {model.num_feature} features, got {X.shape[1]} features")
+        print(f"    🔍 Model expects {model.n_features_in_} features, got {X.shape[1]} features")
         print(f"    🔍 Input data: {X.isnull().sum().sum()} NaN, {np.isinf(X.select_dtypes(include=[np.number])).sum().sum()} inf")
         
         # Ensure we're passing clean numeric data
