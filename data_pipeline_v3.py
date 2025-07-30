@@ -2118,36 +2118,44 @@ class MemoryEfficientSAPFLUXNETProcessor:
         
         features = df.copy()
         
-        # Light features - ALWAYS CREATE, impute missing columns
-        ppfd_in = df.get('ppfd_in', 0).fillna(df.get('ppfd_in', pd.Series([0])).mean() if 'ppfd_in' in df.columns else 0)
-        sw_in = df.get('sw_in', 0).fillna(df.get('sw_in', pd.Series([0])).mean() if 'sw_in' in df.columns else 0)
+        # Helper function to safely get and impute columns
+        def safe_get_column(col_name, default_val=0):
+            if col_name in df.columns:
+                col_data = df[col_name].fillna(df[col_name].mean() if not df[col_name].isna().all() else default_val)
+                return col_data
+            else:
+                return pd.Series([default_val] * len(df), index=df.index)
+        
+        # Light features - ALWAYS CREATE
+        ppfd_in = safe_get_column('ppfd_in', 0)
+        sw_in = safe_get_column('sw_in', 0)
         features['ppfd_efficiency'] = ppfd_in / (sw_in + 1e-6)
         
         # Temperature features - ALWAYS CREATE
-        ta = df.get('ta', 25).fillna(df.get('ta', pd.Series([25])).mean() if 'ta' in df.columns else 25)
+        ta = safe_get_column('ta', 25)
         features['temp_deviation'] = abs(ta - 25)
         
         # Physiological features - ALWAYS CREATE
-        vpd = df.get('vpd', 0).fillna(df.get('vpd', pd.Series([0])).mean() if 'vpd' in df.columns else 0)
+        vpd = safe_get_column('vpd', 0)
         features['stomatal_conductance_proxy'] = ppfd_in / (vpd + 1e-6)
             
         # Wind effects - ALWAYS CREATE
-        ws = df.get('ws', 0).fillna(df.get('ws', pd.Series([0])).mean() if 'ws' in df.columns else 0)
+        ws = safe_get_column('ws', 0)
         ws_max = ws.max() if len(ws) > 0 and ws.max() > 0 else 1.0
         features['wind_stress'] = ws / (ws_max + 1e-6)
         features['wind_vpd_interaction'] = ws * vpd
         
         # Enhanced interactions with extraterrestrial radiation - ALWAYS CREATE
-        ext_rad = df.get('ext_rad', 0).fillna(df.get('ext_rad', pd.Series([0])).mean() if 'ext_rad' in df.columns else 0)
+        ext_rad = safe_get_column('ext_rad', 0)
         features['stomatal_control_index'] = vpd * ppfd_in * ext_rad
         features['light_efficiency'] = ppfd_in / (ext_rad + 1e-6)
         
         # Tree-specific features - ALWAYS CREATE
-        pl_dbh = df.get('pl_dbh', 1).fillna(df.get('pl_dbh', pd.Series([1])).mean() if 'pl_dbh' in df.columns else 1)
+        pl_dbh = safe_get_column('pl_dbh', 1)
         features['tree_size_factor'] = np.log(pl_dbh + 1)
         
-        pl_sapw_area = df.get('pl_sapw_area', 0).fillna(df.get('pl_sapw_area', pd.Series([0])).mean() if 'pl_sapw_area' in df.columns else 0)
-        pl_leaf_area = df.get('pl_leaf_area', 1).fillna(df.get('pl_leaf_area', pd.Series([1])).mean() if 'pl_leaf_area' in df.columns else 1)
+        pl_sapw_area = safe_get_column('pl_sapw_area', 0)
+        pl_leaf_area = safe_get_column('pl_leaf_area', 1)
         features['sapwood_leaf_ratio'] = pl_sapw_area / (pl_leaf_area + 1e-6)
         features['transpiration_capacity'] = pl_sapw_area * ppfd_in / (vpd + 1e-6)
         
