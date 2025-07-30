@@ -1,6 +1,0 @@
-run_name,validation_type,total_sites,mean_r2,mean_rmse,median_r2,excellent_sites,good_sites,fair_sites,poor_sites,very_poor_sites
-random_split,random_split,N/A,0.0,0.0,N/A,N/A,N/A,N/A,N/A,N/A
-spatial_validation_sapfluxnet_spatial_external_sites_20250717_203222,spatial_validation,87,-1377.8729388737654,5.128277156105833,0.2632960490706647,1,12,28,15,31
-spatial_validation_no_proxies_sapfluxnet_spatial_external_sites_20250717_214046,spatial_validation_no_proxies,87,-865.3270790484808,5.100381606419384,0.261563738445874,1,10,27,20,29
-spatial_validation_universal_features_sapfluxnet_spatial_external_sites_20250717_225322,spatial_validation_universal_features,87,-638.7859115920131,4.953560242915146,0.0723890694870467,2,5,23,20,37
-spatial_validation_universal_features_sapfluxnet_spatial_external_sites_20250718_004135,spatial_validation_universal_features,87,-612.6942654335631,5.201970779323106,0.1074892672253036,0,3,15,27,42

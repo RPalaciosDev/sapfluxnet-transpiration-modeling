@@ -182,19 +182,23 @@ class MemoryEfficientSAPFLUXNETProcessor:
     # Site analysis results storage
     site_analysis_results = {}
     
-    # Sites with extremely high quality flag rates (>50%) - should be excluded
+    # Sites with extremely high quality flag rates (>80%) - should be excluded
     EXTREMELY_PROBLEMATIC_SITES = {
         'IDN_PON_STE',  # 63.1% flag rate - Extremely poor quality
+        'USA_NWH',  # 53.4% flag rate - Very poor quality
+    }
+    
+    # Sites with high quality flag rates (50-80%) - should be excluded in clean mode
+    HIGH_PROBLEMATIC_SITES = {
         'ZAF_NOO_E3_IRR',  # 25.9% flag rate - Very poor quality  
         'GUF_GUY_GUY',  # 35.5% flag rate - Very poor quality
-        'USA_NWH',  # 53.4% flag rate - Very poor quality
         'USA_TNP',  # 31.6% flag rate - Very poor quality
         'USA_TNY',  # 28.9% flag rate - Very poor quality
         'USA_WVF',  # 16.6% flag rate - Very poor quality
     }
     
-    # Sites with high quality flag rates (20-50%) - should be excluded
-    HIGH_PROBLEMATIC_SITES = {
+    # Sites with moderate quality issues (20-50%) - should be processed with warnings
+    MODERATE_PROBLEMATIC_SITES = {
         'USA_SYL_HL2',  # 16.0% flag rate - Poor quality
         'USA_WIL_WC2',  # 13.3% flag rate - Poor quality
         'CAN_TUR_P39_POS',  # 13.2% flag rate - Poor quality
@@ -203,10 +207,6 @@ class MemoryEfficientSAPFLUXNETProcessor:
         'USA_TNB',  # 19.4% flag rate - Poor quality
         'USA_TNO',  # 19.3% flag rate - Poor quality
         'USA_UMB_GIR',  # 27.9% flag rate - Poor quality
-    }
-    
-    # Sites with moderate quality issues (10-20%) - should be processed with warnings
-    MODERATE_PROBLEMATIC_SITES = {
         'FRA_PUE',  # 9.1% flag rate - Moderate issues
         'CAN_TUR_P39_PRE',  # 9.2% flag rate - Moderate issues
         'FRA_HES_HE2_NON',  # 9.0% flag rate - Moderate issues
@@ -227,7 +227,7 @@ class MemoryEfficientSAPFLUXNETProcessor:
         """Get combined list of all sites to exclude from processing (dynamic)"""
         return self.SITES_WITH_NO_VALID_DATA | self.SITES_WITH_INSUFFICIENT_TEMPORAL_COVERAGE
     
-    def __init__(self, output_dir='comprehensive_processed', chunk_size=1000, max_memory_gb=12, force_reprocess=False, skip_problematic_sites=True, use_quality_flags=True, compress_output=False, optimize_io=True, export_format='csv', config_overrides=None):
+    def __init__(self, output_dir='comprehensive_processed', chunk_size=1000, max_memory_gb=12, force_reprocess=False, skip_problematic_sites=True, use_quality_flags=True, compress_output=False, optimize_io=True, export_format='csv', config_overrides=None, clean_mode=False):
         self.base_output_dir = output_dir
         self.chunk_size = chunk_size
         self.max_memory_gb = max_memory_gb  # Leave 4GB buffer
@@ -237,6 +237,7 @@ class MemoryEfficientSAPFLUXNETProcessor:
         self.compress_output = compress_output  # Whether to compress output files
         self.optimize_io = optimize_io  # Whether to use optimized I/O strategies
         self.export_format = export_format.lower()  # Export format: csv, parquet, feather, hdf5, pickle, libsvm
+        self.clean_mode = clean_mode  # Clean mode: only exclude extremely problematic sites
         
         # Validate export format
         self.validate_export_format()
@@ -870,14 +871,22 @@ class MemoryEfficientSAPFLUXNETProcessor:
         # Check if site is problematic and should be skipped (quality flags)
         if self.skip_problematic_sites and site in self.PROBLEMATIC_SITES:
             if site in self.EXTREMELY_PROBLEMATIC_SITES:
-                print(f"  🚫 Skipping {site} - Extremely problematic site (>50% flag rate)")
+                print(f"  🚫 Skipping {site} - Extremely problematic site (>80% flag rate)")
                 return True
-            elif site in self.HIGH_PROBLEMATIC_SITES:
-                print(f"  🚫 Skipping {site} - High problematic site (20-50% flag rate)")
-                return True
-            elif site in self.MODERATE_PROBLEMATIC_SITES:
-                print(f"  ⚠️  Processing {site} with warnings - Moderate quality issues (10-20% flag rate)")
-                # Don't skip moderate sites, but warn about them
+            elif hasattr(self, 'clean_mode') and self.clean_mode:
+                # In clean mode, only exclude extremely problematic sites
+                if site in self.HIGH_PROBLEMATIC_SITES:
+                    print(f"  ⚠️  Processing {site} in clean mode - High problematic site (50-80% flag rate)")
+                elif site in self.MODERATE_PROBLEMATIC_SITES:
+                    print(f"  ⚠️  Processing {site} in clean mode - Moderate quality issues (20-50% flag rate)")
+            else:
+                # Normal mode - exclude both high and extremely problematic sites
+                if site in self.HIGH_PROBLEMATIC_SITES:
+                    print(f"  🚫 Skipping {site} - High problematic site (50-80% flag rate)")
+                    return True
+                elif site in self.MODERATE_PROBLEMATIC_SITES:
+                    print(f"  ⚠️  Processing {site} with warnings - Moderate quality issues (20-50% flag rate)")
+                    # Don't skip moderate sites, but warn about them
         
         # If force reprocess is enabled, never skip
         if self.force_reprocess:
@@ -3130,6 +3139,8 @@ def main():
                        help='Maximum memory usage in GB (default: 12)')
     parser.add_argument('--include-problematic', action='store_true',
                        help='Include problematic sites with high quality flag rates (sites with no valid data are always excluded)')
+    parser.add_argument('--clean-mode', action='store_true',
+                       help='Clean mode: only exclude extremely problematic sites (>80% flag rates). Includes moderate and high problematic sites.')
     parser.add_argument('--no-quality-flags', action='store_true',
                        help='Disable quality flag filtering (default: filter out OUT_WARN and RANGE_WARN data points)')
     parser.add_argument('--compress', action='store_true',
@@ -3160,6 +3171,10 @@ def main():
     if args.force:
         print("🔄 Force reprocessing mode enabled")
     
+    if args.clean_mode:
+        print("🧹 Clean mode enabled - only excluding extremely problematic sites (>80% flag rates)")
+        print("📊 Including moderate and high problematic sites for larger dataset")
+    
     if not args.no_quality_flags:
         print("🏷️  Quality flag filtering enabled (removing OUT_WARN and RANGE_WARN data points)")
     else:
@@ -3189,7 +3204,8 @@ def main():
         compress_output=args.compress,
         optimize_io=not args.no_io_optimization,
         export_format=args.export_format,
-        config_overrides=config_overrides
+        config_overrides=config_overrides,
+        clean_mode=args.clean_mode
     )
     
     # Check if only analysis is requested
@@ -3253,11 +3269,19 @@ def main():
                     print(f"       {site}: {days:.1f} days")
         
         if processor.skip_problematic_sites:
-            print(f"  - Extremely problematic (>50% flag rate): {len(processor.EXTREMELY_PROBLEMATIC_SITES)} sites")
-            print(f"  - High problematic (20-50% flag rate): {len(processor.HIGH_PROBLEMATIC_SITES)} sites")
-            print(f"  - Moderate problematic (10-20% flag rate): {len(processor.MODERATE_PROBLEMATIC_SITES)} sites")
-            print(f"  - Total problematic sites: {len(processor.PROBLEMATIC_SITES)} sites")
-            print(f"  💡 Use --include-problematic to process problematic sites anyway")
+            if processor.clean_mode:
+                print(f"  - Extremely problematic (>80% flag rate): {len(processor.EXTREMELY_PROBLEMATIC_SITES)} sites")
+                print(f"  - High problematic (50-80% flag rate): {len(processor.HIGH_PROBLEMATIC_SITES)} sites (included in clean mode)")
+                print(f"  - Moderate problematic (20-50% flag rate): {len(processor.MODERATE_PROBLEMATIC_SITES)} sites (included in clean mode)")
+                print(f"  - Total problematic sites: {len(processor.PROBLEMATIC_SITES)} sites")
+                print(f"  💡 Clean mode: Only excluding extremely problematic sites for larger dataset")
+            else:
+                print(f"  - Extremely problematic (>80% flag rate): {len(processor.EXTREMELY_PROBLEMATIC_SITES)} sites")
+                print(f"  - High problematic (50-80% flag rate): {len(processor.HIGH_PROBLEMATIC_SITES)} sites")
+                print(f"  - Moderate problematic (20-50% flag rate): {len(processor.MODERATE_PROBLEMATIC_SITES)} sites")
+                print(f"  - Total problematic sites: {len(processor.PROBLEMATIC_SITES)} sites")
+                print(f"  💡 Use --include-problematic to process problematic sites anyway")
+                print(f"  💡 Use --clean-mode to only exclude extremely problematic sites")
         else:
             print(f"  - Problematic sites included: {len(processor.PROBLEMATIC_SITES)} sites")
         
