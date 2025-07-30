@@ -2114,49 +2114,42 @@ class MemoryEfficientSAPFLUXNETProcessor:
         return features
     
     def create_domain_specific_features(self, df):
-        """Create domain-specific features for transpiration modeling (reduced logging)"""
+        """Create domain-specific features for transpiration modeling - ALWAYS CREATE ALL FEATURES"""
         
         features = df.copy()
         
-        # Light features
-        if 'ppfd_in' in df.columns and 'sw_in' in df.columns:
-            features['ppfd_efficiency'] = df['ppfd_in'] / (df['sw_in'] + 1e-6)
+        # Light features - ALWAYS CREATE, impute missing columns
+        ppfd_in = df.get('ppfd_in', 0).fillna(df.get('ppfd_in', pd.Series([0])).mean() if 'ppfd_in' in df.columns else 0)
+        sw_in = df.get('sw_in', 0).fillna(df.get('sw_in', pd.Series([0])).mean() if 'sw_in' in df.columns else 0)
+        features['ppfd_efficiency'] = ppfd_in / (sw_in + 1e-6)
         
-        # Temperature features
-        if 'ta' in df.columns:
-            features['temp_deviation'] = abs(df['ta'] - 25)
+        # Temperature features - ALWAYS CREATE
+        ta = df.get('ta', 25).fillna(df.get('ta', pd.Series([25])).mean() if 'ta' in df.columns else 25)
+        features['temp_deviation'] = abs(ta - 25)
         
-        # Physiological features
-        if 'vpd' in df.columns and 'ppfd_in' in df.columns:
-            features['stomatal_conductance_proxy'] = df['ppfd_in'] / (df['vpd'] + 1e-6)
+        # Physiological features - ALWAYS CREATE
+        vpd = df.get('vpd', 0).fillna(df.get('vpd', pd.Series([0])).mean() if 'vpd' in df.columns else 0)
+        features['stomatal_conductance_proxy'] = ppfd_in / (vpd + 1e-6)
             
-        # Wind effects
-        if 'ws' in df.columns:
-            features['wind_stress'] = df['ws'] / (df['ws'].max() + 1e-6)
-            
-            if 'vpd' in df.columns:
-                features['wind_vpd_interaction'] = df['ws'] * df['vpd']
+        # Wind effects - ALWAYS CREATE
+        ws = df.get('ws', 0).fillna(df.get('ws', pd.Series([0])).mean() if 'ws' in df.columns else 0)
+        ws_max = ws.max() if len(ws) > 0 and ws.max() > 0 else 1.0
+        features['wind_stress'] = ws / (ws_max + 1e-6)
+        features['wind_vpd_interaction'] = ws * vpd
         
-        # Enhanced interactions with extraterrestrial radiation
-        if 'ext_rad' in df.columns:
-            if 'vpd' in df.columns and 'ppfd_in' in df.columns:
-                features['stomatal_control_index'] = df['vpd'] * df['ppfd_in'] * df['ext_rad']
-            
-            if 'ppfd_in' in df.columns:
-                features['light_efficiency'] = df['ppfd_in'] / (df['ext_rad'] + 1e-6)
+        # Enhanced interactions with extraterrestrial radiation - ALWAYS CREATE
+        ext_rad = df.get('ext_rad', 0).fillna(df.get('ext_rad', pd.Series([0])).mean() if 'ext_rad' in df.columns else 0)
+        features['stomatal_control_index'] = vpd * ppfd_in * ext_rad
+        features['light_efficiency'] = ppfd_in / (ext_rad + 1e-6)
         
-        # Tree-specific features
-        if 'pl_dbh' in df.columns:
-            features['tree_size_factor'] = np.log(df['pl_dbh'] + 1)
+        # Tree-specific features - ALWAYS CREATE
+        pl_dbh = df.get('pl_dbh', 1).fillna(df.get('pl_dbh', pd.Series([1])).mean() if 'pl_dbh' in df.columns else 1)
+        features['tree_size_factor'] = np.log(pl_dbh + 1)
         
-        if 'pl_sapw_area' in df.columns and 'pl_leaf_area' in df.columns:
-            features['sapwood_leaf_ratio'] = df['pl_sapw_area'] / (df['pl_leaf_area'] + 1e-6)
-            
-            if 'vpd' in df.columns and 'ppfd_in' in df.columns:
-                features['transpiration_capacity'] = (
-                    df['pl_sapw_area'] * 
-                    df['ppfd_in'] / (df['vpd'] + 1e-6)
-                )
+        pl_sapw_area = df.get('pl_sapw_area', 0).fillna(df.get('pl_sapw_area', pd.Series([0])).mean() if 'pl_sapw_area' in df.columns else 0)
+        pl_leaf_area = df.get('pl_leaf_area', 1).fillna(df.get('pl_leaf_area', pd.Series([1])).mean() if 'pl_leaf_area' in df.columns else 1)
+        features['sapwood_leaf_ratio'] = pl_sapw_area / (pl_leaf_area + 1e-6)
+        features['transpiration_capacity'] = pl_sapw_area * ppfd_in / (vpd + 1e-6)
         
         return features
     
@@ -2169,11 +2162,19 @@ class MemoryEfficientSAPFLUXNETProcessor:
             return df
         
         try:
-            # Ensure we have the required columns
-            required_cols = ['site', 'month', 'ta', 'precip']
+            # ALWAYS CREATE seasonal features for consistency across all sites
+            if 'site' not in df.columns:
+                # No site column - use default values
+                df['seasonal_temp_range'] = 0.0
+                df['seasonal_precip_range'] = 0.0
+                return df
+            
+            # Check if we have the required data columns
+            required_cols = ['month', 'ta', 'precip']
             missing_cols = [col for col in required_cols if col not in df.columns]
+            
             if missing_cols:
-                # Add seasonal features with default values for consistency
+                # Missing required columns - use default values but still create features
                 df['seasonal_temp_range'] = 0.0
                 df['seasonal_precip_range'] = 0.0
                 return df
@@ -2182,25 +2183,43 @@ class MemoryEfficientSAPFLUXNETProcessor:
             seasonality_data = []
             
             for site, site_group in df.groupby('site'):
-                # Calculate monthly means for temperature
-                monthly_temp = site_group.groupby('month')['ta'].mean()
-                temp_range = monthly_temp.max() - monthly_temp.min()
-                
-                # Calculate monthly means for precipitation
-                monthly_precip = site_group.groupby('month')['precip'].mean()
-                precip_range = monthly_precip.max() - monthly_precip.min()
-                
-                seasonality_data.append({
-                    'site': site,
-                    'seasonal_temp_range': temp_range,
-                    'seasonal_precip_range': precip_range
-                })
+                try:
+                    # Calculate monthly means for temperature (with fallback)
+                    if 'month' in site_group.columns and 'ta' in site_group.columns:
+                        monthly_temp = site_group.groupby('month')['ta'].mean()
+                        temp_range = monthly_temp.max() - monthly_temp.min() if len(monthly_temp) > 1 else 0.0
+                    else:
+                        temp_range = 0.0
+                    
+                    # Calculate monthly means for precipitation (with fallback)
+                    if 'month' in site_group.columns and 'precip' in site_group.columns:
+                        monthly_precip = site_group.groupby('month')['precip'].mean()
+                        precip_range = monthly_precip.max() - monthly_precip.min() if len(monthly_precip) > 1 else 0.0
+                    else:
+                        precip_range = 0.0
+                    
+                    seasonality_data.append({
+                        'site': site,
+                        'seasonal_temp_range': temp_range,
+                        'seasonal_precip_range': precip_range
+                    })
+                except Exception:
+                    # Fallback for any site-specific errors
+                    seasonality_data.append({
+                        'site': site,
+                        'seasonal_temp_range': 0.0,
+                        'seasonal_precip_range': 0.0
+                    })
             
             # Create seasonality DataFrame
             seasonality_df = pd.DataFrame(seasonality_data)
             
             # Merge back to main DataFrame (site-level features, so merge on 'site')
             df = df.merge(seasonality_df, on='site', how='left')
+            
+            # Fill any remaining NaN values with 0
+            df['seasonal_temp_range'] = df['seasonal_temp_range'].fillna(0.0)
+            df['seasonal_precip_range'] = df['seasonal_precip_range'].fillna(0.0)
             
             return df
             
