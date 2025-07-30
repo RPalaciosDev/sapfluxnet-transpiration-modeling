@@ -363,8 +363,51 @@ class MemoryEfficientSAPFLUXNETProcessor:
             # For custom directories, append format suffix
             return f'{self.base_output_dir}_{self.export_format}'
     
+    def standardize_features_to_reference(self, df, site_name):
+        """Ensure all sites have the same features as reference site (THA_KHU)"""
+        reference_file = os.path.join(self.get_format_specific_output_dir(), f'THA_KHU_comprehensive.{self.get_output_file_extension().lstrip(".")}')
+        
+        if os.path.exists(reference_file) and site_name != 'THA_KHU':
+            try:
+                # Load reference features
+                if self.export_format == 'parquet':
+                    import pyarrow.parquet as pq
+                    ref_file = pq.ParquetFile(reference_file)
+                    reference_features = set(ref_file.schema.names)
+                elif self.export_format == 'csv':
+                    ref_df_sample = pd.read_csv(reference_file, nrows=0)  # Just get columns
+                    reference_features = set(ref_df_sample.columns)
+                else:
+                    # For other formats, skip standardization
+                    return df
+                
+                current_features = set(df.columns)
+                missing_features = reference_features - current_features
+                extra_features = current_features - reference_features
+                
+                if missing_features or extra_features:
+                    print(f"    🔧 Standardizing features for {site_name}:")
+                    if missing_features:
+                        print(f"      ➕ Adding {len(missing_features)} missing features")
+                        for feature in missing_features:
+                            df[feature] = 0.0
+                    if extra_features:
+                        print(f"      ➖ Removing {len(extra_features)} extra features")
+                        df = df.drop(columns=list(extra_features))
+                    
+                    # Reorder columns to match reference
+                    df = df.reindex(columns=sorted(reference_features), fill_value=0.0)
+                
+            except Exception as e:
+                print(f"    ⚠️  Could not standardize features for {site_name}: {e}")
+        
+        return df
+    
     def save_dataframe_formatted(self, df, output_file, site_name):
         """Save DataFrame in the specified format with optimized I/O"""
+        
+        # Standardize features to match reference site (THA_KHU)
+        df = self.standardize_features_to_reference(df, site_name)
         
         # Add compression extension if needed
         if self.compress_output and self.export_format in ['csv', 'libsvm']:
