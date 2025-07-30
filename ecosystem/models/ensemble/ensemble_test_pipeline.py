@@ -304,42 +304,29 @@ class EnsembleTestPipeline:
             
             # Load data for cluster sites
             cluster_data = []
-            available_features = None  # Track which features are actually available
-            
             for site in cluster_sites:
                 parquet_file = os.path.join(self.parquet_dir, f'{site}_comprehensive.parquet')
                 if os.path.exists(parquet_file):
                     try:
-                        # First, check which features are available in this file
-                        df_full = pd.read_parquet(parquet_file)
-                        site_available_features = [f for f in centroid_features if f in df_full.columns]
-                        
-                        if available_features is None:
-                            available_features = site_available_features
-                        else:
-                            # Keep only features that are available in ALL sites
-                            available_features = [f for f in available_features if f in site_available_features]
-                        
-                        if len(df_full) > 0 and site_available_features:
-                            # Use mean values for available features only
-                            site_means = df_full[site_available_features].mean().values
+                        df = pd.read_parquet(parquet_file)
+                        if len(df) > 0:
+                            # Use mean values for this site, fill missing features with 0
+                            site_means = []
+                            for feature in centroid_features:
+                                if feature in df.columns:
+                                    site_means.append(df[feature].mean())
+                                else:
+                                    site_means.append(0.0)  # Default for missing features
                             cluster_data.append(site_means)
-                            
                     except Exception as e:
                         print(f"    ❌ Error loading {site}: {e}")
                         continue
             
-            if cluster_data and available_features:
+            if cluster_data:
                 # Calculate centroid as mean of all site means
                 centroid = np.mean(cluster_data, axis=0)
-                self.cluster_centroids[cluster_id] = {
-                    'centroid': centroid,
-                    'features': available_features
-                }
-                print(f"    ✅ Cluster {cluster_id}: {len(cluster_sites)} sites, {len(available_features)} features")
-                if len(available_features) < len(centroid_features):
-                    missing_features = [f for f in centroid_features if f not in available_features]
-                    print(f"    ⚠️  Missing features: {missing_features}")
+                self.cluster_centroids[cluster_id] = centroid
+                print(f"    ✅ Cluster {cluster_id}: {len(cluster_sites)} sites, {len(centroid_features)} features")
             else:
                 print(f"    ❌ Cluster {cluster_id}: No valid data for centroid calculation")
         
@@ -407,30 +394,22 @@ class EnsembleTestPipeline:
             'seasonal_temp_range', 'seasonal_precip_range'
         ]
         
-        # Calculate distances to each cluster centroid using the same features that were used for centroids
-        distances = {}
-        for cluster_id, centroid_data in self.cluster_centroids.items():
-            if isinstance(centroid_data, dict):
-                centroid_array = centroid_data['centroid']
-                centroid_features = centroid_data['features']
+        # Get site features (use mean values, fill missing with 0)
+        site_features = []
+        for feature in distance_features:
+            if feature in X.columns:
+                site_features.append(X[feature].mean())
             else:
-                # Fallback for old format
-                centroid_array = centroid_data
-                centroid_features = distance_features
-            
-            # Get site features for the same features used in centroid calculation
-            site_features = []
-            for feature in centroid_features:
-                if feature in X.columns:
-                    site_features.append(X[feature].mean())
-                else:
-                    site_features.append(0.0)  # Default value for missing features
-            
-            if len(site_features) > 0:
-                site_features = np.array(site_features).reshape(1, -1)
-                centroid_array = np.array(centroid_array).reshape(1, -1)
-                distance = euclidean_distances(site_features, centroid_array)[0][0]
-                distances[cluster_id] = distance
+                site_features.append(0.0)  # Default value for missing features
+        
+        site_features = np.array(site_features).reshape(1, -1)
+        
+        # Calculate distances to all centroids
+        distances = {}
+        for cluster_id, centroid in self.cluster_centroids.items():
+            centroid = np.array(centroid).reshape(1, -1)
+            distance = euclidean_distances(site_features, centroid)[0][0]
+            distances[cluster_id] = distance
         
         return distances
 
