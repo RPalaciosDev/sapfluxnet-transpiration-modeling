@@ -543,6 +543,15 @@ class EnsembleTestPipeline:
                     cluster_predictions[cluster_id] = y_pred
                     cluster_confidences[cluster_id] = confidence
                     
+                    # DEBUG: Check predictions for NaN values
+                    pred_nan_count = np.isnan(y_pred).sum() if y_pred is not None else 0
+                    true_nan_count = np.isnan(y_true).sum() if y_true is not None else 0
+                    print(f"    🔍 Cluster {cluster_id} predictions: {pred_nan_count} NaN in y_pred, {true_nan_count} NaN in y_true")
+                    
+                    if pred_nan_count > 0 or true_nan_count > 0:
+                        print(f"    ❌ Cluster {cluster_id}: Cannot calculate metrics due to NaN values")
+                        continue
+                    
                     # Calculate individual cluster metrics
                     r2 = r2_score(y_true, y_pred)
                     rmse = np.sqrt(mean_squared_error(y_true, y_pred))
@@ -552,6 +561,8 @@ class EnsembleTestPipeline:
                     
                 except Exception as e:
                     print(f"    ❌ Cluster {cluster_id} prediction failed: {e}")
+                    import traceback
+                    traceback.print_exc()
                     continue
             
             if not cluster_predictions:
