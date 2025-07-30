@@ -290,9 +290,9 @@ class EnsembleTestPipeline:
         print(f"\n🎯 Calculating cluster centroids...")
         
         # Features to use for centroid calculation (ecological features)
+        # Use features that are available in all parquet files
         centroid_features = [
-            'longitude', 'latitude', 'elevation', 'mean_annual_temp', 'mean_annual_precip',
-            'seasonal_temp_range', 'seasonal_precip_range'
+            'longitude', 'latitude', 'elevation', 'mean_annual_temp', 'mean_annual_precip'
         ]
         
         for cluster_id in self.cluster_models.keys():
@@ -382,9 +382,9 @@ class EnsembleTestPipeline:
             return {}
         
         # Features for distance calculation (matching centroid features)
+        # Use features that are available in all parquet files
         distance_features = [
-            'longitude', 'latitude', 'elevation', 'mean_annual_temp', 'mean_annual_precip',
-            'seasonal_temp_range', 'seasonal_precip_range'
+            'longitude', 'latitude', 'elevation', 'mean_annual_temp', 'mean_annual_precip'
         ]
         
         # Get site features (use mean values)
