@@ -104,7 +104,7 @@ class EnsembleTestPipeline:
         self.outlier_sites = set()
         
         # Target column
-        self.target_col = 'sapflow_mmol_m2_s1'
+        self.target_col = 'sap_flow'
         
         # Initialize
         self._detect_gpu()
@@ -199,7 +199,7 @@ class EnsembleTestPipeline:
         print(f"✅ Loaded site split:")
         print(f"  📊 Train sites: {len(self.train_sites)}")
         print(f"  📊 Test sites: {len(self.test_sites)}")
-        print(f"  📅 Split created: {split_data['metadata']['created_at']}")
+        print(f"  📅 Split created: {split_data['metadata']['timestamp']}")
 
     def _load_cluster_assignments(self):
         """Load cluster assignments from CSV file"""
@@ -352,13 +352,20 @@ class EnsembleTestPipeline:
         flag_cols = [col for col in df.columns if 'flag' in col.lower()]
         exclude_cols.extend(flag_cols)
         
+        # Remove timestamp-related columns (case-insensitive)
+        timestamp_keywords = ['timestamp', 'date', 'datetime', 'time']
+        timestamp_cols = [col for col in df.columns 
+                         if any(keyword.lower() in col.lower() for keyword in timestamp_keywords)]
+        exclude_cols.extend(timestamp_cols)
+        
         feature_cols = [col for col in df.columns if col not in exclude_cols]
         
         X = df[feature_cols].copy()
         y = df[self.target_col].copy()
         
-        # Handle any remaining NaN values
-        X = X.fillna(X.mean())
+        # Handle any remaining NaN values - only for numeric columns
+        numeric_cols = X.select_dtypes(include=[np.number]).columns
+        X[numeric_cols] = X[numeric_cols].fillna(X[numeric_cols].mean())
         
         return X, y, feature_cols
 
