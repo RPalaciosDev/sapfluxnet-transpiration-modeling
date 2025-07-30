@@ -434,6 +434,19 @@ class EnsembleTestPipeline:
         
         model = self.cluster_models[cluster_id]
         
+        # DEBUG: Check for feature alignment and data quality issues
+        print(f"    🔍 Model expects {model.num_feature} features, got {X.shape[1]} features")
+        print(f"    🔍 Input data: {X.isnull().sum().sum()} NaN, {np.isinf(X.select_dtypes(include=[np.number])).sum().sum()} inf")
+        
+        # Ensure we're passing clean numeric data
+        if X.isnull().sum().sum() > 0:
+            print(f"    ⚠️  Found NaN values before prediction, filling with 0")
+            X = X.fillna(0)
+        
+        if np.isinf(X.select_dtypes(include=[np.number])).sum().sum() > 0:
+            print(f"    ⚠️  Found infinite values before prediction, replacing with 0")
+            X = X.replace([np.inf, -np.inf], 0)
+        
         # Make predictions
         y_pred = model.predict(X)
         
