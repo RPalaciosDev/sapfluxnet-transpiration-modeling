@@ -131,8 +131,8 @@ class ProcessingConfig:
     # Quality flag settings
     QUALITY_FLAGS = {
         'bad_flags': ['OUT_WARN', 'RANGE_WARN'],  # Flags to filter out
-        'min_file_size_mb': 1.0,    # Minimum file size for validation (uncompressed)
-        'min_file_size_compressed_mb': 0.3,  # Minimum file size for validation (compressed)
+        'min_file_size_mb': 0.2,    # Minimum file size for validation (uncompressed) - lowered from 1.0MB
+        'min_file_size_compressed_mb': 0.1,  # Minimum file size for validation (compressed) - lowered from 0.3MB
     }
     
     @classmethod
@@ -2330,10 +2330,10 @@ class MemoryEfficientSAPFLUXNETProcessor:
                     self.adaptive_settings['use_streaming'] = True
                     self.adaptive_settings['processing_mode'] = 'streaming'
                 
-                # Skip extremely large datasets that might cause memory issues
-                if total_size_mb > 100:  # If total size > 100MB, skip entirely
-                    print(f"    ⚠️  Extremely large dataset detected ({total_size_mb:.1f}MB) - skipping to prevent memory issues")
-                    return None
+                # Note: Previously skipped datasets > 100MB, but with abundant memory (500+ GB)
+                # and streaming support, we can process all valid sites
+                if total_size_mb > 100:
+                    print(f"    💪 Large dataset detected ({total_size_mb:.1f}MB) - will use streaming mode")
             
             # Determine optimal settings for this site
             if not self.determine_adaptive_settings(site):
