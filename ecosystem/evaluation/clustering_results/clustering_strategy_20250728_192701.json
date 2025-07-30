@@ -1,0 +1,22 @@
+{
+  "selected_strategy": "GMM (3 clusters)",
+  "n_clusters": 3,
+  "silhouette_score": 0.25941517538522635,
+  "balance_ratio": 0.7037037037037037,
+  "final_score": 1.5188303507704526,
+  "excluded_sites": [
+    "CHN_YUN_YUN",
+    "ESP_RON_PIL",
+    "CHE_DAV_SEE",
+    "MEX_COR_YP",
+    "THA_KHU",
+    "ESP_YUN_C1",
+    "IDN_JAM_OIL",
+    "NZL_HUA_HUA",
+    "ESP_MAJ_MAI",
+    "ESP_MAJ_NOR_LM1",
+    "PRT_MIT"
+  ],
+  "feature_set": "hybrid",
+  "timestamp": "20250728_192701"
+}

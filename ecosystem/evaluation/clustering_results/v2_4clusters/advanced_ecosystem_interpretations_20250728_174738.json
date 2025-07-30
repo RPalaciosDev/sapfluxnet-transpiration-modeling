@@ -1,0 +1,1292 @@
+{
+  "0": {
+    "ecosystem_type": "Arid/Semi-Arid",
+    "n_sites": 27,
+    "sites": [
+      "AUT_PAT_FOR",
+      "AUT_PAT_KRU",
+      "AUT_PAT_TRE",
+      "AUT_TSC",
+      "CAN_TUR_P39_PRE",
+      "CHE_DAV_SEE",
+      "CHE_PFY_CON",
+      "CHE_PFY_IRR",
+      "CHN_HOR_AFF",
+      "CZE_LIZ_LES",
+      "ESP_RON_PIL",
+      "ESP_TIL_MIX",
+      "ESP_VAL_SOR",
+      "ESP_YUN_C1",
+      "ESP_YUN_C2",
+      "ESP_YUN_T1_THI",
+      "ESP_YUN_T3_THI",
+      "FRA_PUE",
+      "GBR_ABE_PLO",
+      "GBR_GUI_ST1",
+      "MEX_COR_YP",
+      "NLD_LOO",
+      "NLD_SPE_DOU",
+      "PRT_PIN",
+      "USA_CHE_ASP",
+      "USA_HIL_HF1_PRE",
+      "USA_PER_PER"
+    ],
+    "characteristics": {
+      "longitude": {
+        "mean": -9.2040318512428,
+        "std": 44.37352503200473,
+        "min": -97.0422,
+        "max": 122.36666666666666
+      },
+      "latitude": {
+        "mean": 43.03844808819012,
+        "std": 8.080509203910534,
+        "min": 19.4931,
+        "max": 57.266667
+      },
+      "latitude_abs": {
+        "mean": 43.03844808819012,
+        "std": 8.080509203910534,
+        "min": 19.4931,
+        "max": 57.266667
+      },
+      "mean_annual_temp": {
+        "mean": 9.319356198545218,
+        "std": 4.431314079627916,
+        "min": 1.8686732673635589,
+        "max": 20.0
+      },
+      "mean_annual_precip": {
+        "mean": 933.2449998394957,
+        "std": 282.25636735833257,
+        "min": 521.6497768156635,
+        "max": 1491.5612988849591
+      },
+      "aridity_index": {
+        "mean": 51.639207714580984,
+        "std": 23.548936156743974,
+        "min": 25.47098108731704,
+        "max": 106.0673014054644
+      },
+      "elevation": {
+        "mean": 879.9074074074074,
+        "std": 722.7532033965281,
+        "min": 5.0,
+        "max": 2180.0
+      },
+      "seasonal_temp_range": {
+        "mean": 13.21582585689107,
+        "std": 6.416519577973531,
+        "min": 2.8539963698768673,
+        "max": 28.621968154229844
+      },
+      "seasonal_precip_range": {
+        "mean": 0.04426326847119758,
+        "std": 0.06349500752212993,
+        "min": 0.0,
+        "max": 0.3345187362233652
+      },
+      "temp_precip_ratio": {
+        "mean": 0.010900395531680287,
+        "std": 0.00544157303786624,
+        "min": 0.0014832174644639348,
+        "max": 0.024683596607157944
+      },
+      "seasonality_index": {
+        "mean": 0.9407163214775948,
+        "std": 0.5307523775338185,
+        "min": 0.168148069961467,
+        "max": 2.646091261223501
+      },
+      "climate_continentality": {
+        "mean": 0.3106414646841522,
+        "std": 0.15710943849198244,
+        "min": 0.05359505764906691,
+        "max": 0.7074235189474334
+      },
+      "elevation_latitude_ratio": {
+        "mean": 22.149377473626487,
+        "std": 22.82614444416767,
+        "min": 0.12738792486802866,
+        "max": 106.37726844645272
+      },
+      "aridity_seasonality": {
+        "mean": 46.794727411691966,
+        "std": 33.1563288116937,
+        "min": 6.30690387842693,
+        "max": 139.31586775755838
+      },
+      "temp_elevation_ratio": {
+        "mean": 15.038754346693365,
+        "std": 4.571604492830319,
+        "min": 8.150564848891833,
+        "max": 28.529354080614688
+      },
+      "precip_latitude_ratio": {
+        "mean": 22.664542152481392,
+        "std": 12.315333271191173,
+        "min": 11.93251491000374,
+        "max": 72.78358564028669
+      },
+      "climate_zone_code_0": {
+        "mean": 0.0,
+        "std": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "climate_zone_code_1": {
+        "mean": 0.037037037037037035,
+        "std": 0.19245008972987526,
+        "min": 0.0,
+        "max": 1.0
+      },
+      "climate_zone_code_2": {
+        "mean": 0.9629629629629629,
+        "std": 0.19245008972987523,
+        "min": 0.0,
+        "max": 1.0
+      },
+      "biome_code_11.0": {
+        "mean": 0.0,
+        "std": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "biome_code_15.0": {
+        "mean": 0.5185185185185185,
+        "std": 0.5091750772173156,
+        "min": 0.0,
+        "max": 1.0
+      },
+      "igbp_class_code_1": {
+        "mean": 0.7407407407407407,
+        "std": 0.44657608470472243,
+        "min": 0.0,
+        "max": 1.0
+      },
+      "igbp_class_code_2": {
+        "mean": 0.037037037037037035,
+        "std": 0.19245008972987526,
+        "min": 0.0,
+        "max": 1.0
+      },
+      "igbp_class_code_3": {
+        "mean": 0.037037037037037035,
+        "std": 0.19245008972987523,
+        "min": 0.0,
+        "max": 1.0
+      },
+      "igbp_class_code_4": {
+        "mean": 0.0,
+        "std": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "igbp_class_code_5": {
+        "mean": 0.14814814814814814,
+        "std": 0.36201399289824565,
+        "min": 0.0,
+        "max": 1.0
+      },
+      "igbp_class_code_8": {
+        "mean": 0.037037037037037035,
+        "std": 0.19245008972987526,
+        "min": 0.0,
+        "max": 1.0
+      },
+      "igbp_class_code_9": {
+        "mean": 0.0,
+        "std": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "igbp_class_code_11": {
+        "mean": 0.0,
+        "std": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "leaf_habit_code_1.0": {
+        "mean": 0.0,
+        "std": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "leaf_habit_code_3.0": {
+        "mean": 1.0,
+        "std": 0.0,
+        "min": 1.0,
+        "max": 1.0
+      },
+      "soil_texture_code_1.0": {
+        "mean": 0.037037037037037035,
+        "std": 0.19245008972987526,
+        "min": 0.0,
+        "max": 1.0
+      },
+      "soil_texture_code_2.0": {
+        "mean": 0.2222222222222222,
+        "std": 0.4236592728681617,
+        "min": 0.0,
+        "max": 1.0
+      },
+      "soil_texture_code_3.0": {
+        "mean": 0.037037037037037035,
+        "std": 0.19245008972987526,
+        "min": 0.0,
+        "max": 1.0
+      },
+      "soil_texture_code_4.0": {
+        "mean": 0.07407407407407407,
+        "std": 0.2668802563418119,
+        "min": 0.0,
+        "max": 1.0
+      },
+      "soil_texture_code_6.0": {
+        "mean": 0.07407407407407407,
+        "std": 0.2668802563418119,
+        "min": 0.0,
+        "max": 1.0
+      },
+      "soil_texture_code_7.0": {
+        "mean": 0.25925925925925924,
+        "std": 0.44657608470472243,
+        "min": 0.0,
+        "max": 1.0
+      },
+      "soil_texture_code_8.0": {
+        "mean": 0.14814814814814814,
+        "std": 0.36201399289824565,
+        "min": 0.0,
+        "max": 1.0
+      },
+      "soil_texture_code_9.0": {
+        "mean": 0.07407407407407407,
+        "std": 0.2668802563418119,
+        "min": 0.0,
+        "max": 1.0
+      },
+      "soil_texture_code_12.0": {
+        "mean": 0.0,
+        "std": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "species_functional_group_code_0": {
+        "mean": 0.0,
+        "std": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "species_functional_group_code_1": {
+        "mean": 0.9629629629629629,
+        "std": 0.19245008972987523,
+        "min": 0.0,
+        "max": 1.0
+      },
+      "species_functional_group_code_2": {
+        "mean": 0.0,
+        "std": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "species_functional_group_code_3": {
+        "mean": 0.037037037037037035,
+        "std": 0.19245008972987526,
+        "min": 0.0,
+        "max": 1.0
+      },
+      "species_functional_group_code_4": {
+        "mean": 0.0,
+        "std": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "koppen_geiger_code_encoded_0": {
+        "mean": 1.0,
+        "std": 0.0,
+        "min": 1.0,
+        "max": 1.0
+      }
+    },
+    "climate_zones": {
+      "Cold_Temperate": 17,
+      "Warm_Temperate": 9,
+      "Subtropical": 1
+    },
+    "seasonality_types": {
+      "Moderate_Seasonality": 11,
+      "High_Temp_Seasonality": 11,
+      "High_Seasonality": 4,
+      "Low_Seasonality": 1
+    },
+    "elevation_classes": {
+      "Mountain": 9,
+      "Low_Hills": 7,
+      "High_Hills": 4,
+      "Lowland": 4,
+      "High_Mountain": 3
+    }
+  },
+  "1": {
+    "ecosystem_type": "Warm Temperate",
+    "n_sites": 19,
+    "sites": [
+      "AUS_BRI_BRI",
+      "AUS_CAN_ST1_EUC",
+      "AUS_CAN_ST3_ACA",
+      "AUS_CAR_THI_00F",
+      "AUS_CAR_THI_0PF",
+      "AUS_CAR_THI_CON",
+      "AUS_CAR_THI_T00",
+      "AUS_CAR_THI_T0F",
+      "AUS_ELL_MB_MOD",
+      "AUS_ELL_UNB",
+      "AUS_MAR_HSD_HIG",
+      "AUS_MAR_HSW_HIG",
+      "AUS_MAR_MSD_MOD",
+      "AUS_MAR_MSW_MOD",
+      "AUS_MAR_UBD",
+      "AUS_MAR_UBW",
+      "AUS_WOM",
+      "NZL_HUA_HUA",
+      "ZAF_WEL_SOR"
+    ],
+    "characteristics": {
+      "longitude": {
+        "mean": 141.14507561421053,
+        "std": 30.305739721158417,
+        "min": 18.95601667,
+        "max": 174.4903
+      },
+      "latitude": {
+        "mean": -37.493436573157894,
+        "std": 1.1052905370788293,
+        "min": -38.383,
+        "max": -33.48173889
+      },
+      "latitude_abs": {
+        "mean": 37.493436573157894,
+        "std": 1.1052905370788293,
+        "min": 33.48173889,
+        "max": 38.383
+      },
+      "mean_annual_temp": {
+        "mean": 12.974005689015556,
+        "std": 1.7373969264341098,
+        "min": 10.917803669211503,
+        "max": 17.816905035459797
+      },
+      "mean_annual_precip": {
+        "mean": 1078.9999614612302,
+        "std": 146.65271473088652,
+        "min": 628.5175140249866,
+        "max": 1371.2343226680414
+      },
+      "aridity_index": {
+        "mean": 47.24964340390364,
+        "std": 6.732580934220321,
+        "min": 22.59480388719663,
+        "max": 55.50117925226113
+      },
+      "elevation": {
+        "mean": 450.2631578947368,
+        "std": 224.40039663890056,
+        "min": 81.0,
+        "max": 737.0
+      },
+      "seasonal_temp_range": {
+        "mean": 10.334293348499775,
+        "std": 3.9989304461222273,
+        "min": 1.7054137133889,
+        "max": 17.087902490768023
+      },
+      "seasonal_precip_range": {
+        "mean": 0.08549435418663863,
+        "std": 0.09910951882302897,
+        "min": 0.011144578313253013,
+        "max": 0.3944525547445253
+      },
+      "temp_precip_ratio": {
+        "mean": 0.012400220979034024,
+        "std": 0.003958662450829866,
+        "min": 0.01021038511142571,
+        "max": 0.02830247711702683
+      },
+      "seasonality_index": {
+        "mean": 0.5869949899558841,
+        "std": 0.4493959330303671,
+        "min": 0.13194734196181793,
+        "max": 1.4325588669023233
+      },
+      "climate_continentality": {
+        "mean": 0.2715191462423789,
+        "std": 0.1096154269098147,
+        "min": 0.04387417852702956,
+        "max": 0.49556382713992597
+      },
+      "elevation_latitude_ratio": {
+        "mean": 11.631307254008236,
+        "std": 5.780707170856143,
+        "min": 2.3490694671286048,
+        "max": 19.505094614264923
+      },
+      "aridity_seasonality": {
+        "mean": 22.557378782089057,
+        "std": 18.103904039836472,
+        "min": 6.824605979322247,
+        "max": 63.854680572534605
+      },
+      "temp_elevation_ratio": {
+        "mean": 15.900716215331343,
+        "std": 0.8395971253916511,
+        "min": 15.071144903007536,
+        "max": 18.343405035459796
+      },
+      "precip_latitude_ratio": {
+        "mean": 27.997384185026807,
+        "std": 3.651094013983115,
+        "min": 18.22754693520581,
+        "max": 36.280071401267904
+      },
+      "climate_zone_code_0": {
+        "mean": 1.0,
+        "std": 0.0,
+        "min": 1.0,
+        "max": 1.0
+      },
+      "climate_zone_code_1": {
+        "mean": 0.0,
+        "std": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "climate_zone_code_2": {
+        "mean": 0.0,
+        "std": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "biome_code_11.0": {
+        "mean": 0.0,
+        "std": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "biome_code_15.0": {
+        "mean": 0.15789473684210525,
+        "std": 0.37463432463267754,
+        "min": 0.0,
+        "max": 1.0
+      },
+      "igbp_class_code_1": {
+        "mean": 0.0,
+        "std": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "igbp_class_code_2": {
+        "mean": 1.0,
+        "std": 0.0,
+        "min": 1.0,
+        "max": 1.0
+      },
+      "igbp_class_code_3": {
+        "mean": 0.0,
+        "std": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "igbp_class_code_4": {
+        "mean": 0.0,
+        "std": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "igbp_class_code_5": {
+        "mean": 0.0,
+        "std": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "igbp_class_code_8": {
+        "mean": 0.0,
+        "std": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "igbp_class_code_9": {
+        "mean": 0.0,
+        "std": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "igbp_class_code_11": {
+        "mean": 0.0,
+        "std": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "leaf_habit_code_1.0": {
+        "mean": 0.0,
+        "std": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "leaf_habit_code_3.0": {
+        "mean": 1.0,
+        "std": 0.0,
+        "min": 1.0,
+        "max": 1.0
+      },
+      "soil_texture_code_1.0": {
+        "mean": 0.0,
+        "std": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "soil_texture_code_2.0": {
+        "mean": 0.0,
+        "std": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "soil_texture_code_3.0": {
+        "mean": 0.8947368421052632,
+        "std": 0.3153017676423058,
+        "min": 0.0,
+        "max": 1.0
+      },
+      "soil_texture_code_4.0": {
+        "mean": 0.0,
+        "std": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "soil_texture_code_6.0": {
+        "mean": 0.05263157894736842,
+        "std": 0.22941573387056177,
+        "min": 0.0,
+        "max": 1.0
+      },
+      "soil_texture_code_7.0": {
+        "mean": 0.0,
+        "std": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "soil_texture_code_8.0": {
+        "mean": 0.0,
+        "std": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "soil_texture_code_9.0": {
+        "mean": 0.0,
+        "std": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "soil_texture_code_12.0": {
+        "mean": 0.0,
+        "std": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "species_functional_group_code_0": {
+        "mean": 0.10526315789473684,
+        "std": 0.3153017676423058,
+        "min": 0.0,
+        "max": 1.0
+      },
+      "species_functional_group_code_1": {
+        "mean": 0.0,
+        "std": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "species_functional_group_code_2": {
+        "mean": 0.0,
+        "std": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "species_functional_group_code_3": {
+        "mean": 0.8947368421052632,
+        "std": 0.3153017676423058,
+        "min": 0.0,
+        "max": 1.0
+      },
+      "species_functional_group_code_4": {
+        "mean": 0.0,
+        "std": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "koppen_geiger_code_encoded_0": {
+        "mean": 1.0,
+        "std": 0.0,
+        "min": 1.0,
+        "max": 1.0
+      }
+    },
+    "climate_zones": {
+      "Warm_Temperate": 19
+    },
+    "seasonality_types": {
+      "High_Seasonality": 10,
+      "Moderate_Seasonality": 5,
+      "Low_Seasonality": 3,
+      "High_Temp_Seasonality": 1
+    },
+    "elevation_classes": {
+      "High_Hills": 9,
+      "Low_Hills": 8,
+      "Lowland": 2
+    }
+  },
+  "2": {
+    "ecosystem_type": "Temperate Mixed",
+    "n_sites": 14,
+    "sites": [
+      "AUS_KAR",
+      "BRA_CAM",
+      "BRA_SAN",
+      "CRI_TAM_TOW",
+      "IDN_JAM_OIL",
+      "IDN_JAM_RUB",
+      "MDG_SEM_TAL",
+      "MDG_YOU_SHO",
+      "SEN_SOU_IRR",
+      "SEN_SOU_POS",
+      "SEN_SOU_PRE",
+      "THA_KHU",
+      "ZAF_RAD",
+      "ZAF_SOU_SOU"
+    ],
+    "characteristics": {
+      "longitude": {
+        "mean": 24.326413045238098,
+        "std": 64.9738747387136,
+        "min": -84.62583333333333,
+        "max": 118.218654
+      },
+      "latitude": {
+        "mean": -7.436939056349204,
+        "std": 19.58503127194786,
+        "min": -34.087,
+        "max": 16.344
+      },
+      "latitude_abs": {
+        "mean": 18.107216834126977,
+        "std": 9.489141582712524,
+        "min": 2.0708889,
+        "max": 34.087
+      },
+      "mean_annual_temp": {
+        "mean": 22.717801155878384,
+        "std": 5.269102326978315,
+        "min": 15.28335143112229,
+        "max": 28.9
+      },
+      "mean_annual_precip": {
+        "mean": 1479.5180700313115,
+        "std": 1096.0559931478506,
+        "min": 248.00000000000003,
+        "max": 3625.909579575401
+      },
+      "aridity_index": {
+        "mean": 46.827751824720984,
+        "std": 32.76356944102399,
+        "min": 6.375321336760926,
+        "max": 109.96615459978337
+      },
+      "elevation": {
+        "mean": 527.7857142857143,
+        "std": 568.4956096943565,
+        "min": 10.0,
+        "max": 2000.0
+      },
+      "seasonal_temp_range": {
+        "mean": 9.430485648554557,
+        "std": 6.197712035696783,
+        "min": 0.1676760447392951,
+        "max": 18.907242524916946
+      },
+      "seasonal_precip_range": {
+        "mean": 1.911538584316468,
+        "std": 6.528821439398227,
+        "min": 0.0,
+        "max": 24.51385340857054
+      },
+      "temp_precip_ratio": {
+        "mean": 0.038273455717363576,
+        "std": 0.04464843057244597,
+        "min": 0.006334031537287842,
+        "max": 0.11606425702811243
+      },
+      "seasonality_index": {
+        "mean": 1.422764040283747,
+        "std": 1.979296126925166,
+        "min": 0.21094608675581872,
+        "max": 8.128170615688402
+      },
+      "climate_continentality": {
+        "mean": 0.3986388622430522,
+        "std": 0.2304339728183851,
+        "min": 0.04962178696964576,
+        "max": 0.8003505684785354
+      },
+      "elevation_latitude_ratio": {
+        "mean": 27.966766185668682,
+        "std": 24.826719200652896,
+        "min": 0.5765682656826567,
+        "max": 84.42380751371887
+      },
+      "aridity_seasonality": {
+        "mean": 96.96025414251972,
+        "std": 232.84565481679283,
+        "min": 1.3448490878005925,
+        "max": 893.8236665382072
+      },
+      "temp_elevation_ratio": {
+        "mean": 26.148408298735525,
+        "std": 3.780367696426616,
+        "min": 17.81185143112229,
+        "max": 28.965
+      },
+      "precip_latitude_ratio": {
+        "mean": 192.96737280709644,
+        "std": 323.39299021276753,
+        "min": 14.29889298892989,
+        "max": 946.8716201393123
+      },
+      "climate_zone_code_0": {
+        "mean": 0.14285714285714285,
+        "std": 0.36313651960128146,
+        "min": 0.0,
+        "max": 1.0
+      },
+      "climate_zone_code_1": {
+        "mean": 0.8571428571428571,
+        "std": 0.36313651960128146,
+        "min": 0.0,
+        "max": 1.0
+      },
+      "climate_zone_code_2": {
+        "mean": 0.0,
+        "std": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "biome_code_11.0": {
+        "mean": 0.0,
+        "std": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "biome_code_15.0": {
+        "mean": 0.14285714285714285,
+        "std": 0.36313651960128146,
+        "min": 0.0,
+        "max": 1.0
+      },
+      "igbp_class_code_1": {
+        "mean": 0.0,
+        "std": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "igbp_class_code_2": {
+        "mean": 0.35714285714285715,
+        "std": 0.4972451580988468,
+        "min": 0.0,
+        "max": 1.0
+      },
+      "igbp_class_code_3": {
+        "mean": 0.0,
+        "std": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "igbp_class_code_4": {
+        "mean": 0.2857142857142857,
+        "std": 0.4688072309384954,
+        "min": 0.0,
+        "max": 1.0
+      },
+      "igbp_class_code_5": {
+        "mean": 0.07142857142857142,
+        "std": 0.26726124191242434,
+        "min": 0.0,
+        "max": 1.0
+      },
+      "igbp_class_code_8": {
+        "mean": 0.0,
+        "std": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "igbp_class_code_9": {
+        "mean": 0.2857142857142857,
+        "std": 0.4688072309384954,
+        "min": 0.0,
+        "max": 1.0
+      },
+      "igbp_class_code_11": {
+        "mean": 0.0,
+        "std": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "leaf_habit_code_1.0": {
+        "mean": 0.14285714285714285,
+        "std": 0.36313651960128146,
+        "min": 0.0,
+        "max": 1.0
+      },
+      "leaf_habit_code_3.0": {
+        "mean": 0.42857142857142855,
+        "std": 0.5135525910130955,
+        "min": 0.0,
+        "max": 1.0
+      },
+      "soil_texture_code_1.0": {
+        "mean": 0.42857142857142855,
+        "std": 0.5135525910130955,
+        "min": 0.0,
+        "max": 1.0
+      },
+      "soil_texture_code_2.0": {
+        "mean": 0.0,
+        "std": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "soil_texture_code_3.0": {
+        "mean": 0.14285714285714285,
+        "std": 0.36313651960128146,
+        "min": 0.0,
+        "max": 1.0
+      },
+      "soil_texture_code_4.0": {
+        "mean": 0.0,
+        "std": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "soil_texture_code_6.0": {
+        "mean": 0.07142857142857142,
+        "std": 0.26726124191242434,
+        "min": 0.0,
+        "max": 1.0
+      },
+      "soil_texture_code_7.0": {
+        "mean": 0.07142857142857142,
+        "std": 0.2672612419124244,
+        "min": 0.0,
+        "max": 1.0
+      },
+      "soil_texture_code_8.0": {
+        "mean": 0.21428571428571427,
+        "std": 0.42581531362632014,
+        "min": 0.0,
+        "max": 1.0
+      },
+      "soil_texture_code_9.0": {
+        "mean": 0.0,
+        "std": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "soil_texture_code_12.0": {
+        "mean": 0.0,
+        "std": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "species_functional_group_code_0": {
+        "mean": 0.7142857142857143,
+        "std": 0.4688072309384954,
+        "min": 0.0,
+        "max": 1.0
+      },
+      "species_functional_group_code_1": {
+        "mean": 0.0,
+        "std": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "species_functional_group_code_2": {
+        "mean": 0.0,
+        "std": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "species_functional_group_code_3": {
+        "mean": 0.2857142857142857,
+        "std": 0.4688072309384954,
+        "min": 0.0,
+        "max": 1.0
+      },
+      "species_functional_group_code_4": {
+        "mean": 0.0,
+        "std": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "koppen_geiger_code_encoded_0": {
+        "mean": 1.0,
+        "std": 0.0,
+        "min": 1.0,
+        "max": 1.0
+      }
+    },
+    "climate_zones": {
+      "Subtropical": 4,
+      "Warm_Temperate": 4,
+      "Tropical_Dry": 4,
+      "Tropical_Wet": 2
+    },
+    "seasonality_types": {
+      "Moderate_Seasonality": 6,
+      "High_Temp_Seasonality": 3,
+      "Low_Seasonality": 3,
+      "High_Seasonality": 2
+    },
+    "elevation_classes": {
+      "Lowland": 5,
+      "High_Hills": 4,
+      "Low_Hills": 3,
+      "Mountain": 1,
+      "High_Mountain": 1
+    }
+  },
+  "3": {
+    "ecosystem_type": "Warm Temperate",
+    "n_sites": 24,
+    "sites": [
+      "CHN_ARG_GWD",
+      "CHN_ARG_GWS",
+      "CHN_YIN_ST1",
+      "CHN_YIN_ST2_DRO",
+      "CHN_YIN_ST3_DRO",
+      "CHN_YUN_YUN",
+      "ESP_MAJ_MAI",
+      "ESP_MAJ_NOR_LM1",
+      "ESP_RIN",
+      "ESP_SAN_A2_45I",
+      "ESP_SAN_A_45I",
+      "ESP_SAN_B2_100",
+      "ESP_SAN_B_100",
+      "ESP_VAL_BAR",
+      "FRA_HES_HE1_NON",
+      "HUN_SIK",
+      "ITA_TOR",
+      "PRT_MIT",
+      "RUS_CHE_LOW",
+      "USA_CHE_MAP",
+      "USA_INM",
+      "USA_MOR_SF",
+      "USA_SWH",
+      "ZAF_FRA_FRA"
+    ],
+    "characteristics": {
+      "longitude": {
+        "mean": 15.361259051861117,
+        "std": 67.55370821515253,
+        "min": -91.125278,
+        "max": 161.5045
+      },
+      "latitude": {
+        "mean": 38.29661890236111,
+        "std": 17.15972933551681,
+        "min": -33.884334,
+        "max": 68.73785
+      },
+      "latitude_abs": {
+        "mean": 41.12031340236111,
+        "std": 7.775422345669429,
+        "min": 23.92071944,
+        "max": 68.73785
+      },
+      "mean_annual_temp": {
+        "mean": 11.402713343618856,
+        "std": 7.68057004095468,
+        "min": -11.500000000000002,
+        "max": 22.468112232836067
+      },
+      "mean_annual_precip": {
+        "mean": 654.1492878071626,
+        "std": 390.43492015528966,
+        "min": 8.0,
+        "max": 1302.0068015647755
+      },
+      "aridity_index": {
+        "mean": 23.109895884793733,
+        "std": 39.12103390284126,
+        "min": -140.70010254425827,
+        "max": 62.230445859466585
+      },
+      "elevation": {
+        "mean": 535.5498333333334,
+        "std": 557.5647870647676,
+        "min": 0.0,
+        "max": 2100.0
+      },
+      "seasonal_temp_range": {
+        "mean": 10.889158523948817,
+        "std": 6.109039255705563,
+        "min": 0.5386062022612883,
+        "max": 23.831114472364632
+      },
+      "seasonal_precip_range": {
+        "mean": 0.02986683147663821,
+        "std": 0.0563647797509433,
+        "min": 0.0,
+        "max": 0.2711111111111111
+      },
+      "temp_precip_ratio": {
+        "mean": 0.09784416978973415,
+        "std": 0.3023622737325739,
+        "min": -0.05423245299768917,
+        "max": 1.4222222222222223
+      },
+      "seasonality_index": {
+        "mean": 0.8127139863195642,
+        "std": 0.515659156952321,
+        "min": 0.19165873519471993,
+        "max": 1.9229656649114437
+      },
+      "climate_continentality": {
+        "mean": 0.27431889701240963,
+        "std": 0.16660059934385354,
+        "min": 0.011472399298400108,
+        "max": 0.6597729982665984
+      },
+      "elevation_latitude_ratio": {
+        "mean": 12.25943264404602,
+        "std": 12.27765102336104,
+        "min": 0.0,
+        "max": 44.84902536660875
+      },
+      "aridity_seasonality": {
+        "mean": 25.829830561546242,
+        "std": 24.71751312782661,
+        "min": 0.0813842752316111,
+        "max": 94.08740412720988
+      },
+      "temp_elevation_ratio": {
+        "mean": 14.883787260285523,
+        "std": 6.635106872751245,
+        "min": -10.915000000000003,
+        "max": 22.468112232836067
+      },
+      "precip_latitude_ratio": {
+        "mean": 16.701805723742805,
+        "std": 11.605894101416666,
+        "min": 0.19159764493031853,
+        "max": 45.5020225717042
+      },
+      "climate_zone_code_0": {
+        "mean": 0.041666666666666664,
+        "std": 0.2041241452319315,
+        "min": 0.0,
+        "max": 1.0
+      },
+      "climate_zone_code_1": {
+        "mean": 0.0,
+        "std": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "climate_zone_code_2": {
+        "mean": 0.9583333333333334,
+        "std": 0.2041241452319315,
+        "min": 0.0,
+        "max": 1.0
+      },
+      "biome_code_11.0": {
+        "mean": 0.041666666666666664,
+        "std": 0.2041241452319315,
+        "min": 0.0,
+        "max": 1.0
+      },
+      "biome_code_15.0": {
+        "mean": 0.2916666666666667,
+        "std": 0.4643056214875365,
+        "min": 0.0,
+        "max": 1.0
+      },
+      "igbp_class_code_1": {
+        "mean": 0.0,
+        "std": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "igbp_class_code_2": {
+        "mean": 0.0,
+        "std": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "igbp_class_code_3": {
+        "mean": 0.125,
+        "std": 0.3378319623460881,
+        "min": 0.0,
+        "max": 1.0
+      },
+      "igbp_class_code_4": {
+        "mean": 0.4166666666666667,
+        "std": 0.5036101551853348,
+        "min": 0.0,
+        "max": 1.0
+      },
+      "igbp_class_code_5": {
+        "mean": 0.0,
+        "std": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "igbp_class_code_8": {
+        "mean": 0.16666666666666666,
+        "std": 0.38069349381344053,
+        "min": 0.0,
+        "max": 1.0
+      },
+      "igbp_class_code_9": {
+        "mean": 0.20833333333333334,
+        "std": 0.4148511169990534,
+        "min": 0.0,
+        "max": 1.0
+      },
+      "igbp_class_code_11": {
+        "mean": 0.08333333333333333,
+        "std": 0.28232985128663995,
+        "min": 0.0,
+        "max": 1.0
+      },
+      "leaf_habit_code_1.0": {
+        "mean": 0.6666666666666666,
+        "std": 0.48154341234307685,
+        "min": 0.0,
+        "max": 1.0
+      },
+      "leaf_habit_code_3.0": {
+        "mean": 0.3333333333333333,
+        "std": 0.48154341234307685,
+        "min": 0.0,
+        "max": 1.0
+      },
+      "soil_texture_code_1.0": {
+        "mean": 0.08333333333333333,
+        "std": 0.28232985128663995,
+        "min": 0.0,
+        "max": 1.0
+      },
+      "soil_texture_code_2.0": {
+        "mean": 0.0,
+        "std": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "soil_texture_code_3.0": {
+        "mean": 0.041666666666666664,
+        "std": 0.2041241452319315,
+        "min": 0.0,
+        "max": 1.0
+      },
+      "soil_texture_code_4.0": {
+        "mean": 0.125,
+        "std": 0.3378319623460881,
+        "min": 0.0,
+        "max": 1.0
+      },
+      "soil_texture_code_6.0": {
+        "mean": 0.16666666666666666,
+        "std": 0.38069349381344053,
+        "min": 0.0,
+        "max": 1.0
+      },
+      "soil_texture_code_7.0": {
+        "mean": 0.0,
+        "std": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "soil_texture_code_8.0": {
+        "mean": 0.25,
+        "std": 0.4423258684646914,
+        "min": 0.0,
+        "max": 1.0
+      },
+      "soil_texture_code_9.0": {
+        "mean": 0.041666666666666664,
+        "std": 0.20412414523193154,
+        "min": 0.0,
+        "max": 1.0
+      },
+      "soil_texture_code_12.0": {
+        "mean": 0.08333333333333333,
+        "std": 0.28232985128663995,
+        "min": 0.0,
+        "max": 1.0
+      },
+      "species_functional_group_code_0": {
+        "mean": 0.041666666666666664,
+        "std": 0.20412414523193154,
+        "min": 0.0,
+        "max": 1.0
+      },
+      "species_functional_group_code_1": {
+        "mean": 0.0,
+        "std": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "species_functional_group_code_2": {
+        "mean": 0.08333333333333333,
+        "std": 0.28232985128663995,
+        "min": 0.0,
+        "max": 1.0
+      },
+      "species_functional_group_code_3": {
+        "mean": 0.16666666666666666,
+        "std": 0.38069349381344053,
+        "min": 0.0,
+        "max": 1.0
+      },
+      "species_functional_group_code_4": {
+        "mean": 0.7083333333333334,
+        "std": 0.4643056214875365,
+        "min": 0.0,
+        "max": 1.0
+      },
+      "koppen_geiger_code_encoded_0": {
+        "mean": 1.0,
+        "std": 0.0,
+        "min": 1.0,
+        "max": 1.0
+      }
+    },
+    "climate_zones": {
+      "Warm_Temperate": 9,
+      "Cold_Temperate": 8,
+      "Subtropical": 5,
+      "Boreal": 2
+    },
+    "seasonality_types": {
+      "High_Seasonality": 10,
+      "Low_Seasonality": 5,
+      "High_Temp_Seasonality": 5,
+      "Moderate_Seasonality": 4
+    },
+    "elevation_classes": {
+      "Low_Hills": 8,
+      "Lowland": 7,
+      "High_Hills": 5,
+      "Mountain": 3,
+      "High_Mountain": 1
+    }
+  }
+}
