@@ -1435,20 +1435,24 @@ class MemoryEfficientSAPFLUXNETProcessor:
         features['month_sin'] = np.sin(month_rad)
         features['month_cos'] = np.cos(month_rad)
         
-        # Solar timestamp features if available
-        if 'solar_TIMESTAMP' in df.columns:
-            solar_dt = pd.to_datetime(df['solar_TIMESTAMP']).dt
-            features['solar_hour'] = solar_dt.hour
-            features['solar_day_of_year'] = solar_dt.dayofyear
-            
-            # Solar-adjusted cyclical features
-            solar_hour_rad = 2 * np.pi * features['solar_hour'] / 24
-            features['solar_hour_sin'] = np.sin(solar_hour_rad)
-            features['solar_hour_cos'] = np.cos(solar_hour_rad)
-            
-            solar_day_rad = 2 * np.pi * features['solar_day_of_year'] / 365
-            features['solar_day_sin'] = np.sin(solar_day_rad)
-            features['solar_day_cos'] = np.cos(solar_day_rad)
+        # Solar timestamp features - ALWAYS CREATE
+        if 'solar_TIMESTAMP' in df.columns and not df['solar_TIMESTAMP'].isna().all():
+            solar_dt = pd.to_datetime(df['solar_TIMESTAMP'], errors='coerce').dt
+            features['solar_hour'] = solar_dt.hour.fillna(features['hour'])
+            features['solar_day_of_year'] = solar_dt.dayofyear.fillna(features['day_of_year'])
+        else:
+            # No solar timestamp - use regular timestamp values
+            features['solar_hour'] = features['hour']
+            features['solar_day_of_year'] = features['day_of_year']
+        
+        # ALWAYS create solar-adjusted cyclical features
+        solar_hour_rad = 2 * np.pi * features['solar_hour'] / 24
+        features['solar_hour_sin'] = np.sin(solar_hour_rad)
+        features['solar_hour_cos'] = np.cos(solar_hour_rad)
+        
+        solar_day_rad = 2 * np.pi * features['solar_day_of_year'] / 365
+        features['solar_day_sin'] = np.sin(solar_day_rad)
+        features['solar_day_cos'] = np.cos(solar_day_rad)
         
         # Enhanced boolean features
         features['is_daylight'] = ((features['hour'] >= 6) & (features['hour'] <= 18)).astype(int)
@@ -1476,45 +1480,36 @@ class MemoryEfficientSAPFLUXNETProcessor:
         return features
     
     def create_interaction_features(self, df):
-        """Create enhanced interaction features (reduced logging)"""
+        """Create enhanced interaction features - ALWAYS CREATE ALL FEATURES"""
         
         features = df.copy()
         
-        # VPD and radiation interaction
-        if 'vpd' in df.columns and 'ppfd_in' in df.columns:
-            features['vpd_ppfd_interaction'] = df['vpd'] * df['ppfd_in']
+        # Helper function to safely get columns with imputation
+        def safe_get_col(col_name, default_val=0):
+            if col_name in df.columns:
+                return df[col_name].fillna(df[col_name].mean() if not df[col_name].isna().all() else default_val)
+            else:
+                return pd.Series([default_val] * len(df), index=df.index)
         
-        # VPD and temperature interaction
-        if 'vpd' in df.columns and 'ta' in df.columns:
-            features['vpd_ta_interaction'] = df['vpd'] * df['ta']
+        # Get all required columns with safe defaults
+        vpd = safe_get_col('vpd', 1.0)
+        ppfd_in = safe_get_col('ppfd_in', 500.0)
+        ta = safe_get_col('ta', 20.0)
+        rh = safe_get_col('rh', 60.0)
+        swc_shallow = safe_get_col('swc_shallow', 0.3)
+        sw_in = safe_get_col('sw_in', 300.0)
+        ws = safe_get_col('ws', 2.0)
         
-        # Temperature and humidity ratio
-        if 'ta' in df.columns and 'rh' in df.columns:
-            features['temp_humidity_ratio'] = df['ta'] / (df['rh'] + 1e-6)
-        
-        # Water stress index
-        if 'swc_shallow' in df.columns and 'vpd' in df.columns:
-            features['water_stress_index'] = df['swc_shallow'] / (df['vpd'] + 1e-6)
-        
-        # Light efficiency
-        if 'ppfd_in' in df.columns and 'sw_in' in df.columns:
-            features['light_efficiency'] = df['ppfd_in'] / (df['sw_in'] + 1e-6)
-        
-        # Temperature and soil moisture interaction
-        if 'ta' in df.columns and 'swc_shallow' in df.columns:
-            features['temp_soil_interaction'] = df['ta'] * df['swc_shallow']
-        
-        # Wind and VPD interaction
-        if 'ws' in df.columns and 'vpd' in df.columns:
-            features['wind_vpd_interaction'] = df['ws'] * df['vpd']
-        
-        # Radiation and temperature interaction
-        if 'sw_in' in df.columns and 'ta' in df.columns:
-            features['radiation_temp_interaction'] = df['sw_in'] * df['ta']
-        
-        # Humidity and soil moisture interaction
-        if 'rh' in df.columns and 'swc_shallow' in df.columns:
-            features['humidity_soil_interaction'] = df['rh'] * df['swc_shallow']
+        # ALWAYS create all interaction features
+        features['vpd_ppfd_interaction'] = vpd * ppfd_in
+        features['vpd_ta_interaction'] = vpd * ta
+        features['temp_humidity_ratio'] = ta / (rh + 1e-6)
+        features['water_stress_index'] = swc_shallow / (vpd + 1e-6)
+        features['light_efficiency'] = ppfd_in / (sw_in + 1e-6)
+        features['temp_soil_interaction'] = ta * swc_shallow
+        features['wind_vpd_interaction'] = ws * vpd
+        features['radiation_temp_interaction'] = sw_in * ta
+        features['humidity_soil_interaction'] = rh * swc_shallow
         
         return features
     
@@ -1535,45 +1530,68 @@ class MemoryEfficientSAPFLUXNETProcessor:
         return features
     
     def create_cumulative_features(self, df):
-        """Create cumulative features (reduced logging)"""
+        """Create cumulative features - ALWAYS CREATE ALL FEATURES"""
         
         features = df.copy()
         
-        # Cumulative precipitation
-        if 'precip' in df.columns:
-            features['precip_cum_24h'] = df['precip'].rolling(24, min_periods=1).sum()
-            features['precip_cum_72h'] = df['precip'].rolling(72, min_periods=1).sum()
-            features['precip_cum_168h'] = df['precip'].rolling(168, min_periods=1).sum()
+        # Helper function to safely get columns
+        def safe_get_col(col_name, default_val=0):
+            if col_name in df.columns:
+                return df[col_name].fillna(df[col_name].mean() if not df[col_name].isna().all() else default_val)
+            else:
+                return pd.Series([default_val] * len(df), index=df.index)
         
-        # Cumulative radiation
-        if 'sw_in' in df.columns:
-            features['sw_in_cum_24h'] = df['sw_in'].rolling(24, min_periods=1).sum()
-            features['sw_in_cum_72h'] = df['sw_in'].rolling(72, min_periods=1).sum()
+        # Get columns with safe defaults
+        precip = safe_get_col('precip', 0.0)
+        sw_in = safe_get_col('sw_in', 300.0)
+        
+        # ALWAYS create cumulative precipitation features
+        features['precip_cum_24h'] = precip.rolling(24, min_periods=1).sum()
+        features['precip_cum_72h'] = precip.rolling(72, min_periods=1).sum()
+        features['precip_cum_168h'] = precip.rolling(168, min_periods=1).sum()
+        
+        # ALWAYS create cumulative radiation features
+        features['sw_in_cum_24h'] = sw_in.rolling(24, min_periods=1).sum()
+        features['sw_in_cum_72h'] = sw_in.rolling(72, min_periods=1).sum()
         
         return features
     
     def create_advanced_rolling_features(self, df):
-        """Create enhanced rolling features (reduced logging)"""
+        """Create enhanced rolling features - ALWAYS CREATE ALL FEATURES"""
         
         features = df.copy()
         
+        # Helper function to safely get columns
+        def safe_get_col(col_name, default_val):
+            if col_name in df.columns:
+                return df[col_name].fillna(df[col_name].mean() if not df[col_name].isna().all() else default_val)
+            else:
+                return pd.Series([default_val] * len(df), index=df.index)
+        
         # Focus on important windows and variables
         windows = [72, 168, 336]  # 3-day, 7-day, 14-day
-        env_cols = ['rh', 'sw_in', 'vpd', 'ta']
+        env_cols = {
+            'rh': 60.0,
+            'sw_in': 300.0, 
+            'vpd': 1.0,
+            'ta': 20.0
+        }
         
-        for col in env_cols:
-            if col in df.columns:
-                for window in windows:
-                    features[f'{col}_mean_{window}h'] = df[col].rolling(window, min_periods=1).mean()
-                    features[f'{col}_std_{window}h'] = df[col].rolling(window, min_periods=1).std()
-                    
-                    if window >= 72:
-                        features[f'{col}_min_{window}h'] = df[col].rolling(window, min_periods=1).min()
-                        features[f'{col}_max_{window}h'] = df[col].rolling(window, min_periods=1).max()
-                        features[f'{col}_range_{window}h'] = features[f'{col}_max_{window}h'] - features[f'{col}_min_{window}h']
-                    
-                    if window == 336:  # Memory cleanup after largest window
-                        gc.collect()
+        # ALWAYS create rolling features for all columns
+        for col, default_val in env_cols.items():
+            col_data = safe_get_col(col, default_val)
+            
+            for window in windows:
+                features[f'{col}_mean_{window}h'] = col_data.rolling(window, min_periods=1).mean()
+                features[f'{col}_std_{window}h'] = col_data.rolling(window, min_periods=1).std().fillna(0)
+                
+                if window >= 72:
+                    features[f'{col}_min_{window}h'] = col_data.rolling(window, min_periods=1).min()
+                    features[f'{col}_max_{window}h'] = col_data.rolling(window, min_periods=1).max()
+                    features[f'{col}_range_{window}h'] = features[f'{col}_max_{window}h'] - features[f'{col}_min_{window}h']
+                
+                if window == 336:  # Memory cleanup after largest window
+                    gc.collect()
         
         return features
     
