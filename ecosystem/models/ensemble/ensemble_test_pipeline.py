@@ -435,10 +435,15 @@ class EnsembleTestPipeline:
 
     def predict_with_cluster_model(self, cluster_id, X):
         """Make predictions using a specific cluster model"""
+        print(f"    🚀 ENTERING predict_with_cluster_model for cluster {cluster_id}")
+        print(f"    🔍 Input X shape: {X.shape}")
+        print(f"    🔍 Input X type: {type(X)}")
+        
         if cluster_id not in self.cluster_models:
             raise ValueError(f"No model found for cluster {cluster_id}")
         
         model = self.cluster_models[cluster_id]
+        print(f"    🔍 Model loaded successfully")
         
         # DEBUG: Check for feature alignment and data quality issues
         print(f"    🔍 Model expects {model.num_feature} features, got {X.shape[1]} features")
