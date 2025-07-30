@@ -1,0 +1,19 @@
+{
+  "cluster": 2,
+  "total_rows": 1515330,
+  "train_samples": 1212264,
+  "test_samples": 303066,
+  "train_rmse": 1.5504040680164388,
+  "test_rmse": 1.7409425371388114,
+  "train_r2": 0.9636786028616131,
+  "test_r2": 0.9539573967258694,
+  "train_mae": 0.8088212049112604,
+  "test_mae": 0.8585870748453245,
+  "feature_count": 272,
+  "best_iteration": 200,
+  "cluster_id": 2,
+  "n_sites": 25,
+  "sites": "AUS_BRI_BRI, AUS_CAR_THI_00F, AUS_CAR_THI_0PF, AUS_CAR_THI_CON, AUS_CAR_THI_T00, AUS_CAR_THI_T0F, AUS_ELL_MB_MOD, AUS_ELL_UNB, AUS_KAR, AUS_MAR_HSD_HIG, AUS_MAR_HSW_HIG, AUS_MAR_MSD_MOD, AUS_MAR_UBD, AUS_MAR_UBW, AUS_WOM, IDN_JAM_OIL, IDN_JAM_RUB, MDG_YOU_SHO, NZL_HUA_HUA, SEN_SOU_IRR, SEN_SOU_POS, THA_KHU, ZAF_RAD, ZAF_SOU_SOU, ZAF_WEL_SOR",
+  "n_features": 272,
+  "timestamp": "20250730_013708"
+}

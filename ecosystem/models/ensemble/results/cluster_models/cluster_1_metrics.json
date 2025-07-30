@@ -1,0 +1,19 @@
+{
+  "cluster": 1,
+  "total_rows": 5283809,
+  "train_samples": 4227047,
+  "test_samples": 1056762,
+  "train_rmse": 0.897395322478971,
+  "test_rmse": 1.0250865071239699,
+  "train_r2": 0.9321683338540432,
+  "test_r2": 0.9114788041937683,
+  "train_mae": 0.43136093900040035,
+  "test_mae": 0.4453058603084002,
+  "feature_count": 272,
+  "best_iteration": 200,
+  "cluster_id": 1,
+  "n_sites": 24,
+  "sites": "AUT_PAT_FOR, AUT_PAT_KRU, BRA_CAM, CAN_TUR_P39_PRE, CHE_DAV_SEE, CHE_PFY_CON, CHE_PFY_IRR, CHN_YUN_YUN, CRI_TAM_TOW, CZE_LIZ_LES, ESP_RON_PIL, ESP_TIL_MIX, ESP_VAL_SOR, ESP_YUN_C1, ESP_YUN_C2, ESP_YUN_T1_THI, FRA_PUE, GBR_ABE_PLO, GBR_GUI_ST1, MEX_COR_YP, NLD_SPE_DOU, USA_CHE_ASP, USA_HIL_HF1_PRE, USA_PER_PER",
+  "n_features": 272,
+  "timestamp": "20250730_013708"
+}

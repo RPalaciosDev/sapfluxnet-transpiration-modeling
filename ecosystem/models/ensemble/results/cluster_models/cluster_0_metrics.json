@@ -1,0 +1,19 @@
+{
+  "cluster": 0,
+  "total_rows": 928266,
+  "train_samples": 742612,
+  "test_samples": 185654,
+  "train_rmse": 1.1387716380181814,
+  "test_rmse": 1.3347692241153577,
+  "train_r2": 0.9700100894498298,
+  "test_r2": 0.9588249017485478,
+  "train_mae": 0.6955369111394604,
+  "test_mae": 0.7569615431540182,
+  "feature_count": 272,
+  "best_iteration": 200,
+  "cluster_id": 0,
+  "n_sites": 19,
+  "sites": "CHN_ARG_GWD, CHN_HOR_AFF, CHN_YIN_ST1, CHN_YIN_ST2_DRO, CHN_YIN_ST3_DRO, ESP_MAJ_NOR_LM1, ESP_RIN, ESP_SAN_A2_45I, ESP_SAN_A_45I, ESP_SAN_B2_100, ESP_SAN_B_100, ESP_VAL_BAR, HUN_SIK, PRT_MIT, PRT_PIN, RUS_CHE_LOW, USA_INM, USA_MOR_SF, ZAF_FRA_FRA",
+  "n_features": 272,
+  "timestamp": "20250730_013708"
+}
