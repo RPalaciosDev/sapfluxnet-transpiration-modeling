@@ -412,11 +412,17 @@ class EnsembleTestPipeline:
         site_features = []
         for feature in distance_features:
             if feature in X.columns:
-                site_features.append(X[feature].mean())
+                feature_mean = X[feature].mean()
+                if np.isnan(feature_mean):
+                    print(f"    ⚠️  Feature {feature} has NaN mean (all values are NaN)")
+                    feature_mean = 0.0
+                site_features.append(feature_mean)
             else:
                 site_features.append(0.0)  # Default value for missing features
         
         site_features = np.array(site_features).reshape(1, -1)
+        print(f"    🔍 Site features for distance: {site_features}")
+        print(f"    🔍 Site features NaN check: {np.isnan(site_features).sum()} NaN values")
         
         # Calculate distances to all centroids
         distances = {}
