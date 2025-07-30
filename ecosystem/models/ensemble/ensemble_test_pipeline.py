@@ -369,6 +369,8 @@ class EnsembleTestPipeline:
         y = df[self.target_col].copy()
         
         # Handle data types and NaN values - MATCH TRAINING PIPELINE EXACTLY
+        print(f"  🔍 Before cleaning: {X.isnull().sum().sum()} NaN values")
+        
         # Convert boolean columns to numeric (True=1, False=0)
         for col in X.columns:
             if X[col].dtype == bool:
@@ -379,6 +381,18 @@ class EnsembleTestPipeline:
         
         # Fill remaining NaN values with 0 (EXACTLY like training pipeline)
         X = X.fillna(0)
+        
+        # Check for any remaining issues
+        nan_count = X.isnull().sum().sum()
+        inf_count = np.isinf(X.select_dtypes(include=[np.number])).sum().sum()
+        print(f"  🔍 After cleaning: {nan_count} NaN values, {inf_count} infinite values")
+        
+        if nan_count > 0:
+            print(f"  ❌ Columns with NaN: {X.columns[X.isnull().any()].tolist()}")
+        if inf_count > 0:
+            print(f"  ❌ Columns with inf: {X.columns[np.isinf(X.select_dtypes(include=[np.number])).any()].tolist()}")
+            # Replace infinite values with 0
+            X = X.replace([np.inf, -np.inf], 0)
         
         return X, y, feature_cols
 
