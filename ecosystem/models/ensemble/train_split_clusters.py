@@ -19,6 +19,7 @@ import psutil
 import tempfile
 import shutil
 import json
+import pickle
 from pathlib import Path
 import argparse
 
@@ -694,9 +695,11 @@ class GPUOptimizedClusterTrainer:
     
     def _save_model_and_importance(self, cluster_id, model, feature_cols, metrics, sites):
         """Save trained model and feature importance"""
-        # Save model
-        model_file = os.path.join(self.results_dir, f'cluster_{cluster_id}_model_{self.timestamp}.json')
-        model.save_model(model_file)
+        # Save model in pickle format (for ensemble pipeline compatibility)
+        model_file = os.path.join(self.results_dir, f'cluster_{cluster_id}_model.pkl')
+        with open(model_file, 'wb') as f:
+            pickle.dump(model, f)
+        print(f"  💾 Model saved: {model_file}")
         
         # Save feature importance
         importance_df = pd.DataFrame({
@@ -706,28 +709,41 @@ class GPUOptimizedClusterTrainer:
         
         importance_file = os.path.join(self.results_dir, f'feature_importance_cluster_{cluster_id}_{self.timestamp}.csv')
         importance_df.to_csv(importance_file, index=False)
+        print(f"  📊 Feature importance saved: {importance_file}")
         
-        # Save metrics
-        metrics_file = os.path.join(self.results_dir, f'cluster_model_metrics_{self.timestamp}.csv')
+        # Save individual cluster metrics
+        metrics_with_info = {
+            **metrics,
+            'cluster_id': cluster_id,
+            'n_sites': len(sites),
+            'sites': ', '.join(sites),
+            'n_features': len(feature_cols),
+            'timestamp': self.timestamp
+        }
         
-        # Append or create metrics file
-        if os.path.exists(metrics_file):
-            existing_metrics = pd.read_csv(metrics_file)
-            metrics_df = pd.concat([existing_metrics, pd.DataFrame([metrics])], ignore_index=True)
+        individual_metrics_file = os.path.join(self.results_dir, f'cluster_{cluster_id}_metrics.json')
+        with open(individual_metrics_file, 'w') as f:
+            json.dump(metrics_with_info, f, indent=2)
+        print(f"  📈 Metrics saved: {individual_metrics_file}")
+        
+        # Also save to combined metrics file
+        combined_metrics_file = os.path.join(self.results_dir, f'cluster_model_metrics_{self.timestamp}.csv')
+        
+        # Append or create combined metrics file
+        if os.path.exists(combined_metrics_file):
+            existing_metrics = pd.read_csv(combined_metrics_file)
+            metrics_df = pd.concat([existing_metrics, pd.DataFrame([metrics_with_info])], ignore_index=True)
         else:
-            metrics_df = pd.DataFrame([metrics])
+            metrics_df = pd.DataFrame([metrics_with_info])
         
-        metrics_df.to_csv(metrics_file, index=False)
-        
-        print(f"    💾 Saved model: {model_file}")
-        print(f"    💾 Saved importance: {importance_file}")
-        print(f"    💾 Saved metrics: {metrics_file}")
+        metrics_df.to_csv(combined_metrics_file, index=False)
         
         return {
             'cluster_id': cluster_id,
             'model_file': model_file,
             'importance_file': importance_file,
-            'metrics': metrics,
+            'metrics_file': individual_metrics_file,
+            'metrics': metrics_with_info,
             'sites': sites,
             'feature_count': len(feature_cols)
         }
@@ -1361,8 +1377,9 @@ class GPUOptimizedClusterTrainer:
         
         return metrics
     
-    def _save_model_and_importance(self, cluster_id, model, feature_cols, metrics):
-        """Save model and feature importance with mapping"""
+    def _save_model_and_importance_DEPRECATED(self, cluster_id, model, feature_cols, metrics):
+        """DEPRECATED: Save model and feature importance with mapping - use new version instead"""
+        raise NotImplementedError("This method is deprecated - use the new _save_model_and_importance method")
         # Save model
         model_path = os.path.join(self.results_dir, f'xgb_model_cluster_{cluster_id}_{self.timestamp}.json')
         model.save_model(model_path)
