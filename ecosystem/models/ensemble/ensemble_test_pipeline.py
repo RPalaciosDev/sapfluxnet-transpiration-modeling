@@ -304,16 +304,8 @@ class EnsembleTestPipeline:
                 print(f"  ❌ Failed to load cluster {cluster_id} model: {e}")
                 continue
         
-        # Find common features across all models
-        if all_model_features:
-            self.common_features = list(set.intersection(*all_model_features))
-            print(f"🔍 Found {len(self.common_features)} common features across all models")
-            if len(self.common_features) < 50:  # Sanity check
-                print(f"⚠️  Warning: Only {len(self.common_features)} common features found")
-        else:
-            print("⚠️  Could not determine common features from models - loading from analysis")
-            # Load common features from our feature analysis
-            self._load_common_features_from_analysis()
+        # Skip common features logic - use same feature preparation as training pipeline
+        print("✅ Will use same feature preparation logic as training pipeline (no feature filtering)")
         
         print(f"✅ Loaded {len(self.cluster_models)} cluster models")
 
@@ -464,35 +456,23 @@ class EnsembleTestPipeline:
         if len(df) == 0:
             raise ValueError(f"No valid data found for site {site}")
         
-        # Prepare features - USE ONLY COMMON FEATURES TO AVOID MISMATCH
-        if self.common_features is not None:
-            # Use only features that are common across all trained models
-            available_common_features = [f for f in self.common_features if f in df.columns]
-            missing_features = [f for f in self.common_features if f not in df.columns]
-            
-            if missing_features:
-                print(f"  ⚠️  Missing {len(missing_features)} common features: {missing_features[:5]}{'...' if len(missing_features) > 5 else ''}")
-            
-            feature_cols = available_common_features
-            print(f"  🔍 Using {len(feature_cols)}/{len(self.common_features)} common features")
-        else:
-            # Fallback: use traditional feature selection
-            exclude_cols = [
-                self.target_col, 'site', 'TIMESTAMP', 'solar_TIMESTAMP', 
-                'plant_id', 'Unnamed: 0'
-            ]
-            
-            exclude_suffixes = ['_flags', '_md']
-            
-            feature_cols = []
-            for col in df.columns:
-                if col in exclude_cols:
-                    continue
-                if any(col.endswith(suffix) for suffix in exclude_suffixes):
-                    continue
-                feature_cols.append(col)
-            
-            print(f"  ⚠️  Using all available features: {len(feature_cols)}")
+        # Prepare features - USE EXACT SAME LOGIC AS TRAINING PIPELINE
+        exclude_cols = [
+            self.target_col, 'site', 'TIMESTAMP', 'solar_TIMESTAMP', 
+            'plant_id', 'Unnamed: 0'
+        ]
+        
+        exclude_suffixes = ['_flags', '_md']
+        
+        feature_cols = []
+        for col in df.columns:
+            if col in exclude_cols:
+                continue
+            if any(col.endswith(suffix) for suffix in exclude_suffixes):
+                continue
+            feature_cols.append(col)
+        
+        print(f"  🔍 Using {len(feature_cols)} features (same logic as training pipeline)")
         
         X = df[feature_cols].copy()
         y = df[self.target_col].copy()
