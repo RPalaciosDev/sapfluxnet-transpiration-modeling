@@ -378,11 +378,11 @@ class GPUOptimizedClusterTrainer:
         
         # Estimate total data size
         if len(sample_files) > 0:
-        avg_size_mb = total_size_mb / len(sample_files)
-        estimated_total_size_gb = (avg_size_mb * total_files) / 1024
-        
-        avg_rows = total_rows / len(sample_files)
-        estimated_total_rows = int(avg_rows * total_files)
+            avg_size_mb = total_size_mb / len(sample_files)
+            estimated_total_size_gb = (avg_size_mb * total_files) / 1024
+            
+            avg_rows = total_rows / len(sample_files)
+            estimated_total_rows = int(avg_rows * total_files)
         else:
             estimated_total_size_gb = 0
             estimated_total_rows = 0
@@ -448,7 +448,7 @@ class GPUOptimizedClusterTrainer:
             
             if not os.path.exists(parquet_file):
                 print(f"    ❌ Missing: {site}")
-                    continue
+                continue
                 
             try:
                 file_size_mb = os.path.getsize(parquet_file) / (1024**2)
@@ -1525,7 +1525,7 @@ class GPUOptimizedClusterTrainer:
                     if model_info:
                         all_model_info.append(model_info)
                         all_metrics.append(model_info['metrics'])
-                    log_memory_usage(f"After training cluster {cluster_id}")
+                        log_memory_usage(f"After training cluster {cluster_id}")
                     else:
                         print(f"    ❌ Training failed for cluster {cluster_id}")
                     
@@ -1624,9 +1624,8 @@ def main():
                 print(f"📊 Ready for ensemble testing pipeline!")
             else:
                 print(f"📊 Trained on all available sites")
-                
-            else:
-                print(f"\n❌ Training failed - no models were created")
+        else:
+            print(f"\n❌ Training failed - no models were created")
             return 1
                 
     except Exception as e:

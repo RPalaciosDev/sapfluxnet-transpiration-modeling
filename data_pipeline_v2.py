@@ -10,58 +10,7 @@ import gzip
 from contextlib import contextmanager
 warnings.filterwarnings('ignore')
 
-# ===============================================================================
-# 🚨 CRITICAL OVERFITTING PROTECTION IMPLEMENTED (January 2025)
-# ===============================================================================
-# 
-# This pipeline includes critical fixes to prevent site identity memorization
-# and geographic proxy overfitting that was causing catastrophic spatial 
-# generalization failure in machine learning models.
-#
-# FIXED ISSUES:
-# 1. 🚨 Site Identity Memorization: site_code_code was causing models to learn
-#    "if site=X, predict Y" instead of ecological relationships
-# 2. ⚠️  Geographic Proxy Overfitting: timezone_code and country_code were
-#    causing regional overfitting that hindered cross-regional generalization
-# 3. 🛡️  Enhanced Safety Checks: Added pattern detection for identity features
-#
-# KEY CHANGES in encode_categorical_features():
-# - IDENTITY_BLACKLIST: Prevents encoding of site_code, site_name, species_name
-# - GEOGRAPHIC_PROXY_FEATURES: Blocks timezone, country encoding 
-# - APPROVED_ECOLOGICAL_FEATURES: Only allows ecological categorical encoding
-# - Enhanced logging: Shows what features are blocked and why
-#
-# IMPACT: This fixes Cluster 4's catastrophic failure (R² = -0.4085) and
-# prevents future overfitting issues across all ecosystem clusters.
-#
-# ⚠️  DO NOT REMOVE THESE PROTECTIONS - They prevent catastrophic model failure
-# ===============================================================================
-#
-# ===============================================================================
-# 📅 TEMPORAL COVERAGE FILTERING IMPLEMENTED (January 2025)
-# ===============================================================================
-#
-# Added temporal coverage validation to improve spatial model performance by
-# excluding sites with insufficient data for robust spatial generalization.
-#
-# TEMPORAL COVERAGE REQUIREMENTS:
-# - EXCLUDED: Sites with <30 days temporal coverage (3 sites)
-#   └─ ARG_MAZ (12.0 days), ARG_TRE (13.0 days), COL_MAC_SAF_RAD (13.2 days)
-# - WARNING: Sites with 30-90 days temporal coverage (22 sites)
-#   └─ Processed with warnings about limited seasonal representation
-# - OPTIMAL: Sites with ≥90 days temporal coverage (140 sites)
-#   └─ Adequate seasonal representation for spatial modeling
-#
-# BENEFITS:
-# - Removes sites causing poor spatial validation performance due to 
-#   insufficient environmental gradient coverage
-# - Prevents overfitting to narrow temporal windows
-# - Improves model generalization across different time periods and conditions
-# - Maintains high-quality training data while providing clear warnings for 
-#   marginal sites
-#
-# ⚠️  Sites with moderate coverage (30-90 days) are processed with warnings
-# ===============================================================================
+
 
 class ProcessingConfig:
     """Configuration class for processing parameters - replaces hardcoded values"""
