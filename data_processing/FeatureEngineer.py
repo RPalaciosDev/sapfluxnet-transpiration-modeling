@@ -37,6 +37,11 @@ class FeatureEngineer:
         self.config = config or self._default_config()
         self.memory_manager = memory_manager
         
+        # Cache frequent attribute checks for performance FIRST (needed by other init methods)
+        # Note: These will be False for dictionary configs, True for ProcessingConfig class
+        self._has_get_feature_setting = hasattr(self.config, 'get_feature_setting')
+        self._has_get_chunk_size = hasattr(self.config, 'get_chunk_size')
+        
         # Initialize caches
         self._column_cache = {}
         self._data_cache = {}
@@ -50,10 +55,6 @@ class FeatureEngineer:
         # Initialize memory monitoring
         self._initial_memory_mb = self._get_dataframe_memory_mb()
         self._should_use_chunking = self._determine_chunking_strategy()
-        
-        # Cache frequent attribute checks for performance
-        self._has_get_feature_setting = hasattr(self.config, 'get_feature_setting')
-        self._has_get_chunk_size = hasattr(self.config, 'get_chunk_size')
         
         # Cache frequent column existence checks
         self._column_exists_cache = {
