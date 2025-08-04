@@ -44,7 +44,7 @@ class AdvancedEcosystemClusterer:
         
         # Geographic features for minimal clustering (available in all datasets)
         self.geographic_numeric = [
-            'longitude', 'latitude', 'elevation'
+            'longitude', 'latitude'
         ]
         
         # No categorical features for minimal approach
@@ -363,7 +363,7 @@ class AdvancedEcosystemClusterer:
         print(f"{'='*60}")
         print(f"Started at: {datetime.now()}")
         print(f"STRATEGY: ALL-SITES clustering with geographic features only")
-        print(f"FEATURES: Longitude, latitude, elevation (minimal approach)")
+        print(f"FEATURES: Longitude, latitude (minimal approach)")
         print(f"APPROACH: Simple geographic clustering for minimal feature experiment")
         
         try:
@@ -411,7 +411,7 @@ def main():
     parser.add_argument('--output-dir', default='../evaluation/clustering_results',
                         help="Directory to save clustering results")
     parser.add_argument('--feature-set', choices=['geographic'], default='geographic',
-                        help="Feature set: 'geographic' (longitude, latitude, elevation only)")
+                        help="Feature set: 'geographic' (longitude, latitude only)")
     parser.add_argument('--site-split-file', 
                         help="JSON file with train/test site split (only train sites will be clustered)")
     

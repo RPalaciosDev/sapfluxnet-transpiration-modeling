@@ -93,6 +93,85 @@ class ProcessingConfig:
         'max_parallel_workers': 4,  # Maximum parallel workers for feature creation
     }
     
+    # Feature set definitions - allows systematic control of feature engineering
+    FEATURE_SETS = {
+        'default': {
+            'name': 'Default (Raw Data Only)',
+            'description': 'Raw environmental and metadata features only - no feature engineering',
+            'temporal_features': False,
+            'rolling_features': False,
+            'lagged_features': False,
+            'interaction_features': False,
+            'rate_of_change_features': False,
+            'cumulative_features': False,
+            'domain_features': False,
+            'seasonality_features': False,
+            'categorical_encoding': True,  # Always encode categorical variables
+            'metadata_features': True,    # Always include available metadata
+            'advanced_temporal_features': False
+        },
+        'temporal': {
+            'name': 'Temporal Features',
+            'description': 'Default set + comprehensive temporal feature engineering',
+            'temporal_features': True,
+            'rolling_features': True,
+            'lagged_features': True,
+            'interaction_features': False,
+            'rate_of_change_features': True,
+            'cumulative_features': True,
+            'domain_features': False,
+            'seasonality_features': True,
+            'categorical_encoding': True,
+            'metadata_features': True,
+            'advanced_temporal_features': True
+        },
+        'ecological': {
+            'name': 'Ecological Features',
+            'description': 'Default set + ecological, plant physiological, and environmental interaction features',
+            'temporal_features': False,
+            'rolling_features': False,
+            'lagged_features': False,
+            'interaction_features': True,  # Environmental interactions (combined with ecological)
+            'rate_of_change_features': False,
+            'cumulative_features': False,
+            'domain_features': True,      # Plant physiology and ecological features
+            'seasonality_features': True, # Seasonal climate patterns
+            'categorical_encoding': True,
+            'metadata_features': True,
+            'advanced_temporal_features': False
+        },
+        'interaction': {
+            'name': 'Interaction Features',
+            'description': 'Default set + environmental interaction features',
+            'temporal_features': False,
+            'rolling_features': False,
+            'lagged_features': False,
+            'interaction_features': True,  # Environmental interactions
+            'rate_of_change_features': False,
+            'cumulative_features': False,
+            'domain_features': False,
+            'seasonality_features': False,
+            'categorical_encoding': True,
+            'metadata_features': True,
+            'advanced_temporal_features': False
+        },
+        'comprehensive': {
+            'name': 'Comprehensive (All Features)',
+            'description': 'All available feature engineering - maximum feature set',
+            'temporal_features': True,
+            'rolling_features': True,
+            'lagged_features': True,
+            'interaction_features': True,
+            'rate_of_change_features': True,
+            'cumulative_features': True,
+            'domain_features': True,
+            'seasonality_features': True,
+            'categorical_encoding': True,
+            'metadata_features': True,
+            'advanced_temporal_features': True
+        }
+    }
+    
     # I/O optimization settings
     IO_SETTINGS = {
         'buffer_size': 8192,        # File buffer size (8KB)
@@ -141,11 +220,50 @@ class ProcessingConfig:
     def get_quality_flag_setting(cls, setting_name):
         """Get quality flag setting by name"""
         return cls.QUALITY_FLAGS.get(setting_name, None)
+    
+    @classmethod
+    def get_feature_set(cls, set_name):
+        """Get feature set configuration by name"""
+        return cls.FEATURE_SETS.get(set_name, cls.FEATURE_SETS['comprehensive'])
+    
+    @classmethod
+    def list_feature_sets(cls):
+        """List all available feature sets with descriptions"""
+        return {name: {'name': config['name'], 'description': config['description']} 
+                for name, config in cls.FEATURE_SETS.items()}
+    
+    @classmethod
+    def apply_feature_set(cls, set_name):
+        """
+        Apply a feature set configuration to the current FEATURE_SETTINGS.
+        Returns the updated configuration.
+        """
+        if set_name not in cls.FEATURE_SETS:
+            logger.warning(f"Unknown feature set '{set_name}', using 'comprehensive'")
+            set_name = 'comprehensive'
+        
+        feature_config = cls.FEATURE_SETS[set_name].copy()
+        
+        # Remove metadata fields
+        feature_config.pop('name', None)
+        feature_config.pop('description', None)
+        
+        # Update FEATURE_SETTINGS with the feature set configuration
+        # Keep existing technical settings, only override feature flags
+        updated_settings = cls.FEATURE_SETTINGS.copy()
+        for key, value in feature_config.items():
+            if key in ['temporal_features', 'rolling_features', 'lagged_features', 
+                      'interaction_features', 'rate_of_change_features', 'cumulative_features',
+                      'domain_features', 'seasonality_features', 'categorical_encoding',
+                      'metadata_features', 'advanced_temporal_features']:
+                updated_settings[key] = value
+        
+        return updated_settings
 
 class SAPFLUXNETOrchestrator:
     """Main orchestrator for SAPFLUXNET data processing pipeline - coordinates all components"""
     
-    def __init__(self, output_dir='comprehensive_processed', chunk_size=1000, max_memory_gb=12, force_reprocess=False, skip_problematic_sites=True, use_quality_flags=True, compress_output=False, optimize_io=True, export_format='csv', config_overrides=None, clean_mode=False):
+    def __init__(self, output_dir='comprehensive_processed', chunk_size=1000, max_memory_gb=12, force_reprocess=False, skip_problematic_sites=True, use_quality_flags=True, compress_output=False, optimize_io=True, export_format='csv', config_overrides=None, clean_mode=False, feature_set='comprehensive'):
         # Store core configuration
         self.base_output_dir = output_dir
         self.chunk_size = chunk_size
@@ -158,7 +276,19 @@ class SAPFLUXNETOrchestrator:
         self.export_format = export_format.lower()
         self.clean_mode = clean_mode
         
-        # Apply configuration overrides if provided
+        # Apply feature set configuration
+        self.feature_set = feature_set
+        feature_set_info = ProcessingConfig.get_feature_set(feature_set)
+        logger.init_component("Feature Set", f"{feature_set_info['name']}: {feature_set_info['description']}")
+        
+        # Apply the feature set to update ProcessingConfig
+        ProcessingConfig.FEATURE_SETTINGS = ProcessingConfig.apply_feature_set(feature_set)
+        
+        # Create dynamic output directory name based on format and feature set
+        self.dynamic_output_dir = self._create_dynamic_output_dir(output_dir, export_format, feature_set)
+        logger.init_component("Output Directory", f"Dynamic: {self.dynamic_output_dir}")
+        
+        # Apply configuration overrides if provided (these can override feature set settings)
         if config_overrides:
             self.apply_config_overrides(config_overrides)
         
@@ -180,7 +310,7 @@ class SAPFLUXNETOrchestrator:
         # File Manager (initialize first since other components depend on it)
         self.file_manager = FileManager(
             export_format=export_format,
-            base_output_dir=output_dir,
+            base_output_dir=self.dynamic_output_dir,
             compress_output=compress_output,
             config=ProcessingConfig,
             stats=self.stats
@@ -232,6 +362,31 @@ class SAPFLUXNETOrchestrator:
             'create_domain_features': None,
             'chunk_size': None,
         }
+    
+    def _create_dynamic_output_dir(self, base_dir, export_format, feature_set):
+        """
+        Create dynamic output directory name based on format and feature set.
+        
+        Args:
+            base_dir (str): Base output directory name
+            export_format (str): Export format (csv, parquet, etc.)
+            feature_set (str): Feature set name (default, temporal, etc.)
+            
+        Returns:
+            str: Dynamic directory name like 'parquet_default' or 'csv_comprehensive'
+        """
+        # List of common default directory names that should be replaced with dynamic names
+        default_patterns = [
+            'comprehensive_processed', 'processed', 'output', 'results', 'data_processed'
+        ]
+        
+        # If it's a common default pattern, create dynamic name
+        if base_dir.lower() in [pattern.lower() for pattern in default_patterns]:
+            return f"{export_format}_{feature_set}"
+        
+        # Otherwise, assume user provided a custom directory name and preserve it
+        # This is simpler and respects user intent
+        return base_dir
     
     def apply_config_overrides(self, overrides):
         """Apply command-line overrides to configuration"""
@@ -307,7 +462,7 @@ class SAPFLUXNETOrchestrator:
             if result is not None:
                 # Save individual site file using FileManager
                 file_extension = self.file_manager.get_output_file_extension()
-                output_file = f'{self.file_manager.output_dir}/{site}_comprehensive{file_extension}'
+                output_file = f'{self.file_manager.output_dir}/{site}{file_extension}'
                 
                 if isinstance(result, pd.DataFrame):
                     # Standard processing result - use FileManager
@@ -504,8 +659,7 @@ class SAPFLUXNETOrchestrator:
         logger.performance_info("Starting feature creation", f"{len(merged):,} rows for {site}")
         
         # Initialize FeatureEngineer with the merged data, config, and MemoryManager
-        # Pass None for config to use default dict config (avoids class method conflicts)
-        feature_engineer = FeatureEngineer(merged, config=None, memory_manager=self.memory_manager)
+        feature_engineer = FeatureEngineer(merged, config=ProcessingConfig.FEATURE_SETTINGS, memory_manager=self.memory_manager)
         
         # Create all features using the optimized FeatureEngineer
         try:
@@ -515,8 +669,7 @@ class SAPFLUXNETOrchestrator:
                 processing_mode='standard'
             )
         
-            # Add site identifier
-            merged['site'] = site
+            # Site identifier removed - blacklisted feature
             
             logger.features_created(site, len(merged), len(merged.columns))
         
@@ -553,7 +706,7 @@ class SAPFLUXNETOrchestrator:
         # Process in adaptive chunks
         chunk_size = self.adaptive_settings['chunk_size']
         file_extension = self.file_manager.get_output_file_extension()
-        output_file = f'{self.file_manager.output_dir}/{site}_comprehensive{file_extension}'
+        output_file = f'{self.file_manager.output_dir}/{site}{file_extension}'
         
         # Initialize output file
         first_chunk = True
@@ -665,15 +818,14 @@ class SAPFLUXNETOrchestrator:
             
             # Use consolidated feature engineering (streaming mode)
             # Pass None for config to use default dict config (avoids class method conflicts)
-            feature_engineer = FeatureEngineer(merged, config=None, memory_manager=self.memory_manager)
+            feature_engineer = FeatureEngineer(merged, config=ProcessingConfig.FEATURE_SETTINGS, memory_manager=self.memory_manager)
             merged = feature_engineer.create_all_features(merged, metadata, timestamp_col, processing_mode='streaming')
             del feature_engineer
             
             # Note: Seasonality features not available in streaming mode
             # (require site-level calculations that need full dataset)
             
-            # Add site identifier
-            merged['site'] = site
+            # Site identifier removed - blacklisted feature
             
             # Save chunk with optimized I/O
             self.file_manager.save_streaming_chunk_optimized(merged, output_file, is_first_chunk=first_chunk)

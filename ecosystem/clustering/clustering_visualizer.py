@@ -241,7 +241,7 @@ class ClusteringVisualizer:
             marker=dict(
                 size=8,
                 color=df['cluster'],
-                colorscale='tab10',
+                colorscale='Plotly3',
                 showscale=True,
                 colorbar=dict(title="Cluster"),
                 line=dict(width=1, color='black')
@@ -603,7 +603,7 @@ class ClusteringVisualizer:
                 mode='markers',
                 marker=dict(
                     color=df['cluster'],
-                    colorscale='tab10',
+                    colorscale='Plotly3',
                     size=10,
                     line=dict(width=1, color='black')
                 ),
@@ -623,7 +623,7 @@ class ClusteringVisualizer:
                     mode='markers',
                     marker=dict(
                         color=df['cluster'],
-                        colorscale='tab10',
+                        colorscale='Plotly3',
                         size=12,
                         line=dict(width=1, color='black')
                     ),

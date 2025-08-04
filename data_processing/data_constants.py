@@ -7,10 +7,13 @@ and feature processing in the SAPFLUXNET data pipeline.
 
 # 🚨 CRITICAL: Identity features blacklist - NEVER encode these as predictive features
 IDENTITY_BLACKLIST = {
-    'site_code', 'site_name', 'site_id', 'site_identifier',
-    'plant_name', 'tree_name', 'tree_id', 'pl_name',
+    'site_code', 'site_name', 'site_id', 'site_identifier', 'site',
+    'plant_name', 'tree_name', 'tree_id', 'pl_name', 'plant_id',
     # Note: 'species_name' moved to functional group processing instead of blocking
-    'study_id', 'plot_id', 'station_id'
+    'pl_species',  # High cardinality (160+ species) - causes overfitting
+    'study_id', 'plot_id', 'station_id',
+    # Administrative/metadata features that should never be predictive
+    'is_inside_country', 'measurement_timestep', 'measurement_frequency', 'timezone_offset'
 }
 
 # ⚠️ Pure geographic identifiers - can hinder spatial generalization
@@ -20,13 +23,13 @@ PURE_GEOGRAPHIC_IDENTIFIERS = {
 
 # ✅ Climate-based geographic features (ecological information) - allowed with caution
 CLIMATE_GEOGRAPHIC_FEATURES = {
-    'climate_zone', 'biome_region', 'koppen_class', 'climate_classification'
+    'biome_region', 'koppen_class', 'climate_classification'
 }
 
 # ✅ Approved ecological categorical variables (safe to encode)
 APPROVED_ECOLOGICAL_FEATURES = {
     'biome', 'igbp_class', 'soil_texture', 'aspect', 'terrain', 
-    'growth_condition', 'leaf_habit', 'pl_social', 'climate_zone',
+    'growth_condition', 'leaf_habit', 'pl_social',
     'tree_size_class', 'tree_age_class', 'koppen_geiger_code'
 }
 
@@ -107,9 +110,7 @@ CATEGORICAL_ENCODINGS = {
     'pl_social': {
         'dominant': 3, 'codominant': 2, 'intermediate': 1, 'suppressed': 0
     },
-    'climate_zone': {
-        'Temperate_South': 0, 'Tropical': 1, 'Temperate_North': 2
-    },
+
     'tree_size_class': {
         'Sapling': 0, 'Small': 1, 'Medium': 2, 'Large': 3, 'Very Large': 4
     },
@@ -169,7 +170,7 @@ TERRAIN_MAP = CATEGORICAL_ENCODINGS['terrain']
 GROWTH_CONDITION_MAP = CATEGORICAL_ENCODINGS['growth_condition']
 LEAF_HABIT_MAP = CATEGORICAL_ENCODINGS['leaf_habit']
 PL_SOCIAL_MAP = CATEGORICAL_ENCODINGS['pl_social']
-CLIMATE_ZONE_MAP = CATEGORICAL_ENCODINGS['climate_zone']
+
 TREE_SIZE_CLASS_MAP = CATEGORICAL_ENCODINGS['tree_size_class']
 TREE_AGE_CLASS_MAP = CATEGORICAL_ENCODINGS['tree_age_class']
 SPECIES_FUNCTIONAL_GROUP_MAP = CATEGORICAL_ENCODINGS['species_functional_group']

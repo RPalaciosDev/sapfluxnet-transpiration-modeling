@@ -1,0 +1,42 @@
+{
+  "selected_strategy": "K-means (3 clusters)",
+  "algorithm": "K-means",
+  "n_clusters": 3,
+  "silhouette_score": 0.4868841718095124,
+  "balance_ratio": 0.7741935483870968,
+  "final_score": 1.5045198061013654,
+  "feature_set_name": "geographic",
+  "feature_set_description": "Basic geographic coordinates and elevation only",
+  "features_used": [
+    "longitude",
+    "latitude",
+    "elevation"
+  ],
+  "total_features_used": 3,
+  "numeric_features_requested": [
+    "longitude",
+    "latitude",
+    "elevation"
+  ],
+  "categorical_features_requested": [],
+  "site_split_file": null,
+  "train_only_clustering": false,
+  "all_sites_clustering": true,
+  "train_sites_count": null,
+  "test_sites_count": null,
+  "total_sites_clustered": 84,
+  "preprocessing_summary": {
+    "processed_features": [
+      "longitude",
+      "latitude",
+      "elevation"
+    ],
+    "num_features": 3,
+    "categorical_encoders": [],
+    "scaler_fitted": true,
+    "preprocessing_complete": true
+  },
+  "timestamp": "20250803_213907",
+  "data_directory": "../../processed_parquet",
+  "flexible_clusterer_version": "1.0"
+}

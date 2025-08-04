@@ -56,9 +56,28 @@ def main():
                        help='Export format for processed files (default: csv)')
     parser.add_argument('--analyze-only', action='store_true',
                        help='Only perform site data quality analysis without processing (saves results to site_analysis_results/)')
+    parser.add_argument('--feature-set', 
+                       choices=['default', 'temporal', 'ecological', 'interaction', 'comprehensive'], 
+                       default='comprehensive',
+                       help='Feature set for processing: default (raw data only), temporal (time-based features), ecological (plant/climate features), interaction (environmental interactions), comprehensive (all features). Default: comprehensive')
+    parser.add_argument('--list-feature-sets', action='store_true',
+                       help='List all available feature sets with descriptions and exit')
 
     
     args = parser.parse_args()
+    
+    # Handle list-feature-sets early exit
+    if args.list_feature_sets:
+        from data_processing.Orchestrator import ProcessingConfig
+        print("\n📋 Available Feature Sets:")
+        print("=" * 50)
+        feature_sets = ProcessingConfig.list_feature_sets()
+        for set_name, info in feature_sets.items():
+            print(f"\n🔹 {set_name.upper()}")
+            print(f"   Name: {info['name']}")
+            print(f"   Description: {info['description']}")
+        print(f"\nUsage: python DataPipeline.py --feature-set {list(feature_sets.keys())[0]}")
+        return
     
     print("🚀 Starting SAPFLUXNET Data Processing Pipeline")
     print(f"⏰ Started at: {datetime.now()}")
@@ -75,6 +94,12 @@ def main():
         print("🏷️  Quality flag filtering enabled (removing OUT_WARN and RANGE_WARN data points)")
     else:
         print("⚠️  Quality flag filtering disabled (keeping all data points)")
+    
+    # Display feature set information
+    from data_processing.Orchestrator import ProcessingConfig
+    feature_set_info = ProcessingConfig.get_feature_set(args.feature_set)
+    print(f"🧬 Feature Set: {feature_set_info['name']}")
+    print(f"   Description: {feature_set_info['description']}")
     
     # Prepare configuration overrides
     config_overrides = {}
@@ -102,7 +127,8 @@ def main():
             optimize_io=not args.no_io_optimization,
             export_format=args.export_format,
             config_overrides=config_overrides,
-            clean_mode=args.clean_mode
+            clean_mode=args.clean_mode,
+            feature_set=args.feature_set
         )
         
         # Check if only analysis is requested

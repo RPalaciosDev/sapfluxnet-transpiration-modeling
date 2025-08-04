@@ -67,6 +67,18 @@ class FeatureEngineer:
             'solar_TIMESTAMP': 'solar_TIMESTAMP' in self.df.columns
         }
     
+    def _update_column_cache(self):
+        """Update column existence cache after metadata is loaded"""
+        self._column_exists_cache.update({
+            'latitude': 'latitude' in self.df.columns,
+            'mean_annual_temp': 'mean_annual_temp' in self.df.columns,
+            'mean_annual_precip': 'mean_annual_precip' in self.df.columns,
+            'leaf_habit': 'leaf_habit' in self.df.columns,
+            'biome': 'biome' in self.df.columns,
+            'igbp_class': 'igbp_class' in self.df.columns,
+            'solar_TIMESTAMP': 'solar_TIMESTAMP' in self.df.columns
+        })
+    
     def _default_config(self):
         """Default configuration for feature creation"""
         return {
@@ -482,8 +494,8 @@ class FeatureEngineer:
         """
         print("    ⚡ Engineering Features (Parallel Mode)...")
         
-        # Phase 1: Always create temporal features first (required by other features)
-        if self.config['temporal_features']:
+        # Phase 1: Create temporal features if enabled
+        if self.config.get('temporal_features', False):
             self._create_temporal_features_batch()
         
         # Phase 2: Create independent feature groups in parallel
@@ -515,19 +527,24 @@ class FeatureEngineer:
         independent_tasks = []
         
         # Task 1: Environmental features (rolling, lagged, rate of change, cumulative)
-        if processing_mode == 'standard':
+        if processing_mode == 'standard' and (
+            self.config.get('rolling_features', False) or 
+            self.config.get('lagged_features', False) or 
+            self.config.get('rate_of_change_features', False) or 
+            self.config.get('cumulative_features', False)
+        ):
             independent_tasks.append(('environmental', self._create_environmental_features_task, processing_mode))
         
         # Task 2: Interaction features
-        if self.config['interaction_features']:
+        if self.config.get('interaction_features', False):
             independent_tasks.append(('interaction', self._create_interaction_features_task, None))
         
         # Task 3: Domain-specific features
-        if self.config['domain_features'] and processing_mode == 'standard':
+        if self.config.get('domain_features', False) and processing_mode == 'standard':
             independent_tasks.append(('domain', self._create_domain_features_task, None))
         
         # Task 4: Metadata features (if available)
-        if self.config['metadata_features'] and metadata:
+        if self.config.get('metadata_features', True) and metadata:
             independent_tasks.append(('metadata', self._create_metadata_features_task, metadata))
         
         # Execute independent tasks in parallel
@@ -561,11 +578,11 @@ class FeatureEngineer:
         These must be run sequentially after independent features are complete.
         """
         # Seasonality features (may depend on temporal features)
-        if self.config['seasonality_features'] and processing_mode == 'standard':
+        if self.config.get('seasonality_features', False) and processing_mode == 'standard':
             self._create_seasonality_features()
         
         # Categorical encoding (depends on metadata features being complete)
-        if self.config['categorical_encoding']:
+        if self.config.get('categorical_encoding', True):
             self._encode_categorical_features()
     
     def _create_environmental_features_task(self, processing_mode):
@@ -686,14 +703,18 @@ class FeatureEngineer:
         # Get environmental columns
         env_cols = ['ta', 'rh', 'vpd', 'sw_in', 'ws', 'precip', 'swc_shallow', 'ppfd_in']
         
-        # Create rolling features
-        self._create_rolling_features_vectorized(env_cols)
+        # Create rolling features (conditional)
+        if self.config.get('rolling_features', True):
+            self._create_rolling_features_vectorized(env_cols)
         
-        # Create lagged features (standard mode only)
+        # Create lagged features (conditional and standard mode only)
         if processing_mode == 'standard':
-            self._create_lagged_features_vectorized(env_cols)
-            self._create_rate_of_change_features_vectorized(env_cols)
-            self._create_cumulative_features_vectorized()
+            if self.config.get('lagged_features', True):
+                self._create_lagged_features_vectorized(env_cols)
+            if self.config.get('rate_of_change_features', True):
+                self._create_rate_of_change_features_vectorized(env_cols)
+            if self.config.get('cumulative_features', True):
+                self._create_cumulative_features_vectorized()
     
     def _create_rolling_features_vectorized(self, env_cols):
         """Create rolling features using highly optimized single-pass operations"""
@@ -983,26 +1004,17 @@ class FeatureEngineer:
                     for col_name in essential_plant_cols:
                         self.df[col_name] = np.nan
         
+        # Update column cache after metadata is loaded (critical for Köppen-Geiger)
+        self._update_column_cache()
+        
         # Create derived metadata features
         self._create_derived_metadata_features()
     
     def _create_derived_metadata_features(self):
         """Create derived features from metadata"""
-        # Climate zone based on latitude
+        # Absolute latitude (useful for climate modeling)
         if 'latitude' in self.df.columns:
-            self.df['climate_zone_code'] = pd.cut(
-                self.df['latitude'], 
-                bins=[-90, -23.5, 23.5, 90], 
-                labels=[0, 1, 2]
-            ).astype('float64')
-            
             self.df['latitude_abs'] = abs(self.df['latitude'])
-            
-            self.df['climate_zone'] = pd.cut(
-                self.df['latitude'], 
-                bins=[-90, -23.5, 23.5, 90], 
-                labels=['Temperate_South', 'Tropical', 'Temperate_North']
-            )
         
         # Köppen-Geiger classification (vectorized for performance)
         if (self._column_exists_cache['latitude'] and 
@@ -1211,6 +1223,12 @@ class FeatureEngineer:
         """
         logger.phase_start("Encoding Features")
         
+        # STEP 1: Remove blacklisted features first (universal removal regardless of data type)
+        blacklisted_to_remove = [col for col in IDENTITY_BLACKLIST if col in self.df.columns]
+        if blacklisted_to_remove:
+            self.df = self.df.drop(columns=blacklisted_to_remove)
+            print(f"    🚫 Removing {len(blacklisted_to_remove)} blacklisted features: {blacklisted_to_remove}")
+        
         # Initialize tracking lists at the beginning
         encoded_features = []
         skipped_identity_features = []
@@ -1407,7 +1425,7 @@ class FeatureEngineer:
                 self.df = self.df.drop(columns=[col])
                 logger.warning(f"Removed problematic column from final schema: {col}", indent=2)
         
-        # Define the complete expected schema
+        # Define the base expected schema (always included)
         expected_columns = {
             # Core environmental variables (should exist in all sites)
             'ta': np.nan, 'rh': np.nan, 'vpd': np.nan, 'sw_in': np.nan, 'ws': np.nan, 
@@ -1425,23 +1443,32 @@ class FeatureEngineer:
             # Important plant features (useful when available)
             'pl_age': np.nan, 'pl_dbh': np.nan, 'pl_height': np.nan, 'pl_leaf_area': np.nan,
             'pl_sapw_area': np.nan, 'pl_sapw_depth': np.nan,
-            
-            # Solar timestamp features (useful when available)
-            'solar_hour': np.nan, 'solar_day_of_year': np.nan, 'solar_hour_sin': np.nan,
-            'solar_hour_cos': np.nan, 'solar_day_sin': np.nan, 'solar_day_cos': np.nan,
-            
-            # Enhanced temporal features (new)
-            'hour_sin': np.nan, 'hour_cos': np.nan, 'day_sin': np.nan, 'day_cos': np.nan,
-            'month_sin': np.nan, 'month_cos': np.nan,
-            'is_morning': np.nan, 'is_afternoon': np.nan, 'is_night': np.nan,
-            'is_spring': np.nan, 'is_summer': np.nan, 'is_autumn': np.nan, 'is_winter': np.nan,
-            'hours_since_sunrise': np.nan, 'hours_since_sunset': np.nan,
-            
-            # Interaction features (new)
-            'vpd_ppfd_interaction': np.nan, 'vpd_ta_interaction': np.nan, 'temp_humidity_ratio': np.nan,
-            'water_stress_index': np.nan, 'light_efficiency': np.nan, 'temp_soil_interaction': np.nan,
-            'wind_vpd_interaction': np.nan, 'radiation_temp_interaction': np.nan, 'humidity_soil_interaction': np.nan,
         }
+        
+        # Conditionally add temporal features if enabled
+        if self.config.get('temporal_features', False):
+            temporal_features = {
+                # Solar timestamp features
+                'solar_hour': np.nan, 'solar_day_of_year': np.nan, 'solar_hour_sin': np.nan,
+                'solar_hour_cos': np.nan, 'solar_day_sin': np.nan, 'solar_day_cos': np.nan,
+                
+                # Enhanced temporal features
+                'hour_sin': np.nan, 'hour_cos': np.nan, 'day_sin': np.nan, 'day_cos': np.nan,
+                'month_sin': np.nan, 'month_cos': np.nan,
+                'is_morning': np.nan, 'is_afternoon': np.nan, 'is_night': np.nan,
+                'is_spring': np.nan, 'is_summer': np.nan, 'is_autumn': np.nan, 'is_winter': np.nan,
+                'hours_since_sunrise': np.nan, 'hours_since_sunset': np.nan,
+            }
+            expected_columns.update(temporal_features)
+        
+        # Conditionally add interaction features if enabled
+        if self.config.get('interaction_features', False):
+            interaction_features = {
+                'vpd_ppfd_interaction': np.nan, 'vpd_ta_interaction': np.nan, 'temp_humidity_ratio': np.nan,
+                'water_stress_index': np.nan, 'light_efficiency': np.nan, 'temp_soil_interaction': np.nan,
+                'wind_vpd_interaction': np.nan, 'radiation_temp_interaction': np.nan, 'humidity_soil_interaction': np.nan,
+            }
+            expected_columns.update(interaction_features)
         
         # Add missing columns with NA values
         for col, default_value in expected_columns.items():

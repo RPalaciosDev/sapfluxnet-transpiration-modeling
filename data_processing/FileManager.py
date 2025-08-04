@@ -81,12 +81,17 @@ class FileManager:
             # Use format-specific directory for default case
             return f'processed_{self.export_format}'
         else:
-            # For custom directories, append format suffix
-            return f'{self.base_output_dir}_{self.export_format}'
+            # Check if format is already in the directory name to avoid duplication
+            if self.base_output_dir.startswith(f'{self.export_format}_') or self.base_output_dir.endswith(f'_{self.export_format}'):
+                # Format already included, use as-is
+                return self.base_output_dir
+            else:
+                # For custom directories, append format suffix
+                return f'{self.base_output_dir}_{self.export_format}'
     
     def standardize_features_to_reference(self, df, site_name):
         """Ensure all sites have the same features as reference site (THA_KHU)"""
-        reference_file = os.path.join(self.get_format_specific_output_dir(), f'THA_KHU_comprehensive.{self.get_output_file_extension().lstrip(".")}')
+        reference_file = os.path.join(self.get_format_specific_output_dir(), f'THA_KHU.{self.get_output_file_extension().lstrip(".")}')  
         
         if os.path.exists(reference_file) and site_name != 'THA_KHU':
             try:

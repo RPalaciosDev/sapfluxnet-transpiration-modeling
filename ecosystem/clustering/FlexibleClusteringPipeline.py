@@ -58,7 +58,7 @@ Examples:
     
     # Feature selection (the main improvement!)
     parser.add_argument('--feature-set', 
-                       choices=['geographic', 'climate', 'ecological', 'comprehensive', 'performance', 'environmental'],
+                       choices=['geographic', 'biome', 'climate', 'ecological', 'comprehensive', 'performance', 'environmental'],
                        default='comprehensive',
                        help='Feature set to use for clustering (default: comprehensive)')
     
@@ -274,7 +274,7 @@ Examples:
                 print(f"\n💡 FEATURE EXPERIMENTATION:")
                 print(f"  Try different feature sets to compare clustering results:")
                 current_set = args.feature_set
-                other_sets = [s for s in ['geographic', 'climate', 'ecological', 'comprehensive'] if s != current_set]
+                other_sets = [s for s in ['geographic', 'biome', 'climate', 'ecological', 'comprehensive'] if s != current_set]
                 for alt_set in other_sets[:2]:  # Show 2 alternatives
                     print(f"  python {Path(__file__).name} --feature-set {alt_set} --data-dir {args.data_dir}")
             

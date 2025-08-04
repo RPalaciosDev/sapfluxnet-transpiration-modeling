@@ -411,7 +411,7 @@ class SiteAnalyzer:
         
         # Check for file with appropriate extension
         file_extension = self.file_manager.get_output_file_extension() if self.file_manager else '.csv'
-        output_file = f'{self.output_dir}/{site}_comprehensive{file_extension}'
+        output_file = f'{self.output_dir}/{site}{file_extension}'
         
         # Use FileManager for file checking if available
         if self.file_manager:

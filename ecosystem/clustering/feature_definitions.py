@@ -49,10 +49,24 @@ class FeatureManager:
             'geographic': FeatureSet(
                 name='geographic',
                 numeric_features=[
-                    'longitude', 'latitude', 'elevation'
+                    'longitude', 'latitude'
                 ],
                 categorical_features=[],
-                description='Basic geographic coordinates and elevation only'
+                description='Basic geographic coordinates only (no elevation)'
+            ),
+            
+            # Biome-based clustering (Köppen-Geiger focused)
+            'biome': FeatureSet(
+                name='biome',
+                numeric_features=[
+                    'longitude', 'latitude',
+                    'mean_annual_temp', 'mean_annual_precip',
+                    'seasonal_temp_range', 'seasonal_precip_range'
+                ],
+                categorical_features=[
+                    'koppen_geiger_code', 'biome_code', 'igbp_class_code'
+                ],
+                description='Climate-based clustering focused on Köppen-Geiger classification and biome characteristics'
             ),
             
             # Climate-focused clustering
@@ -64,9 +78,9 @@ class FeatureManager:
                     'seasonal_temp_range', 'seasonal_precip_range'
                 ],
                 categorical_features=[
-                    'biome_code', 'igbp_class_code'
+                    'biome_code', 'igbp_class_code', 'koppen_geiger_code'
                 ],
-                description='Geographic + climate variables and biome classifications'
+                description='Geographic + climate variables, biome classifications, and Köppen-Geiger climate zones'
             ),
             
             # Ecological characteristics 
@@ -97,9 +111,9 @@ class FeatureManager:
                 ],
                 categorical_features=[
                     'species_functional_group_code', 'leaf_habit_code',
-                    'biome_code', 'igbp_class_code'
+                    'biome_code', 'igbp_class_code', 'koppen_geiger_code'
                 ],
-                description='All available ecological and climate features'
+                description='All available ecological and climate features including Köppen-Geiger climate classification'
             ),
             
             # Performance-focused (if available in processed data)
@@ -128,8 +142,10 @@ class FeatureManager:
                     'mean_ta', 'mean_rh', 'mean_vpd', 'mean_sw_in',  # if available
                     'mean_precip', 'mean_ws'  # if available
                 ],
-                categorical_features=[],
-                description='Pure environmental/climate variables without biological traits'
+                categorical_features=[
+                    'koppen_geiger_code'  # Climate classification based purely on temperature and precipitation
+                ],
+                description='Pure environmental/climate variables and climate classifications without biological traits'
             )
         }
     
@@ -348,5 +364,5 @@ if __name__ == "__main__":
     # Demo feature set details
     manager = get_feature_manager()
     
-    for feature_set_name in ['geographic', 'climate', 'comprehensive']:
+    for feature_set_name in ['geographic', 'biome', 'climate', 'comprehensive']:
         manager.print_feature_set_summary(feature_set_name)

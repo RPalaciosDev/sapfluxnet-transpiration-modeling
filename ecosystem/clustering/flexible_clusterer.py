@@ -19,9 +19,9 @@ from sklearn.metrics import silhouette_score
 from sklearn.mixture import GaussianMixture
 import argparse
 
-from .feature_definitions import FeatureManager, FeatureSet
-from .data_preprocessor import ClusteringDataPreprocessor
-from .clustering_visualizer import ClusteringVisualizer
+from feature_definitions import FeatureManager, FeatureSet
+from data_preprocessor import ClusteringDataPreprocessor
+from clustering_visualizer import ClusteringVisualizer
 
 warnings.filterwarnings('ignore')
 
