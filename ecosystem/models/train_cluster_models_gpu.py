@@ -101,6 +101,7 @@ class MemoryOptimizedClusterTrainer:
         self.cluster_file = cluster_file
         self.preprocessed_dir = os.path.join(results_dir, 'preprocessed_libsvm')
         self.target_col = 'sap_flow'
+        self.cluster_col = 'ecosystem_cluster'
         self.test_size = 0.2
         self.random_state = 42
         self.timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
