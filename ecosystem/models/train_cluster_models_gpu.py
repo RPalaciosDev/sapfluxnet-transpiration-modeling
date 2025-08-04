@@ -903,7 +903,7 @@ class MemoryOptimizedClusterTrainer:
         else:
             # CPU-optimized parameters based on available memory
             available_memory = get_available_memory_gb()
-        if available_memory > 20:  # High memory system
+            if available_memory > 20:  # High memory system
                 params = {
                 'objective': 'reg:squarederror',
                 'eval_metric': 'rmse',
@@ -917,7 +917,7 @@ class MemoryOptimizedClusterTrainer:
                 'verbosity': 1,
                 'nthread': -1
             }
-        elif available_memory > 8:
+            elif available_memory > 8:
                 params = {
                 'objective': 'reg:squarederror',
                 'eval_metric': 'rmse',
@@ -931,7 +931,7 @@ class MemoryOptimizedClusterTrainer:
                 'verbosity': 1,
                 'nthread': -1
             }
-        else:
+            else:
                 params = {
                 'objective': 'reg:squarederror',
                 'eval_metric': 'rmse',
@@ -945,7 +945,7 @@ class MemoryOptimizedClusterTrainer:
                 'verbosity': 1,
                 'nthread': -1
             }
-        print(f"  💻 Using CPU-optimized XGBoost parameters")
+            print(f"  💻 Using CPU-optimized XGBoost parameters")
         
         return params
     
