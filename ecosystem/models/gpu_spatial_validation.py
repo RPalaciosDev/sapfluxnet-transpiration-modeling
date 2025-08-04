@@ -170,12 +170,24 @@ class ParquetSpatialValidator:
     
     def load_cluster_assignments(self):
         """Load cluster assignments from the latest clustering results"""
-        cluster_files = sorted(glob.glob('../evaluation/clustering_results/advanced_site_clusters_*.csv'))
+        # Try both flexible and advanced clustering result patterns
+        cluster_files = []
+        
+        # First try flexible clustering results (new format)
+        flexible_files = sorted(glob.glob('../evaluation/clustering_results/*/flexible_site_clusters_*.csv'))
+        cluster_files.extend(flexible_files)
+        
+        # Also try legacy advanced clustering results
+        advanced_files = sorted(glob.glob('../evaluation/clustering_results/advanced_site_clusters_*.csv'))
+        cluster_files.extend(advanced_files)
         
         if not cluster_files:
-            raise FileNotFoundError("No cluster assignment files found")
+            raise FileNotFoundError("No cluster assignment files found (tried flexible_site_clusters_*.csv and advanced_site_clusters_*.csv)")
         
-        latest_file = cluster_files[-1]
+        # Sort by modification time to get the most recent
+        cluster_files.sort(key=lambda x: os.path.getmtime(x), reverse=True)
+        latest_file = cluster_files[0]
+        
         print(f"📊 Loading cluster assignments from: {os.path.basename(latest_file)}")
         
         clusters_df = pd.read_csv(latest_file)

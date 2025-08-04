@@ -207,6 +207,7 @@ __marimo__/
 
 # Data files
 *.feather
+*.parquet
 *.h5
 *.hdf5
 *.pkl

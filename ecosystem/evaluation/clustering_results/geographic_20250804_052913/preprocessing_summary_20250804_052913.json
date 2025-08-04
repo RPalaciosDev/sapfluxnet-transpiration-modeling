@@ -1,0 +1,10 @@
+{
+  "processed_features": [
+    "longitude",
+    "latitude"
+  ],
+  "num_features": 2,
+  "categorical_encoders": [],
+  "scaler_fitted": true,
+  "preprocessing_complete": true
+}

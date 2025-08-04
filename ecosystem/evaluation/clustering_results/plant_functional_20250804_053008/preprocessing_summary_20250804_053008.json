@@ -1,0 +1,11 @@
+{
+  "processed_features": [
+    "species_functional_group_code_encoded"
+  ],
+  "num_features": 1,
+  "categorical_encoders": [
+    "species_functional_group_code"
+  ],
+  "scaler_fitted": true,
+  "preprocessing_complete": true
+}

@@ -1,0 +1,39 @@
+{
+  "selected_strategy": "K-means (5 clusters)",
+  "algorithm": "K-means",
+  "n_clusters": 5,
+  "silhouette_score": 0.7165550138576797,
+  "balance_ratio": 0.2222222222222222,
+  "final_score": 1.2970547430087418,
+  "feature_set_name": "geographic",
+  "feature_set_description": "Basic geographic coordinates only (no elevation)",
+  "features_used": [
+    "longitude",
+    "latitude"
+  ],
+  "total_features_used": 2,
+  "numeric_features_requested": [
+    "longitude",
+    "latitude"
+  ],
+  "categorical_features_requested": [],
+  "site_split_file": null,
+  "train_only_clustering": false,
+  "all_sites_clustering": true,
+  "train_sites_count": null,
+  "test_sites_count": null,
+  "total_sites_clustered": 87,
+  "preprocessing_summary": {
+    "processed_features": [
+      "longitude",
+      "latitude"
+    ],
+    "num_features": 2,
+    "categorical_encoders": [],
+    "scaler_fitted": true,
+    "preprocessing_complete": true
+  },
+  "timestamp": "20250804_052913",
+  "data_directory": "../../parquet_ecological",
+  "flexible_clusterer_version": "1.0"
+}

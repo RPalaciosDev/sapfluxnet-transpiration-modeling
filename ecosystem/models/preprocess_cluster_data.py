@@ -665,7 +665,7 @@ class ClusterDataPreprocessor:
             self.clean_previous_preprocessing()
         
         # Load cluster information
-        cluster_info = self.load_cluster_info_memory_efficient()
+        cluster_info = self.load_cluster_info_memory_efficient(self.cluster_file)
         
         # Check existing files
         existing_files, missing_clusters = self.check_preprocessed_files_exist(cluster_info)
@@ -935,7 +935,7 @@ def main():
             # Only check status
             print("\n📊 Checking preprocessing status...")
             try:
-                cluster_info = preprocessor.load_cluster_info_memory_efficient()
+                cluster_info = preprocessor.load_cluster_info_memory_efficient(args.cluster_csv if args.cluster_csv != 'auto' else None)
                 existing_files, missing_clusters = preprocessor.check_preprocessed_files_exist(cluster_info)
                 
                 print(f"\n📈 Status Summary:")
