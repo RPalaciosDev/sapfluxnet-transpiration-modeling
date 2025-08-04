@@ -52,7 +52,8 @@ class ParquetSpatialValidator:
                  models_dir='./results/cluster_models',
                  results_dir='./results/parquet_spatial_validation',
                  optimize_hyperparams=False,
-                 force_gpu=False):
+                 force_gpu=False,
+                 cluster_file=None):
         self.parquet_dir = parquet_dir
         self.models_dir = models_dir
         self.results_dir = results_dir
@@ -61,6 +62,7 @@ class ParquetSpatialValidator:
         self.timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
         self.optimize_hyperparams = optimize_hyperparams
         self.optimized_params = {}
+        self.cluster_file = cluster_file
         
         # GPU Detection and Configuration
         self.use_gpu = False
@@ -169,26 +171,32 @@ class ParquetSpatialValidator:
         print(f"⚡ GPU Acceleration: {'ENABLED' if self.use_gpu else 'DISABLED'}")
     
     def load_cluster_assignments(self):
-        """Load cluster assignments from the latest clustering results"""
-        # Try both flexible and advanced clustering result patterns
-        cluster_files = []
-        
-        # First try flexible clustering results (new format)
-        flexible_files = sorted(glob.glob('../evaluation/clustering_results/*/flexible_site_clusters_*.csv'))
-        cluster_files.extend(flexible_files)
-        
-        # Also try legacy advanced clustering results
-        advanced_files = sorted(glob.glob('../evaluation/clustering_results/advanced_site_clusters_*.csv'))
-        cluster_files.extend(advanced_files)
+        """Load cluster assignments from specified file or latest clustering results"""
+        if self.cluster_file:
+            # Use specified cluster file
+            if not os.path.exists(self.cluster_file):
+                raise FileNotFoundError(f"Specified cluster file not found: {self.cluster_file}")
+            latest_file = self.cluster_file
+            print(f"📊 Using specified cluster file: {os.path.basename(latest_file)}")
+        else:
+            # Auto-detect latest clustering results
+            cluster_files = []
+            
+            # First try flexible clustering results (new format)
+            flexible_files = sorted(glob.glob('../evaluation/clustering_results/*/flexible_site_clusters_*.csv'))
+            cluster_files.extend(flexible_files)
+            
+            # Also try legacy advanced clustering results
+            advanced_files = sorted(glob.glob('../evaluation/clustering_results/advanced_site_clusters_*.csv'))
+            cluster_files.extend(advanced_files)
         
         if not cluster_files:
-            raise FileNotFoundError("No cluster assignment files found (tried flexible_site_clusters_*.csv and advanced_site_clusters_*.csv)")
-        
-        # Sort by modification time to get the most recent
-        cluster_files.sort(key=lambda x: os.path.getmtime(x), reverse=True)
-        latest_file = cluster_files[0]
-        
-        print(f"📊 Loading cluster assignments from: {os.path.basename(latest_file)}")
+                raise FileNotFoundError("No cluster assignment files found (tried flexible_site_clusters_*.csv and advanced_site_clusters_*.csv)")
+            
+            # Sort by modification time to get the most recent
+            cluster_files.sort(key=lambda x: os.path.getmtime(x), reverse=True)
+            latest_file = cluster_files[0]
+            print(f"📊 Auto-detected latest cluster file: {os.path.basename(latest_file)}")
         
         clusters_df = pd.read_csv(latest_file)
         cluster_assignments = dict(zip(clusters_df['site'], clusters_df['cluster']))
@@ -245,7 +253,7 @@ class ParquetSpatialValidator:
         site_info = {}
         
         for site in cluster_sites:
-            parquet_file = os.path.join(self.parquet_dir, f'{site}_comprehensive.parquet')
+            parquet_file = os.path.join(self.parquet_dir, site)
             
             if not os.path.exists(parquet_file):
                 print(f"  ⚠️  Missing parquet file: {parquet_file}")
@@ -877,7 +885,7 @@ class ParquetSpatialValidator:
                 # Get site info for this cluster
                 site_info = {}
                 for site in cluster_sites[:3]:  # Use first 3 sites for optimization
-                    parquet_file = os.path.join(self.parquet_dir, f'{site}_comprehensive.parquet')
+                    parquet_file = os.path.join(self.parquet_dir, site)
                     if os.path.exists(parquet_file):
                         site_info[site] = {'file_path': parquet_file}
                 
@@ -1163,6 +1171,8 @@ def main():
                         help="Run hyperparameter optimization based on existing results")
     parser.add_argument('--force-gpu', action='store_true',
                         help="Force GPU usage even if detection fails (use with caution)")
+    parser.add_argument('--cluster-file', default=None,
+                        help="Path to specific cluster assignment CSV file (if not provided, uses most recent)")
     
     args = parser.parse_args()
     
@@ -1172,7 +1182,8 @@ def main():
             models_dir=args.models_dir,
             results_dir=args.results_dir,
             optimize_hyperparams=args.optimize_hyperparams,
-            force_gpu=args.force_gpu
+            force_gpu=args.force_gpu,
+            cluster_file=args.cluster_file
         )
         
         fold_results, cluster_summaries = validator.run_validation()
