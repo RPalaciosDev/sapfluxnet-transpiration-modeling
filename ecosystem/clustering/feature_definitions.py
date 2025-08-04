@@ -220,6 +220,49 @@ class FeatureManager:
                     'biome_code', 'igbp_class_code'
                 ],
                 description='Simplified ecological features from clustering_v3 (geographic + climate + stand + species)'
+            ),
+            
+            # Legacy feature sets from advanced_ecosystem_clustering.py
+            'advanced_core': FeatureSet(
+                name='advanced_core',
+                numeric_features=[
+                    'mean_annual_temp', 'mean_annual_precip', 'aridity_index',
+                    'latitude_abs', 'elevation', 'seasonal_temp_range', 'seasonal_precip_range'
+                ],
+                categorical_features=[],
+                description='Core ecosystem features from advanced_ecosystem_clustering.py (focused on what actually varies)'
+            ),
+            
+            'advanced_derived': FeatureSet(
+                name='advanced_derived',
+                numeric_features=[
+                    'temp_precip_ratio', 'seasonality_index', 'climate_continentality',
+                    'elevation_latitude_ratio', 'aridity_seasonality', 'temp_elevation_ratio', 'precip_latitude_ratio'
+                ],
+                categorical_features=[],
+                description='Advanced derived features from advanced_ecosystem_clustering.py (engineered climate interactions)'
+            ),
+            
+            'advanced_hybrid': FeatureSet(
+                name='advanced_hybrid',
+                numeric_features=[
+                    # Geographic/Climate
+                    'longitude', 'latitude', 'latitude_abs', 'mean_annual_temp', 'mean_annual_precip',
+                    'aridity_index', 'elevation', 'seasonal_temp_range', 'seasonal_precip_range',
+                    # Engineered/Derived
+                    'temp_precip_ratio', 'seasonality_index', 'climate_continentality',
+                    'elevation_latitude_ratio', 'aridity_seasonality', 'temp_elevation_ratio', 'precip_latitude_ratio',
+                    # Stand/Forest Structure (from XGBoost importance analysis)
+                    'tree_volume_index', 'stand_age', 'n_trees', 'tree_density', 'basal_area', 'stand_height',
+                    'tree_size_class_code', 'sapwood_leaf_ratio', 'pl_dbh', 'pl_age', 'pl_height', 'pl_leaf_area',
+                    'pl_sapw_depth', 'pl_sapw_area'
+                ],
+                categorical_features=[
+                    'climate_zone_code', 'biome_code', 'igbp_class_code', 'leaf_habit_code',
+                    'soil_texture_code', 'terrain_code', 'species_functional_group_code',
+                    'koppen_geiger_code_encoded'
+                ],
+                description='Full hybrid features from advanced_ecosystem_clustering.py (includes all structural variables from XGBoost importance)'
             )
         }
     

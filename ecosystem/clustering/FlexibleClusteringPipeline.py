@@ -57,8 +57,8 @@ Examples:
                        help='Base directory for clustering results. Auto-creates subdirectories with pattern feature-set_date (default: ../evaluation/clustering_results)')
     
     # Feature selection (the main improvement!)
-    parser.add_argument('--feature-set', 
-                       choices=['geographic', 'biome', 'climate', 'ecological', 'comprehensive', 'performance', 'environmental', 'plant_functional', 'v2_core', 'v2_advanced', 'v2_hybrid', 'v3_hybrid'],
+    parser.add_argument('--feature-set',
+                        choices=['geographic', 'biome', 'climate', 'ecological', 'comprehensive', 'performance', 'environmental', 'plant_functional', 'v2_core', 'v2_advanced', 'v2_hybrid', 'v3_hybrid', 'advanced_core', 'advanced_derived', 'advanced_hybrid'],
                        default='comprehensive',
                        help='Feature set to use for clustering (default: comprehensive)')
     
@@ -284,7 +284,7 @@ Examples:
                 print(f"\n💡 FEATURE EXPERIMENTATION:")
                 print(f"  Try different feature sets to compare clustering results:")
                 current_set = args.feature_set
-                other_sets = [s for s in ['geographic', 'biome', 'climate', 'ecological', 'comprehensive', 'plant_functional', 'v2_hybrid', 'v3_hybrid'] if s != current_set]
+                other_sets = [s for s in ['geographic', 'biome', 'climate', 'ecological', 'comprehensive', 'plant_functional', 'v2_hybrid', 'v3_hybrid', 'advanced_hybrid'] if s != current_set]
                 for alt_set in other_sets[:2]:  # Show 2 alternatives
                     print(f"  python {Path(__file__).name} --feature-set {alt_set} --data-dir {args.data_dir}")
             
