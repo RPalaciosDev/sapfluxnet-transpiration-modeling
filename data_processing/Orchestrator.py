@@ -372,16 +372,21 @@ class SAPFLUXNETOrchestrator:
                 
                 print(f"    📊 Dataset size: {total_size_mb:.1f}MB (env: {env_size_mb:.1f}MB, sapf: {sapf_size_mb:.1f}MB)")
                 
-                # Force streaming mode for very large datasets
-                if total_size_mb > 50:  # If total size > 50MB, force streaming
-                    print(f"    💾 Very large dataset detected - forcing streaming mode")
+                # Check system memory to determine if we should force streaming
+                system_memory_gb = psutil.virtual_memory().total / (1024**3)
+                
+                # Only force streaming mode on systems with limited memory (<64GB)
+                if system_memory_gb < 64:
+                    if total_size_mb > 50:  # If total size > 50MB on limited memory systems
+                        print(f"    💾 Large dataset on limited memory system ({system_memory_gb:.0f}GB) - forcing streaming mode")
+                        self.adaptive_settings['use_streaming'] = True
+                        self.adaptive_settings['processing_mode'] = 'streaming'
+                else:
+                    # High memory systems (>=64GB) - only use streaming for very large datasets
+                    if total_size_mb > 200:  # Much higher threshold for high-memory systems
+                        print(f"    💪 Very large dataset ({total_size_mb:.1f}MB) on high-memory system - using streaming mode")
                     self.adaptive_settings['use_streaming'] = True
                     self.adaptive_settings['processing_mode'] = 'streaming'
-                
-                # Note: Previously skipped datasets > 100MB, but with abundant memory (500+ GB)
-                # and streaming support, we can process all valid sites
-                if total_size_mb > 100:
-                    print(f"    💪 Large dataset detected ({total_size_mb:.1f}MB) - will use streaming mode")
             
             # Determine optimal settings for this site using MemoryManager
             success, self.adaptive_settings = self.memory_manager.determine_adaptive_settings(site, self.adaptive_settings)
@@ -690,4 +695,4 @@ class SAPFLUXNETOrchestrator:
         if total_processed > 0:
             return True
         else:
-            return None 
+            return None
