@@ -189,8 +189,8 @@ class ParquetSpatialValidator:
             # Also try legacy advanced clustering results
             advanced_files = sorted(glob.glob('../evaluation/clustering_results/advanced_site_clusters_*.csv'))
             cluster_files.extend(advanced_files)
-        
-        if not cluster_files:
+            
+            if not cluster_files:
                 raise FileNotFoundError("No cluster assignment files found (tried flexible_site_clusters_*.csv and advanced_site_clusters_*.csv)")
             
             # Sort by modification time to get the most recent
