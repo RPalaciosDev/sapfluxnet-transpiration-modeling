@@ -162,8 +162,19 @@ class ClusteringDataPreprocessor:
         if not available_numeric and not available_categorical:
             raise ValueError(f"No features available for clustering with feature set '{feature_set_name}'")
         
-        # Create base clustering dataframe
-        clustering_df = site_df[['site'] + available_numeric].copy()
+        # Create base clustering dataframe with geographic coordinates for visualization
+        base_columns = ['site'] + available_numeric
+        
+        # Always include geographic coordinates for visualization (if available)
+        geo_columns = []
+        for geo_col in ['longitude', 'latitude']:
+            if geo_col in site_df.columns and geo_col not in base_columns:
+                geo_columns.append(geo_col)
+                
+        clustering_df = site_df[base_columns + geo_columns].copy()
+        
+        if geo_columns:
+            self.log(f"✅ Added geographic coordinates for visualization: {geo_columns}")
         
         self.log(f"✅ Selected {len(available_numeric)} numeric features")
         

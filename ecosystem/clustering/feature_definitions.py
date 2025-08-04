@@ -61,10 +61,11 @@ class FeatureManager:
                 numeric_features=[
                     'longitude', 'latitude',
                     'mean_annual_temp', 'mean_annual_precip',
-                    'seasonal_temp_range', 'seasonal_precip_range'
+                    'seasonal_temp_range', 'seasonal_precip_range',
+                    'koppen_geiger_code_encoded'  # Already encoded as numeric in data pipeline
                 ],
                 categorical_features=[
-                    'koppen_geiger_code', 'biome_code', 'igbp_class_code'
+                    'biome_code', 'igbp_class_code'
                 ],
                 description='Climate-based clustering focused on Köppen-Geiger classification and biome characteristics'
             ),
@@ -75,10 +76,11 @@ class FeatureManager:
                 numeric_features=[
                     'longitude', 'latitude', 'elevation',
                     'mean_annual_temp', 'mean_annual_precip',
-                    'seasonal_temp_range', 'seasonal_precip_range'
+                    'seasonal_temp_range', 'seasonal_precip_range',
+                    'koppen_geiger_code_encoded'  # Already encoded as numeric in data pipeline
                 ],
                 categorical_features=[
-                    'biome_code', 'igbp_class_code', 'koppen_geiger_code'
+                    'biome_code', 'igbp_class_code'
                 ],
                 description='Geographic + climate variables, biome classifications, and Köppen-Geiger climate zones'
             ),
@@ -88,7 +90,8 @@ class FeatureManager:
                 name='ecological',
                 numeric_features=[
                     'longitude', 'latitude', 'elevation',
-                    'basal_area', 'tree_density', 'leaf_area_index'
+                    'basal_area', 'tree_density', 'leaf_area_index',
+                    'koppen_geiger_code_encoded'  # Already encoded as numeric in data pipeline
                 ],
                 categorical_features=[
                     'species_functional_group_code', 'leaf_habit_code',
@@ -107,12 +110,15 @@ class FeatureManager:
                     # Seasonal features
                     'seasonal_temp_range', 'seasonal_precip_range',
                     # Stand characteristics
-                    'basal_area', 'tree_density', 'leaf_area_index'
+                    'basal_area', 'tree_density', 'leaf_area_index',
+                    # Climate classification (already encoded as numeric)
+                    'koppen_geiger_code_encoded'
                 ],
                 categorical_features=[
                     'species_functional_group_code', 'leaf_habit_code',
-                    'biome_code', 'igbp_class_code', 'koppen_geiger_code'
+                    'biome_code', 'igbp_class_code'
                 ],
+                # Note: koppen_geiger_code_encoded moved to numeric_features since it's already encoded
                 description='All available ecological and climate features including Köppen-Geiger climate classification'
             ),
             
@@ -140,11 +146,11 @@ class FeatureManager:
                     'seasonal_temp_range', 'seasonal_precip_range',
                     # Environmental features from processed data
                     'mean_ta', 'mean_rh', 'mean_vpd', 'mean_sw_in',  # if available
-                    'mean_precip', 'mean_ws'  # if available
+                    'mean_precip', 'mean_ws',  # if available
+                    # Climate classification (already encoded as numeric)
+                    'koppen_geiger_code_encoded'
                 ],
-                categorical_features=[
-                    'koppen_geiger_code'  # Climate classification based purely on temperature and precipitation
-                ],
+                categorical_features=[],
                 description='Pure environmental/climate variables and climate classifications without biological traits'
             ),
             
@@ -152,19 +158,11 @@ class FeatureManager:
             'plant_functional': FeatureSet(
                 name='plant_functional',
                 numeric_features=[
-                    # Plant physiological characteristics
-                    'pl_age', 'pl_dbh', 'pl_height', 'pl_leaf_area', 
-                    'pl_sapw_area', 'pl_sapw_depth',
-                    # Derived plant indices
-                    'sapwood_leaf_ratio', 'tree_volume_index',
-                    # Stand-level characteristics that reflect plant community
-                    'stand_age', 'stand_height', 'basal_area', 'tree_density', 'leaf_area_index'
                 ],
                 categorical_features=[
-                    'species_functional_group_code', 'leaf_habit_code',
-                    'tree_size_class_code', 'tree_age_class_code', 'pl_social_code'
+                    'species_functional_group_code'
                 ],
-                description='Plant physiological traits, functional group classifications, and stand characteristics for functional clustering'
+                description='Plant functional group classifications and key functional traits'
             ),
             
             # Legacy feature sets from clustering_v2.py

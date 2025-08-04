@@ -90,6 +90,191 @@ class ClusteringVisualizer:
         colors = (base_colors * ((n_clusters // len(base_colors)) + 1))[:n_clusters]
         return colors
     
+    def _plot_single_feature_clustering(self, save: bool = True, show: bool = True) -> str:
+        """
+        Plot clustering results for single feature using histogram/bar plot.
+        
+        Args:
+            save: Whether to save the plot
+            show: Whether to display the plot
+            
+        Returns:
+            Path to saved plot file
+        """
+        if not self.clustering_data:
+            raise ValueError("No clustering data set. Call set_clustering_data() first.")
+        
+        df = self.clustering_data['df']
+        features = self.clustering_data['features']
+        feature_name = features[0]
+        
+        n_clusters = len(df['cluster'].unique())
+        cluster_colors = self._get_discrete_colors(n_clusters)
+        
+        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 6))
+        
+        # Plot 1: Distribution of feature values by cluster
+        for i, cluster_id in enumerate(sorted(df['cluster'].unique())):
+            cluster_data = df[df['cluster'] == cluster_id]
+            ax1.hist(cluster_data[feature_name], alpha=0.7, label=f'Cluster {cluster_id}', 
+                    color=cluster_colors[i], bins=20)
+        
+        ax1.set_xlabel(feature_name)
+        ax1.set_ylabel('Count')
+        ax1.set_title(f'Distribution of {feature_name} by Cluster')
+        ax1.legend()
+        ax1.grid(True, alpha=0.3)
+        
+        # Plot 2: Cluster composition (count of sites per cluster)
+        cluster_counts = df['cluster'].value_counts().sort_index()
+        bars = ax2.bar(range(len(cluster_counts)), cluster_counts.values, 
+                      color=[cluster_colors[i] for i in range(len(cluster_counts))])
+        
+        ax2.set_xlabel('Cluster')
+        ax2.set_ylabel('Number of Sites')
+        ax2.set_title('Cluster Composition')
+        ax2.set_xticks(range(len(cluster_counts)))
+        ax2.set_xticklabels([f'Cluster {i}' for i in cluster_counts.index])
+        ax2.grid(True, alpha=0.3)
+        
+        # Add value labels on bars
+        for i, bar in enumerate(bars):
+            height = bar.get_height()
+            ax2.text(bar.get_x() + bar.get_width()/2., height + 0.1,
+                    f'{int(height)}', ha='center', va='bottom')
+        
+        plt.tight_layout()
+        
+        # Save plot
+        output_path = None
+        if save:
+            output_path = self.output_dir / f'single_feature_clustering.png'
+            plt.savefig(output_path, dpi=300, bbox_inches='tight')
+            print(f"  📊 Single feature clustering plot saved: {output_path}")
+        
+        if show:
+            plt.show()
+        else:
+            plt.close()
+        
+        return str(output_path) if output_path else ""
+    
+    def _create_single_feature_dashboard(self, save: bool = True) -> str:
+        """
+        Create a simplified interactive dashboard for single feature clustering.
+        
+        Args:
+            save: Whether to save the dashboard
+            
+        Returns:
+            Path to saved HTML file
+        """
+        df = self.clustering_data['df']
+        features = self.clustering_data['features']
+        feature_name = features[0]
+        
+        n_clusters = len(df['cluster'].unique())
+        cluster_colors = self._get_discrete_colors(n_clusters)
+        
+        # Create subplot figure
+        fig = make_subplots(
+            rows=2, cols=2,
+            subplot_titles=('Feature Distribution by Cluster', 'Cluster Composition', 
+                           'Feature vs Cluster ID', 'Cluster Statistics'),
+            specs=[[{"type": "histogram"}, {"type": "bar"}],
+                   [{"type": "scatter"}, {"type": "table"}]]
+        )
+        
+        # Plot 1: Histogram of feature values by cluster
+        for i, cluster_id in enumerate(sorted(df['cluster'].unique())):
+            cluster_data = df[df['cluster'] == cluster_id]
+            fig.add_trace(
+                go.Histogram(
+                    x=cluster_data[feature_name],
+                    name=f'Cluster {cluster_id}',
+                    marker_color=cluster_colors[i],
+                    opacity=0.7,
+                    nbinsx=20
+                ),
+                row=1, col=1
+            )
+        
+        # Plot 2: Cluster composition bar chart
+        cluster_counts = df['cluster'].value_counts().sort_index()
+        fig.add_trace(
+            go.Bar(
+                x=[f'Cluster {i}' for i in cluster_counts.index],
+                y=cluster_counts.values,
+                marker_color=[cluster_colors[i] for i in range(len(cluster_counts))],
+                name='Site Count'
+            ),
+            row=1, col=2
+        )
+        
+        # Plot 3: Scatter plot of feature vs cluster
+        fig.add_trace(
+            go.Scatter(
+                x=df['cluster'],
+                y=df[feature_name],
+                mode='markers',
+                marker=dict(
+                    color=[cluster_colors[int(c)] for c in df['cluster']],
+                    size=8,
+                    line=dict(width=1, color='black')
+                ),
+                name='Sites'
+            ),
+            row=2, col=1
+        )
+        
+        # Plot 4: Statistics table
+        stats_data = []
+        for cluster_id in sorted(df['cluster'].unique()):
+            cluster_data = df[df['cluster'] == cluster_id]
+            feature_values = cluster_data[feature_name]
+            stats_data.append([
+                f'Cluster {cluster_id}',
+                len(cluster_data),
+                f'{feature_values.mean():.2f}',
+                f'{feature_values.std():.2f}',
+                f'{feature_values.min():.2f}',
+                f'{feature_values.max():.2f}'
+            ])
+        
+        fig.add_trace(
+            go.Table(
+                header=dict(values=['Cluster', 'Sites', 'Mean', 'Std', 'Min', 'Max'],
+                           fill_color='lightblue'),
+                cells=dict(values=list(zip(*stats_data)),
+                          fill_color='white')
+            ),
+            row=2, col=2
+        )
+        
+        # Update layout
+        fig.update_layout(
+            title=f'Single Feature Clustering Dashboard - {feature_name}',
+            showlegend=True,
+            height=800,
+            width=1200
+        )
+        
+        fig.update_xaxes(title_text=feature_name, row=1, col=1)
+        fig.update_yaxes(title_text='Count', row=1, col=1)
+        fig.update_xaxes(title_text='Cluster', row=1, col=2)
+        fig.update_yaxes(title_text='Number of Sites', row=1, col=2)
+        fig.update_xaxes(title_text='Cluster ID', row=2, col=1)
+        fig.update_yaxes(title_text=feature_name, row=2, col=1)
+        
+        # Save dashboard
+        output_path = None
+        if save:
+            output_path = self.output_dir / f'single_feature_dashboard.html'
+            fig.write_html(str(output_path))
+            print(f"  📊 Single feature dashboard saved: {output_path}")
+        
+        return str(output_path) if output_path else ""
+    
     def calculate_feature_importance(self) -> Dict[str, float]:
         """
         Calculate feature importance for clustering using various methods.
@@ -259,6 +444,11 @@ class ClusteringVisualizer:
         df = self.clustering_data['df']
         features = self.clustering_data['features']
         
+        # Handle single feature case
+        if len(features) == 1:
+            print(f"  📊 Single feature detected, using specialized single-feature plot")
+            return self._plot_single_feature_clustering(save=save, show=show)
+        
         # Prepare feature matrix
         X = df[features].values
         scaler = StandardScaler()
@@ -349,6 +539,11 @@ class ClusteringVisualizer:
         
         df = self.clustering_data['df']
         features = self.clustering_data['features']
+        
+        # Handle insufficient features for 3D
+        if len(features) < 3:
+            print(f"  📊 Only {len(features)} features available, skipping 3D visualization (requires 3+ features)")
+            return ""
         
         # Prepare feature matrix
         X = df[features].values
@@ -459,6 +654,11 @@ class ClusteringVisualizer:
         df = self.clustering_data['df']
         features = self.clustering_data['features']
         labels = self.clustering_data['labels']
+        
+        # Handle single feature case - skip silhouette analysis for single features
+        if len(features) == 1:
+            print(f"  📊 Single feature detected, skipping silhouette analysis (not meaningful for 1D data)")
+            return ""
         
         # Prepare feature matrix
         X = df[features].values
@@ -720,6 +920,120 @@ class ClusteringVisualizer:
         
         return str(filepath) if save else ""
     
+    def plot_interactive_geographic_clusters(self, save: bool = True) -> str:
+        """
+        Create interactive geographic visualization of clusters using Plotly.
+        
+        Args:
+            save: Whether to save the plot
+            
+        Returns:
+            Path to saved HTML file
+        """
+        if not self.clustering_data:
+            raise ValueError("No clustering data set. Call set_clustering_data() first.")
+        
+        df = self.clustering_data['df']
+        
+        # Check if geographic coordinates are available
+        if 'longitude' not in df.columns or 'latitude' not in df.columns:
+            print("⚠️  Geographic coordinates not available for interactive mapping")
+            return ""
+        
+        # Get discrete colors for clusters
+        n_clusters = len(df['cluster'].unique())
+        cluster_colors = self._get_discrete_colors(n_clusters)
+        
+        # Create the interactive map
+        fig = go.Figure()
+        
+        # Add a trace for each cluster
+        for i, cluster_id in enumerate(sorted(df['cluster'].unique())):
+            cluster_data = df[df['cluster'] == cluster_id]
+            
+            # Create hover text with site information
+            hover_text = []
+            for _, row in cluster_data.iterrows():
+                text = f"<b>Site:</b> {row['site']}<br>"
+                text += f"<b>Cluster:</b> {cluster_id}<br>"
+                text += f"<b>Coordinates:</b> ({row['latitude']:.3f}, {row['longitude']:.3f})"
+                
+                # Add feature information if available
+                features = self.clustering_data['features']
+                for feature in features[:3]:  # Show up to 3 features in hover
+                    if feature in row:
+                        text += f"<br><b>{feature}:</b> {row[feature]}"
+                
+                hover_text.append(text)
+            
+            fig.add_trace(go.Scattergeo(
+                lon=cluster_data['longitude'],
+                lat=cluster_data['latitude'],
+                text=cluster_data['site'],
+                hovertemplate=hover_text,
+                mode='markers',
+                marker=dict(
+                    size=12,
+                    color=cluster_colors[i],
+                    line=dict(width=2, color='white'),
+                    sizemode='diameter'
+                ),
+                name=f'Cluster {cluster_id} ({len(cluster_data)} sites)',
+                showlegend=True
+            ))
+        
+        # Update layout for better geographic visualization
+        fig.update_layout(
+            title=dict(
+                text=f'Interactive Geographic Distribution - {self.clustering_data["strategy"]["name"]}',
+                x=0.5,
+                font=dict(size=16)
+            ),
+            geo=dict(
+                projection_type='natural earth',
+                showland=True,
+                landcolor='lightgray',
+                showocean=True,
+                oceancolor='lightblue',
+                showlakes=True,
+                lakecolor='lightblue',
+                showrivers=True,
+                rivercolor='lightblue',
+                coastlinecolor='darkgray',
+                showframe=False,
+                showcoastlines=True,
+            ),
+            height=600,
+            width=1000,
+            font=dict(size=12)
+        )
+        
+        # Add cluster statistics as annotation
+        cluster_counts = df['cluster'].value_counts().sort_index()
+        stats_text = '<br>'.join([f'Cluster {i}: {count} sites' 
+                                 for i, count in cluster_counts.items()])
+        
+        fig.add_annotation(
+            text=f"<b>Cluster Distribution:</b><br>{stats_text}",
+            xref="paper", yref="paper",
+            x=0.02, y=0.98,
+            xanchor="left", yanchor="top",
+            showarrow=False,
+            bgcolor="white",
+            bordercolor="gray",
+            borderwidth=1,
+            font=dict(size=10)
+        )
+        
+        # Save the interactive map
+        output_path = None
+        if save:
+            output_path = self.output_dir / f'interactive_geographic_clusters.html'
+            fig.write_html(str(output_path))
+            print(f"  🌍 Interactive geographic map saved: {output_path}")
+        
+        return str(output_path) if output_path else ""
+    
     def create_interactive_dashboard(self, save: bool = True) -> str:
         """
         Create an interactive dashboard with multiple visualizations.
@@ -735,6 +1049,11 @@ class ClusteringVisualizer:
         
         df = self.clustering_data['df']
         features = self.clustering_data['features']
+        
+        # Handle single feature case - create simplified dashboard
+        if len(features) == 1:
+            print(f"  📊 Single feature detected, creating simplified dashboard")
+            return self._create_single_feature_dashboard(save=save)
         
         # Prepare data
         X = df[features].values
@@ -900,15 +1219,26 @@ class ClusteringVisualizer:
         try:
             # 2D Feature spaces
             visualizations['pca_2d'] = self.plot_feature_space_2d(method='pca', show=False)
-            visualizations['tsne_2d'] = self.plot_feature_space_2d(method='tsne', show=False)
+            
+            # Only do t-SNE if we have multiple features (t-SNE needs at least 2 features)
+            features = self.clustering_data['features']
+            if len(features) > 1:
+                visualizations['tsne_2d'] = self.plot_feature_space_2d(method='tsne', show=False)
+            else:
+                print(f"  📊 Skipping t-SNE (requires 2+ features, have {len(features)})")
             
             # Silhouette analysis
             visualizations['silhouette'] = self.plot_silhouette_analysis(show=False)
             
-            # Geographic plot (if possible)
+            # Geographic plots (if possible)
             geo_plot = self.plot_geographic_clusters(show=False)
             if geo_plot:
                 visualizations['geographic'] = geo_plot
+            
+            # Interactive geographic map
+            interactive_geo = self.plot_interactive_geographic_clusters(save=True)
+            if interactive_geo:
+                visualizations['interactive_geographic'] = interactive_geo
             
             # Strategy comparison (if available)
             if self.strategy_results:
@@ -959,11 +1289,11 @@ class ClusteringVisualizer:
             </style>
         </head>
         <body>
-            <h1>🧬 Clustering Visualization Report</h1>
+            <h1>Clustering Visualization Report</h1>
             <p><strong>Generated:</strong> {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</p>
             
             <div class="summary">
-                <h2>📊 Clustering Summary</h2>
+                <h2>Clustering Summary</h2>
                 <div class="stats">
                     <div class="stat-box">
                         <strong>Sites:</strong> {self.clustering_data['n_sites']}
@@ -986,7 +1316,7 @@ class ClusteringVisualizer:
                 <p>{', '.join(self.clustering_data['features'])}</p>
             </div>
             
-            <h2>🎨 Visualizations</h2>
+            <h2>Visualizations</h2>
         """
         
         for name, path in visualizations.items():
@@ -1013,15 +1343,15 @@ class ClusteringVisualizer:
         
         # Save summary report
         report_file = self.output_dir / f'clustering_report_{timestamp}.html'
-        with open(report_file, 'w') as f:
+        with open(report_file, 'w', encoding='utf-8') as f:
             f.write(html_content)
         
-        print(f"📄 Summary report: {report_file}")
+        print(f"Summary report: {report_file}")
 
 
 if __name__ == "__main__":
     # Demo the visualizer
-    print("🎨 CLUSTERING VISUALIZER DEMO")
+    print("CLUSTERING VISUALIZER DEMO")
     print("=" * 50)
     
     # Create sample data
