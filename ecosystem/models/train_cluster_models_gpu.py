@@ -118,6 +118,19 @@ class MemoryOptimizedClusterTrainer:
         os.makedirs(results_dir, exist_ok=True)
         os.makedirs(self.preprocessed_dir, exist_ok=True)
         
+        # Load cluster assignments
+        self.cluster_assignments = None
+        try:
+            self.cluster_assignments = self.load_cluster_assignments_from_csv(cluster_file)
+            if self.cluster_assignments:
+                if cluster_file:
+                    print(f"✅ Loaded cluster assignments from: {os.path.basename(cluster_file)}")
+                else:
+                    print(f"✅ Loaded cluster assignments via automatic detection")
+        except Exception as e:
+            print(f"⚠️  Could not load cluster assignments: {e}")
+            print("💡 Please provide a valid --cluster-file or run clustering first")
+        
         print(f"🚀 GPU-Optimized Cluster Trainer initialized")
         print(f"📁 Parquet directory: {parquet_dir}")
         print(f"📁 Results directory: {results_dir}")
