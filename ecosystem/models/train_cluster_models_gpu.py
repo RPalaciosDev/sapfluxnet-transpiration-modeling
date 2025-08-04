@@ -494,7 +494,7 @@ class MemoryOptimizedClusterTrainer:
         
         with open(libsvm_file, 'w') as output_file:
             for site_idx, site in enumerate(cluster_sites):
-                parquet_file = os.path.join(self.parquet_dir, f'{site}.parquet')
+                parquet_file = os.path.join(self.parquet_dir, site)
                 
                 if not os.path.exists(parquet_file):
                     print(f"    ⚠️  Missing: {parquet_file}")
@@ -1159,7 +1159,7 @@ class MemoryOptimizedClusterTrainer:
         successful_sites = []
         
         for site in cluster_sites:
-            parquet_file = os.path.join(self.parquet_dir, f'{site}.parquet')
+            parquet_file = os.path.join(self.parquet_dir, site)
             
             if not os.path.exists(parquet_file):
                 print(f"      ⚠️  Missing: {parquet_file}")
@@ -1216,7 +1216,7 @@ class MemoryOptimizedClusterTrainer:
         
         for site in sites:
             try:
-                parquet_file = os.path.join(self.parquet_dir, f'{site}.parquet')
+                parquet_file = os.path.join(self.parquet_dir, site)
                 df_site = pd.read_parquet(parquet_file)
                 df_site = df_site.dropna(subset=[self.target_col])
                 
@@ -1333,7 +1333,7 @@ class MemoryOptimizedClusterTrainer:
         
         for site in sites:
             try:
-                parquet_file = os.path.join(self.parquet_dir, f'{site}.parquet')
+                parquet_file = os.path.join(self.parquet_dir, site)
                 
                 # Read parquet in chunks
                 import pyarrow.parquet as pq
