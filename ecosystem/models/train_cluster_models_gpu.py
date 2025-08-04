@@ -1,7 +1,26 @@
 """
-Memory-Optimized Cluster-Specific XGBoost Training for SAPFLUXNET Data
-Trains separate XGBoost models for each ecosystem cluster with external memory support
-Two-stage approach: 1) Preprocess to libsvm once, 2) Train models from preprocessed data
+GPU-Optimized Direct Parquet Cluster Model Training for SAPFLUXNET Data
+
+This script trains XGBoost models for each ecosystem cluster using GPU acceleration
+and direct parquet processing without requiring libsvm preprocessing.
+
+MODERNIZED WORKFLOW (GPU-Optimized Direct Processing):
+- GPU acceleration with automatic detection and fallback to CPU
+- Ultra-high memory support (tested with 545GB systems)
+- Direct parquet processing with chunked loading for large datasets
+- Flexible cluster assignment loading from CSV files
+- NO PREPROCESSING REQUIRED - works directly with parquet files
+
+Usage:
+    python train_cluster_models_gpu.py --cluster-file path/to/flexible_site_clusters_*.csv [--force-gpu]
+
+Features:
+- Automatic GPU detection with XGBoost compatibility testing
+- Adaptive memory thresholds based on available system memory
+- Chunked processing for datasets that don't fit in memory
+- GPU-optimized XGBoost parameters (deeper trees, higher learning rates)
+- Direct parquet processing eliminates preprocessing step
+- Comprehensive metrics and model saving
 """
 
 import pandas as pd
@@ -1098,97 +1117,360 @@ class MemoryOptimizedClusterTrainer:
             print(f"  ⚠️  Could not map feature importance: {e}")
             return None
     
+    def train_cluster_model_from_parquet(self, cluster_id, cluster_sites):
+        """Train XGBoost model for a specific cluster using parquet data"""
+        print(f"\n🎯 Training model for cluster {cluster_id}...")
+        
+        try:
+            # Load cluster data
+            cluster_data, sites = self.load_cluster_data_from_parquet(cluster_id, cluster_sites)
+            
+            if cluster_data is None:
+                # Streaming mode
+                return self._train_cluster_streaming(cluster_id, sites)
+            else:
+                # In-memory mode
+                return self._train_cluster_in_memory(cluster_id, cluster_data, sites)
+                
+        except Exception as e:
+            print(f"    ❌ Training failed for cluster {cluster_id}: {e}")
+            return None
+    
+    def load_cluster_data_from_parquet(self, cluster_id, cluster_sites):
+        """Load cluster data with memory-aware strategy"""
+        print(f"    📊 Loading data for cluster {cluster_id} ({len(cluster_sites)} sites)...")
+        
+        # Analyze cluster size first
+        total_rows = 0
+        total_size_mb = 0
+        successful_sites = []
+        
+        for site in cluster_sites:
+            parquet_file = os.path.join(self.parquet_dir, f'{site}_comprehensive.parquet')
+            
+            if not os.path.exists(parquet_file):
+                print(f"      ⚠️  Missing: {parquet_file}")
+                continue
+                
+            try:
+                # Get file size
+                file_size_mb = os.path.getsize(parquet_file) / (1024**2)
+                
+                # Sample to estimate rows
+                df_sample = pd.read_parquet(parquet_file, columns=[self.target_col])
+                df_sample = df_sample.dropna(subset=[self.target_col])
+                site_rows = len(df_sample)
+                
+                if site_rows == 0:
+                    print(f"      ⚠️  No valid data in {site}")
+                    del df_sample
+                    continue
+                
+                total_rows += site_rows
+                total_size_mb += file_size_mb
+                successful_sites.append(site)
+                
+                print(f"      ✅ {site}: {site_rows:,} rows, {file_size_mb:.1f} MB")
+                
+                del df_sample
+                gc.collect()
+                
+            except Exception as e:
+                print(f"      ❌ Error analyzing {site}: {e}")
+                continue
+        
+        if not successful_sites:
+            raise ValueError(f"No valid sites found for cluster {cluster_id}")
+        
+        print(f"    📊 Total: {total_rows:,} rows, {total_size_mb:.1f} MB from {len(successful_sites)} sites")
+        
+        # Decide on strategy based on memory settings
+        available_memory_gb = get_available_memory_gb()
+        use_streaming = (total_size_mb > self.streaming_threshold_mb) or (total_rows > self.streaming_threshold_rows)
+        
+        if use_streaming:
+            print(f"    💾 Using STREAMING approach (large dataset)")
+            return None, successful_sites  # None indicates streaming mode
+        else:
+            print(f"    🚀 Using IN-MEMORY approach")
+            return self._load_cluster_data_in_memory(cluster_id, successful_sites), successful_sites
+    
+    def _load_cluster_data_in_memory(self, cluster_id, sites):
+        """Load cluster data in memory"""
+        print(f"      📊 Loading cluster data in memory...")
+        
+        cluster_data = []
+        
+        for site in sites:
+            try:
+                parquet_file = os.path.join(self.parquet_dir, f'{site}_comprehensive.parquet')
+                df_site = pd.read_parquet(parquet_file)
+                df_site = df_site.dropna(subset=[self.target_col])
+                
+                if len(df_site) == 0:
+                    continue
+                
+                cluster_data.append(df_site)
+                
+                del df_site
+                gc.collect()
+                
+            except Exception as e:
+                print(f"        ❌ Error loading {site}: {e}")
+                continue
+        
+        if not cluster_data:
+            raise ValueError(f"No valid data loaded for cluster {cluster_id}")
+        
+        # Combine all site data
+        combined_df = pd.concat(cluster_data, ignore_index=True)
+        print(f"      ✅ Loaded {len(combined_df):,} rows in memory")
+        
+        # Clean up individual site data
+        del cluster_data
+        gc.collect()
+        
+        return combined_df
+    
+    def prepare_features(self, df):
+        """Prepare features for training (same as used in cluster training)"""
+        # Exclude columns (same as in train_cluster_models.py)
+        exclude_cols = ['TIMESTAMP', 'solar_TIMESTAMP', 'site', 'plant_id', 'Unnamed: 0', self.cluster_col]
+        
+        feature_cols = [col for col in df.columns 
+                       if col not in exclude_cols + [self.target_col]
+                       and not col.endswith('_flags')
+                       and not col.endswith('_md')]
+        
+        # Extract and clean features
+        X_df = df[feature_cols].copy()
+        
+        # Convert boolean columns to numeric (True=1, False=0)
+        for col in X_df.columns:
+            if X_df[col].dtype == bool:
+                X_df[col] = X_df[col].astype(int)
+            elif X_df[col].dtype == 'object':
+                # Try to convert object columns to numeric, fill non-numeric with 0
+                X_df[col] = pd.to_numeric(X_df[col], errors='coerce').fillna(0)
+        
+        # Fill remaining NaN values with 0
+        X = X_df.fillna(0).values
+        
+        return X, feature_cols
+    
+    def _train_cluster_in_memory(self, cluster_id, df, sites):
+        """Train cluster model with in-memory data"""
+        print(f"      🚀 Training in-memory model for cluster {cluster_id}...")
+        
+        # Prepare features
+        X, feature_cols = self.prepare_features(df)
+        y = df[self.target_col]
+        
+        print(f"      📊 Training data: {len(X):,} rows, {len(feature_cols)} features")
+        print(f"      📊 Sites: {len(sites)} ({', '.join(sites[:5])}{'...' if len(sites) > 5 else ''})")
+        
+        # Split data for validation
+        from sklearn.model_selection import train_test_split
+        X_train, X_test, y_train, y_test = train_test_split(
+            X, y, test_size=0.2, random_state=42, shuffle=True
+        )
+        
+        print(f"      📊 Train: {len(X_train):,} rows, Test: {len(X_test):,} rows")
+        
+        # Get XGBoost parameters
+        xgb_params = self._get_xgboost_params()
+        
+        # Train model
+        print(f"      🎯 Training XGBoost model...")
+        log_memory_usage("Before training")
+        
+        import xgboost as xgb
+        model = xgb.XGBRegressor(**xgb_params)
+        model.fit(X_train, y_train)
+        
+        log_memory_usage("After training")
+        
+        # Make predictions
+        y_pred_train = model.predict(X_train)
+        y_pred_test = model.predict(X_test)
+        
+        # Calculate metrics
+        metrics = self._calculate_metrics(cluster_id, len(X), len(feature_cols), 
+                                        y_train, y_test, y_pred_train, y_pred_test)
+        
+        # Save model and results
+        model_info = self._save_model_and_importance(cluster_id, model, feature_cols, metrics)
+        
+        # Clean up
+        del X, y, X_train, X_test, y_train, y_test, df
+        gc.collect()
+        
+        print(f"      ✅ Cluster {cluster_id} training completed!")
+        print(f"      📊 Train R²: {metrics['train_r2']:.3f}, Test R²: {metrics['test_r2']:.3f}")
+        
+        return metrics
+    
+    def _train_cluster_streaming(self, cluster_id, sites):
+        """Train cluster model with streaming data (for large clusters)"""
+        print(f"      💾 Training streaming model for cluster {cluster_id}...")
+        
+        # Load data in smaller chunks and combine
+        cluster_data = []
+        total_rows = 0
+        
+        for site in sites:
+            try:
+                parquet_file = os.path.join(self.parquet_dir, f'{site}_comprehensive.parquet')
+                
+                # Read parquet in chunks
+                import pyarrow.parquet as pq
+                parquet_table = pq.read_table(parquet_file)
+                total_file_rows = len(parquet_table)
+                
+                # Process in chunks
+                for start_idx in range(0, total_file_rows, self.chunk_size):
+                    end_idx = min(start_idx + self.chunk_size, total_file_rows)
+                    
+                    # Read chunk
+                    chunk_table = parquet_table.slice(start_idx, end_idx - start_idx)
+                    chunk = chunk_table.to_pandas()
+                    chunk = chunk.dropna(subset=[self.target_col])
+                    
+                    if len(chunk) > 0:
+                        cluster_data.append(chunk)
+                        total_rows += len(chunk)
+                    
+                    del chunk
+                    gc.collect()
+                    
+                    # Prevent memory overflow
+                    if total_rows > 5000000:  # 5M row limit for safety
+                        print(f"        ⚠️  Reached row limit, stopping at {total_rows:,} rows")
+                        break
+                
+                del parquet_table
+                gc.collect()
+                
+                if total_rows > 5000000:
+                    break
+                    
+            except Exception as e:
+                print(f"        ❌ Error loading {site}: {e}")
+                continue
+        
+        if not cluster_data:
+            raise ValueError(f"No data loaded for cluster {cluster_id}")
+        
+        # Combine chunks
+        combined_df = pd.concat(cluster_data, ignore_index=True)
+        print(f"      ✅ Loaded {len(combined_df):,} rows via chunked streaming")
+        
+        # Clean up chunks
+        del cluster_data
+        gc.collect()
+        
+        # Now train with the combined data
+        return self._train_cluster_in_memory(cluster_id, combined_df, sites)
+
     def train_all_cluster_models(self, force_reprocess=False):
-        """Train models for all clusters with two-stage approach"""
-        print("🚀 Starting Memory-Optimized Cluster Model Training (Two-Stage Approach)")
+        """Train models for all clusters using direct parquet processing (GPU-optimized)"""
+        print("🚀 Starting GPU-Optimized Cluster Model Training")
         print("=" * 80)
+        print(f"🎮 GPU enabled: {self.use_gpu}")
+        print(f"📊 Cluster assignments: {bool(self.cluster_assignments)}")
+        
+        if not self.cluster_assignments:
+            raise ValueError("No cluster assignments loaded! Provide cluster_file parameter or call load_cluster_assignments_from_csv()")
         
         # Analyze data requirements
         estimated_size_gb, estimated_rows, total_files = self.analyze_data_requirements()
         optimal_memory = calculate_optimal_memory_usage()
         
-        print(f"\n💾 Two-stage approach: Preprocess once, train multiple times")
         print(f"📊 Estimated data size: {estimated_size_gb:.1f} GB")
         print(f"🧠 Optimal memory usage: {optimal_memory:.1f} GB")
         
-        # Load preprocessed files (NEW WORKFLOW: preprocessing done separately)
-        preprocessed_files = self.load_preprocessed_files()
-        
-        if not preprocessed_files:
-            raise ValueError("No preprocessed libsvm files found! Run preprocessing first:\n" +
-                           "  python preprocess_cluster_data.py --cluster-csv path/to/clusters.csv")
-        
         try:
-            # Skip preprocessing stage - already done by preprocess_cluster_data.py
-            print(f"✅ Using {len(preprocessed_files)} preprocessed cluster files")
-            
-            # STAGE 2: Train models from preprocessed data
-            print("\n🏋️  TRAINING STAGE: Training models from preprocessed data")
+            print(f"\n🏋️  DIRECT PARQUET PROCESSING: GPU-accelerated training")
             print("=" * 70)
             
+            all_model_info = []
             all_metrics = []
             
-            for cluster_id, preprocessed_info in sorted(preprocessed_files.items()):
+            # Group sites by cluster
+            clusters = {}
+            for site, cluster_id in self.cluster_assignments.items():
+                if cluster_id not in clusters:
+                    clusters[cluster_id] = []
+                clusters[cluster_id].append(site)
+            
+            # Train each cluster
+            for cluster_id in sorted(clusters.keys()):
+                cluster_sites = clusters[cluster_id]
+                
                 print(f"\n{'='*60}")
                 print(f"TRAINING CLUSTER {cluster_id} MODEL")
                 print(f"{'='*60}")
-                
-                cluster_file = preprocessed_info['libsvm_file']
-                feature_cols = preprocessed_info['metadata']['feature_names']
-                total_rows = preprocessed_info['metadata']['total_rows']
-                
-                print(f"Preprocessed file: {os.path.basename(cluster_file)}")
-                print(f"Total rows: {total_rows:,}, Features: {len(feature_cols)}")
+                print(f"Sites: {len(cluster_sites)} ({', '.join(cluster_sites[:3])}{'...' if len(cluster_sites) > 3 else ''})")
                 
                 log_memory_usage(f"Before training cluster {cluster_id}")
                 
                 try:
-                    # Train model from preprocessed data
-                    metrics = self.train_cluster_model_from_libsvm(
-                        cluster_id, cluster_file, feature_cols, total_rows
-                    )
+                    # Train cluster model directly from parquet files
+                    metrics = self.train_cluster_model_from_parquet(cluster_id, cluster_sites)
                     
-                    all_metrics.append(metrics)
-                    log_memory_usage(f"After training cluster {cluster_id}")
-                    
+                    if metrics:
+                        all_metrics.append(metrics)
+                        all_model_info.append({
+                            'cluster': cluster_id,
+                            'features': metrics.get('feature_count', 0),
+                            'rows': metrics.get('total_rows', 0),
+                            'r2': metrics['test_r2'],
+                            'rmse': metrics['test_rmse']
+                        })
+                        print(f"✅ Cluster {cluster_id} training completed successfully")
+                    else:
+                        print(f"❌ Cluster {cluster_id} training failed")
+                        
                 except Exception as e:
                     print(f"❌ Error training cluster {cluster_id}: {e}")
+                    import traceback
+                    traceback.print_exc()
                     continue
+                
+                log_memory_usage(f"After training cluster {cluster_id}")
             
-            # Save summary metrics
+            # Print summary
             if all_metrics:
-                metrics_df = pd.DataFrame(all_metrics)
-                metrics_path = os.path.join(self.results_dir, f'cluster_model_metrics_{self.timestamp}.csv')
-                metrics_df.to_csv(metrics_path, index=False)
-                print(f"\n💾 All metrics saved: {metrics_path}")
+                print(f"\n🎉 TRAINING COMPLETED!")
+                print("=" * 50)
+                print(f"Successfully trained: {len(all_metrics)} cluster models")
                 
-                # Print summary
-                print(f"\n📊 TRAINING SUMMARY")
-                print(f"=" * 30)
-                print(f"Total clusters trained: {len(all_metrics)}")
-                print(f"Average test R²: {metrics_df['test_r2'].mean():.4f} ± {metrics_df['test_r2'].std():.4f}")
-                print(f"Average test RMSE: {metrics_df['test_rmse'].mean():.4f} ± {metrics_df['test_rmse'].std():.4f}")
+                avg_r2 = sum(m['test_r2'] for m in all_metrics) / len(all_metrics)
+                avg_rmse = sum(m['test_rmse'] for m in all_metrics) / len(all_metrics)
                 
-                for _, row in metrics_df.iterrows():
-                    print(f"  Cluster {int(row['cluster'])}: R² = {row['test_r2']:.4f}, RMSE = {row['test_rmse']:.4f}")
+                print(f"Average Test R²: {avg_r2:.4f}")
+                print(f"Average Test RMSE: {avg_rmse:.4f}")
                 
-                print(f"\n✅ Two-stage cluster training completed successfully!")
-                print(f"📁 Results saved to: {self.results_dir}")
-                print(f"💡 Preprocessed files saved for future use in: {self.preprocessed_dir}")
-                return metrics_df
+                # Show per-cluster performance
+                print(f"\nPer-cluster performance:")
+                for info in sorted(all_model_info, key=lambda x: x['r2'], reverse=True):
+                    print(f"  Cluster {info['cluster']}: R² = {info['r2']:.4f}, RMSE = {info['rmse']:.4f} ({info['rows']:,} samples)")
+                
+                return all_metrics
             else:
-                print(f"\n❌ No models were trained successfully")
-                return None
+                print(f"\n❌ No models were trained successfully!")
+                return []
                 
         except Exception as e:
             print(f"\n❌ Training failed: {e}")
+            import traceback
+            traceback.print_exc()
             raise
 
 def main():
     """Main function to run memory-optimized cluster training"""
-    parser = argparse.ArgumentParser(description="Memory-Optimized Cluster Model Training")
-    parser.add_argument('--mode', choices=['preprocess', 'train', 'both'], default='both',
-                        help="Mode: 'preprocess' (DEPRECATED - use preprocess_cluster_data.py), 'train' (train from existing), 'both' (default)")
+    parser = argparse.ArgumentParser(description="GPU-Optimized Direct Parquet Cluster Model Training")
+
     parser.add_argument('--force-reprocess', action='store_true',
                         help="Force reprocessing of all clusters even if files exist")
     parser.add_argument('--parquet-dir', default='../../processed_parquet',
@@ -1204,7 +1486,7 @@ def main():
     
     print("🌍 SAPFLUXNET GPU-Optimized Cluster Model Training")
     print("=" * 60)
-    print(f"Mode: {args.mode.upper()}")
+    print(f"Mode: DIRECT PARQUET PROCESSING")
     print(f"Started at: {datetime.now()}")
     if args.cluster_file:
         print(f"🎯 Using specific cluster file: {os.path.basename(args.cluster_file)}")
@@ -1213,13 +1495,12 @@ def main():
     if args.force_gpu:
         print(f"🔥 Force GPU flag enabled")
     print()
-    print("📋 MODERNIZED WORKFLOW (GPU-Optimized):")
+    print("📋 MODERNIZED WORKFLOW (GPU-Optimized Direct Parquet Processing):")
     print("   ✅ GPU acceleration with automatic detection")
     print("   ✅ Ultra-high memory support")
+    print("   ✅ Direct parquet processing (no libsvm preprocessing needed)")
     print("   ✅ Flexible cluster assignment loading")
-    print("   1. First run: python preprocess_cluster_data.py --cluster-csv path/to/clusters.csv")
-    print("   2. Then run:  python train_cluster_models_gpu.py [--mode train] [--force-gpu]")
-    print("   💡 Preprocessing is now separate for better balanced sampling!")
+    print("   💡 Usage: python train_cluster_models_gpu.py --cluster-file path/to/flexible_site_clusters_*.csv")
     print()
     print("💡 TIP: Run 'python list_clustering_results.py' to see available clustering results")
     
@@ -1232,65 +1513,18 @@ def main():
             force_gpu=args.force_gpu
         )
         
-        if args.mode == 'preprocess':
-            # Preprocessing is now handled by separate script
-            print("\n🔧 PREPROCESSING MODE: Use separate preprocessing script")
-            print("❌ Preprocessing is now handled by a separate script for better control!")
-            print("\n💡 SOLUTION:")
-            print("   Run: python preprocess_cluster_data.py --cluster-csv path/to/clusters.csv")
-            print("   Or:  python preprocess_cluster_data.py --cluster-csv auto")
-            print("\n📋 This provides:")
-            print("   - Balanced sampling options")
-            print("   - Better memory management") 
-            print("   - Non-destructive workflow")
-            return
-            
-        elif args.mode == 'train':
-            # Only train from existing libsvm files
-            print("\n🏋️  TRAINING MODE: Training from existing preprocessed files")
-            preprocessed_files = trainer.load_preprocessed_files()
-            
-            if not preprocessed_files:
-                print("❌ No preprocessed files found!")
-                print("\n💡 SOLUTION:")
-                print("   Run: python preprocess_cluster_data.py --cluster-csv path/to/clusters.csv")
-                print("   Or:  python preprocess_cluster_data.py --cluster-csv auto")
-                return
-            
-            # Train from existing files
-            all_metrics = []
-            for cluster_id, preprocessed_info in sorted(preprocessed_files.items()):
-                print(f"\n{'='*60}")
-                print(f"TRAINING CLUSTER {cluster_id} MODEL")
-                print(f"{'='*60}")
-                
-                try:
-                    metrics = trainer.train_cluster_model_from_libsvm(
-                        cluster_id, 
-                        preprocessed_info['libsvm_file'],
-                        preprocessed_info['metadata']['feature_names'],
-                        preprocessed_info['metadata']['total_rows']
-                    )
-                    all_metrics.append(metrics)
-                except Exception as e:
-                    print(f"❌ Error training cluster {cluster_id}: {e}")
-                    continue
-            
-            if all_metrics:
-                metrics_df = pd.DataFrame(all_metrics)
-                metrics_path = os.path.join(trainer.results_dir, f'cluster_model_metrics_{trainer.timestamp}.csv')
-                metrics_df.to_csv(metrics_path, index=False)
-                print(f"\n✅ Training completed! Results saved to: {metrics_path}")
-            
-        else:  # both
-            # Full two-stage approach
-            metrics_df = trainer.train_all_cluster_models(args.force_reprocess)
-            
-            if metrics_df is not None:
-                print(f"\n🎉 Two-stage training completed successfully!")
-                print(f"📁 Results saved to: {trainer.results_dir}")
-            else:
-                print(f"\n❌ Training failed - no models were created")
+        # Modern direct parquet processing - no more libsvm preprocessing needed!
+        print("\n🚀 Starting GPU-optimized training with direct parquet processing...")
+        
+        # Train all cluster models using direct parquet processing
+        all_metrics = trainer.train_all_cluster_models(args.force_reprocess)
+        
+        if all_metrics:
+            print(f"\n🎉 GPU-optimized training completed successfully!")
+            print(f"📁 Results saved to: {trainer.results_dir}")
+            print(f"🎮 GPU acceleration: {'ENABLED' if trainer.use_gpu else 'DISABLED'}")
+        else:
+            print(f"\n❌ Training failed - no models were created")
                 
     except Exception as e:
         print(f"\n❌ Training failed with error: {e}")
