@@ -1039,7 +1039,13 @@ class MemoryOptimizedClusterTrainer:
         
         # Save feature importance
         try:
-            importance = model.get_score(importance_type='gain')
+            # Handle both XGBRegressor and Booster objects
+            if hasattr(model, 'get_booster'):
+                # XGBRegressor object - get the underlying booster
+                importance = model.get_booster().get_score(importance_type='gain')
+            else:
+                # Booster object - use directly
+                importance = model.get_score(importance_type='gain')
             importance_df = pd.DataFrame({
                 'feature_index': list(importance.keys()),
                 'feature_name': [feature_cols[int(k[1:])] if k.startswith('f') and int(k[1:]) < len(feature_cols) else k 
