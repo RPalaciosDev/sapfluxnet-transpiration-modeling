@@ -250,7 +250,7 @@ clusterer.quick_visualize(method='pca')
             'title': 'Feature comparison with visualizations',
             'code': """
 # Compare different feature sets
-for feature_set in ['geographic', 'biome', 'climate', 'comprehensive']:
+    for feature_set in ['geographic', 'biome', 'climate', 'comprehensive', 'plant_functional', 'v2_hybrid', 'v3_hybrid']:
     clusterer = FlexibleEcosystemClusterer(feature_set_name=feature_set)
     clusterer.run_clustering()
     clusterer.quick_visualize(method='pca', show=False)

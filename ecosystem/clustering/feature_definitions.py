@@ -146,6 +146,82 @@ class FeatureManager:
                     'koppen_geiger_code'  # Climate classification based purely on temperature and precipitation
                 ],
                 description='Pure environmental/climate variables and climate classifications without biological traits'
+            ),
+            
+            # Plant functional groups clustering
+            'plant_functional': FeatureSet(
+                name='plant_functional',
+                numeric_features=[
+                    # Plant physiological characteristics
+                    'pl_age', 'pl_dbh', 'pl_height', 'pl_leaf_area', 
+                    'pl_sapw_area', 'pl_sapw_depth',
+                    # Derived plant indices
+                    'sapwood_leaf_ratio', 'tree_volume_index',
+                    # Stand-level characteristics that reflect plant community
+                    'stand_age', 'stand_height', 'basal_area', 'tree_density', 'leaf_area_index'
+                ],
+                categorical_features=[
+                    'species_functional_group_code', 'leaf_habit_code',
+                    'tree_size_class_code', 'tree_age_class_code', 'pl_social_code'
+                ],
+                description='Plant physiological traits, functional group classifications, and stand characteristics for functional clustering'
+            ),
+            
+            # Legacy feature sets from clustering_v2.py
+            'v2_core': FeatureSet(
+                name='v2_core',
+                numeric_features=[
+                    'mean_annual_temp', 'mean_annual_precip', 'aridity_index',
+                    'latitude_abs', 'elevation', 'seasonal_temp_range', 'seasonal_precip_range'
+                ],
+                categorical_features=[],
+                description='Core ecosystem features from clustering_v2 (focused on climate/geographic fundamentals)'
+            ),
+            
+            'v2_advanced': FeatureSet(
+                name='v2_advanced',
+                numeric_features=[
+                    'temp_precip_ratio', 'seasonality_index', 'climate_continentality',
+                    'elevation_latitude_ratio', 'aridity_seasonality', 'temp_elevation_ratio', 'precip_latitude_ratio'
+                ],
+                categorical_features=[],
+                description='Advanced derived features from clustering_v2 (engineered climate interactions)'
+            ),
+            
+            'v2_hybrid': FeatureSet(
+                name='v2_hybrid',
+                numeric_features=[
+                    # Geographic/Climate (ecosystem-defining)
+                    'longitude', 'latitude', 'latitude_abs', 'mean_annual_temp', 'mean_annual_precip',
+                    'aridity_index', 'elevation', 'seasonal_temp_range', 'seasonal_precip_range',
+                    # Engineered/Derived (ecosystem indicators)
+                    'temp_precip_ratio', 'seasonality_index', 'climate_continentality',
+                    'elevation_latitude_ratio', 'aridity_seasonality', 'temp_elevation_ratio', 'precip_latitude_ratio'
+                ],
+                categorical_features=[
+                    'climate_zone_code', 'biome_code', 'igbp_class_code', 'leaf_habit_code',
+                    'soil_texture_code', 'species_functional_group_code', 'koppen_geiger_code_encoded'
+                ],
+                description='Hybrid ecosystem-focused features from clustering_v2 (climate + derived + categorical)'
+            ),
+            
+            # Legacy feature set from clustering_v3.py
+            'v3_hybrid': FeatureSet(
+                name='v3_hybrid',
+                numeric_features=[
+                    # Geographic/Climate features
+                    'longitude', 'latitude', 'elevation', 
+                    'mean_annual_temp', 'mean_annual_precip',
+                    # Seasonal features
+                    'seasonal_temp_range', 'seasonal_precip_range',
+                    # Stand characteristics
+                    'basal_area', 'tree_density', 'leaf_area_index'
+                ],
+                categorical_features=[
+                    'species_functional_group_code', 'leaf_habit_code',
+                    'biome_code', 'igbp_class_code'
+                ],
+                description='Simplified ecological features from clustering_v3 (geographic + climate + stand + species)'
             )
         }
     

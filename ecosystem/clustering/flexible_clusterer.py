@@ -649,6 +649,37 @@ class FlexibleEcosystemClusterer:
         )
         
         return self.visualizer.create_interactive_dashboard()
+    
+    def visualize_clustering(self, strategies: List[Dict] = None, 
+                           include_3d: bool = True, include_dashboard: bool = True,
+                           show_plots: bool = False) -> Dict[str, str]:
+        """
+        Generate comprehensive clustering visualizations using the existing visualizer.
+        """
+        if not self.clustering_results:
+            raise ValueError("No clustering results available. Run clustering first.")
+        
+        # Set up visualizer with clustering data
+        clustering_df = self.clustering_results['clustering_df']
+        features = self.clustering_results['features']
+        best_strategy = self.clustering_results['best_strategy']
+        
+        self.visualizer.set_clustering_data(
+            clustering_df=clustering_df,
+            features=features,
+            cluster_labels=best_strategy['labels'],
+            strategy_info=best_strategy
+        )
+        
+        # Store strategies for comparison plots if provided
+        if strategies:
+            self.visualizer.set_strategy_comparison(strategies)
+        
+        # Use the existing comprehensive visualization method
+        return self.visualizer.generate_visualization_report(
+            include_3d=include_3d,
+            include_dashboard=include_dashboard
+        )
 
 
 if __name__ == "__main__":

@@ -18,10 +18,10 @@ from sklearn.decomposition import PCA
 from sklearn.manifold import TSNE
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import silhouette_samples, silhouette_score
+from datetime import datetime
 import warnings
 from pathlib import Path
 import json
-from datetime import datetime
 
 warnings.filterwarnings('ignore')
 
@@ -61,6 +61,144 @@ class ClusteringVisualizer:
         
         print(f"🎨 ClusteringVisualizer initialized")
         print(f"📁 Output directory: {output_dir}")
+    
+    def _get_discrete_colors(self, n_clusters: int) -> List[str]:
+        """
+        Get a list of distinct colors for clusters.
+        
+        Args:
+            n_clusters: Number of clusters to create colors for
+            
+        Returns:
+            List of color strings
+        """
+        # Define a good set of distinct colors
+        base_colors = [
+            '#1f77b4',  # blue
+            '#ff7f0e',  # orange  
+            '#2ca02c',  # green
+            '#d62728',  # red
+            '#9467bd',  # purple
+            '#8c564b',  # brown
+            '#e377c2',  # pink
+            '#7f7f7f',  # gray
+            '#bcbd22',  # olive
+            '#17becf',  # cyan
+        ]
+        
+        # Repeat colors if we need more than 10
+        colors = (base_colors * ((n_clusters // len(base_colors)) + 1))[:n_clusters]
+        return colors
+    
+    def calculate_feature_importance(self) -> Dict[str, float]:
+        """
+        Calculate feature importance for clustering using various methods.
+        
+        Returns:
+            Dictionary with feature names as keys and importance scores as values
+        """
+        if not self.clustering_data:
+            raise ValueError("No clustering data set. Call set_clustering_data() first.")
+        
+        df = self.clustering_data['df']
+        features = self.clustering_data['features']
+        
+        # Prepare feature matrix
+        X = df[features].values
+        scaler = StandardScaler()
+        X_scaled = scaler.fit_transform(X)
+        
+        # Method 1: PCA component analysis
+        pca = PCA()
+        pca.fit(X_scaled)
+        
+        # Calculate feature importance based on PCA loadings
+        # Weight by explained variance ratio
+        feature_importance = {}
+        
+        for i, feature in enumerate(features):
+            importance = 0
+            for j, (loading, var_ratio) in enumerate(zip(pca.components_.T[i], pca.explained_variance_ratio_)):
+                importance += abs(loading) * var_ratio
+            feature_importance[feature] = importance
+        
+        # Method 2: Variance-based importance (for numeric features)
+        feature_vars = np.var(X_scaled, axis=0)
+        
+        # Combine both methods
+        combined_importance = {}
+        for i, feature in enumerate(features):
+            pca_score = feature_importance[feature]
+            var_score = feature_vars[i] / np.sum(feature_vars)  # Normalize
+            # Weight PCA more heavily as it considers feature relationships
+            combined_importance[feature] = 0.7 * pca_score + 0.3 * var_score
+        
+        # Normalize to sum to 1
+        total_importance = sum(combined_importance.values())
+        if total_importance > 0:
+            combined_importance = {k: v/total_importance for k, v in combined_importance.items()}
+        
+        return combined_importance
+    
+    def plot_feature_importance(self, save: bool = True) -> str:
+        """
+        Create feature importance visualization.
+        
+        Args:
+            save: Whether to save the plot
+            
+        Returns:
+            Path to saved plot file
+        """
+        if not self.clustering_data:
+            raise ValueError("No clustering data set. Call set_clustering_data() first.")
+        
+        # Calculate feature importance
+        importance_scores = self.calculate_feature_importance()
+        
+        # Sort by importance
+        sorted_features = sorted(importance_scores.items(), key=lambda x: x[1], reverse=True)
+        feature_names = [item[0] for item in sorted_features]
+        importance_values = [item[1] for item in sorted_features]
+        
+        # Create plot
+        fig, ax = plt.subplots(figsize=(12, max(6, len(feature_names) * 0.4)))
+        
+        # Horizontal bar plot
+        bars = ax.barh(range(len(feature_names)), importance_values, 
+                      color='steelblue', alpha=0.7, edgecolor='black', linewidth=0.5)
+        
+        # Customize plot
+        ax.set_yticks(range(len(feature_names)))
+        ax.set_yticklabels(feature_names, fontsize=10)
+        ax.set_xlabel('Feature Importance Score', fontsize=12)
+        ax.set_title(f'Feature Importance for Clustering - {self.clustering_data["strategy"]["name"]}', 
+                    fontsize=14, fontweight='bold')
+        
+        # Add value labels on bars
+        for i, (bar, value) in enumerate(zip(bars, importance_values)):
+            ax.text(bar.get_width() + 0.001, bar.get_y() + bar.get_height()/2,
+                   f'{value:.3f}', va='center', ha='left', fontsize=9)
+        
+        # Add grid
+        ax.grid(True, alpha=0.3, axis='x')
+        ax.set_axisbelow(True)
+        
+        # Tight layout
+        plt.tight_layout()
+        
+        # Save plot
+        if save:
+            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+            filename = f'feature_importance_{timestamp}.png'
+            filepath = self.output_dir / filename
+            plt.savefig(filepath, dpi=300, bbox_inches='tight')
+            plt.close()
+            print(f"💾 Saved feature importance plot: {filepath}")
+            return str(filepath)
+        else:
+            plt.show()
+            return ""
     
     def set_clustering_data(self, clustering_df: pd.DataFrame, features: List[str], 
                            cluster_labels: np.ndarray, strategy_info: Dict[str, Any]):
@@ -217,20 +355,50 @@ class ClusteringVisualizer:
         scaler = StandardScaler()
         X_scaled = scaler.fit_transform(X)
         
+        # Check if we have enough features for 3D visualization
+        n_features = X_scaled.shape[1]
+        if n_features < 3:
+            print(f"⚠️  Skipping 3D visualization: only {n_features} features available (need 3+)")
+            return ""
+        
         # Apply dimensionality reduction
         if method.lower() == 'pca':
-            reducer = PCA(n_components=3)
-            X_3d = reducer.fit_transform(X_scaled)
+            reducer = PCA(n_components=min(3, n_features))
+            X_reduced = reducer.fit_transform(X_scaled)
+            
+            # If we got fewer than 3 components, pad with zeros
+            if X_reduced.shape[1] < 3:
+                padding = np.zeros((X_reduced.shape[0], 3 - X_reduced.shape[1]))
+                X_3d = np.hstack([X_reduced, padding])
+            else:
+                X_3d = X_reduced
+                
             explained_var = reducer.explained_variance_ratio_
-            labels = [f'PC{i+1} ({explained_var[i]:.1%})' for i in range(3)]
+            labels = [f'PC{i+1} ({explained_var[i]:.1%})' if i < len(explained_var) else f'PC{i+1} (0.0%)' for i in range(3)]
             title = f'3D PCA Feature Space - {self.clustering_data["strategy"]["name"]}'
         elif method.lower() == 'tsne':
-            reducer = TSNE(n_components=3, random_state=42, perplexity=min(30, len(df)-1))
-            X_3d = reducer.fit_transform(X_scaled)
+            # t-SNE needs at least 4 samples and can handle fewer features better
+            if len(df) < 4:
+                print(f"⚠️  Skipping 3D t-SNE: only {len(df)} samples available (need 4+)")
+                return ""
+            reducer = TSNE(n_components=min(3, n_features), random_state=42, perplexity=min(30, len(df)-1))
+            X_reduced = reducer.fit_transform(X_scaled)
+            
+            # If we got fewer than 3 components, pad with zeros
+            if X_reduced.shape[1] < 3:
+                padding = np.zeros((X_reduced.shape[0], 3 - X_reduced.shape[1]))
+                X_3d = np.hstack([X_reduced, padding])
+            else:
+                X_3d = X_reduced
+                
             labels = [f't-SNE {i+1}' for i in range(3)]
             title = f'3D t-SNE Feature Space - {self.clustering_data["strategy"]["name"]}'
         else:
             raise ValueError("Method must be 'pca' or 'tsne'")
+        
+        # Get discrete colors for clusters
+        cluster_colors = self._get_discrete_colors(len(df['cluster'].unique()))
+        point_colors = [cluster_colors[int(cluster)] for cluster in df['cluster']]
         
         # Create interactive 3D plot
         fig = go.Figure(data=go.Scatter3d(
@@ -240,10 +408,7 @@ class ClusteringVisualizer:
             mode='markers',
             marker=dict(
                 size=8,
-                color=df['cluster'],
-                colorscale='Plotly3',
-                showscale=True,
-                colorbar=dict(title="Cluster"),
+                color=point_colors,
                 line=dict(width=1, color='black')
             ),
             text=df['site'],
@@ -503,9 +668,12 @@ class ClusteringVisualizer:
         fig, ax = plt.subplots(figsize=self.figsize)
         
         # Plot points colored by cluster
+        n_clusters = len(df['cluster'].unique())
+        # Use tab10 for up to 10 clusters, then tab20 for more
+        cmap = 'tab10' if n_clusters <= 10 else 'tab20'
         scatter = ax.scatter(df['longitude'], df['latitude'], 
                            c=df['cluster'], 
-                           cmap='tab10',
+                           cmap=cmap,
                            s=100, alpha=0.7, edgecolors='black', linewidth=1)
         
         # Add site labels for small datasets
@@ -595,6 +763,10 @@ class ClusteringVisualizer:
             specs=specs
         )
         
+        # Get discrete colors for clusters
+        cluster_colors = self._get_discrete_colors(len(df['cluster'].unique()))
+        point_colors = [cluster_colors[int(cluster)] for cluster in df['cluster']]
+        
         # Plot 1: PCA Feature Space
         fig.add_trace(
             go.Scatter(
@@ -602,8 +774,7 @@ class ClusteringVisualizer:
                 y=X_pca[:, 1],
                 mode='markers',
                 marker=dict(
-                    color=df['cluster'],
-                    colorscale='Plotly3',
+                    color=point_colors,
                     size=10,
                     line=dict(width=1, color='black')
                 ),
@@ -742,6 +913,9 @@ class ClusteringVisualizer:
             # Strategy comparison (if available)
             if self.strategy_results:
                 visualizations['strategy_comparison'] = self.plot_strategy_comparison(show=False)
+            
+            # Feature importance
+            visualizations['feature_importance'] = self.plot_feature_importance(save=True)
             
             # 3D interactive plots
             if include_3d:

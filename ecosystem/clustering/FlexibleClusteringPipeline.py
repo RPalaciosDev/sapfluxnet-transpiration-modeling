@@ -54,11 +54,11 @@ Examples:
     parser.add_argument('--data-dir', default='../../processed_parquet',
                        help='Directory containing processed parquet files (default: ../../processed_parquet)')
     parser.add_argument('--output-dir', default='../evaluation/clustering_results',
-                       help='Directory to save clustering results (default: ../evaluation/clustering_results)')
+                       help='Base directory for clustering results. Auto-creates subdirectories with pattern feature-set_date (default: ../evaluation/clustering_results)')
     
     # Feature selection (the main improvement!)
     parser.add_argument('--feature-set', 
-                       choices=['geographic', 'biome', 'climate', 'ecological', 'comprehensive', 'performance', 'environmental'],
+                       choices=['geographic', 'biome', 'climate', 'ecological', 'comprehensive', 'performance', 'environmental', 'plant_functional', 'v2_core', 'v2_advanced', 'v2_hybrid', 'v3_hybrid'],
                        default='comprehensive',
                        help='Feature set to use for clustering (default: comprehensive)')
     
@@ -113,13 +113,13 @@ Examples:
     
     # Print header
     if verbose:
-        print("🧬 FLEXIBLE ECOSYSTEM CLUSTERING PIPELINE")
+        print("*** FLEXIBLE ECOSYSTEM CLUSTERING PIPELINE ***")
         print("=" * 60)
-        print(f"⏰ Started at: {datetime.now()}")
+        print(f"Started at: {datetime.now()}")
     
     # Handle list feature sets
     if args.list_feature_sets:
-        print("\n🎯 AVAILABLE FEATURE SETS:")
+        print("\n>> AVAILABLE FEATURE SETS:")
         print("=" * 40)
         list_available_feature_sets()
         
@@ -137,28 +137,39 @@ Examples:
         if not cluster_range:
             raise ValueError("No valid cluster numbers provided")
     except ValueError as e:
-        print(f"❌ Invalid cluster range '{args.clusters}': {e}")
-        print("💡 Use format like: 3,4,5,6 or 2,3,4,5,6,7,8,9,10")
+        print(f"ERROR: Invalid cluster range '{args.clusters}': {e}")
+        print("TIP: Use format like: 3,4,5,6 or 2,3,4,5,6,7,8,9,10")
         return False
     
     if verbose:
-        print(f"📁 Data directory: {args.data_dir}")
-        print(f"📁 Output directory: {args.output_dir}")
-        print(f"🧬 Feature set: {args.feature_set}")
-        print(f"🎲 Cluster range: {cluster_range}")
-        print(f"🔧 Missing value strategy: {args.missing_strategy}")
-        print(f"📊 Minimum feature availability: {args.min_availability:.1%}")
+        print(f"Data directory: {args.data_dir}")
+        print(f"Output directory: {args.output_dir}")
+        print(f">> Feature set: {args.feature_set}")
+        print(f"Cluster range: {cluster_range}")
+        print(f"Missing value strategy: {args.missing_strategy}")
+        print(f"Minimum feature availability: {args.min_availability:.1%}")
         
         if args.site_split_file:
-            print(f"🎯 Site split file: {args.site_split_file}")
+            print(f"Site split file: {args.site_split_file}")
         else:
-            print(f"⚠️  No site split - clustering all sites")
+            print(f"WARNING: No site split - clustering all sites")
     
     try:
+        # Create dynamic output directory with pattern: feature-set_date
+        from datetime import datetime as dt
+        from pathlib import Path
+        
+        timestamp = dt.now().strftime('%Y%m%d_%H%M%S')
+        dynamic_output_dir = Path(args.output_dir) / f"{args.feature_set}_{timestamp}"
+        dynamic_output_dir.mkdir(parents=True, exist_ok=True)
+        
+        if verbose:
+            print(f"Dynamic output directory: {dynamic_output_dir}")
+        
         # Create the flexible clusterer
         clusterer = FlexibleEcosystemClusterer(
             data_dir=args.data_dir,
-            output_dir=args.output_dir,
+            output_dir=str(dynamic_output_dir),
             feature_set_name=args.feature_set,
             site_split_file=args.site_split_file,
             verbose=verbose
@@ -172,7 +183,7 @@ Examples:
         if args.analyze_only:
             if verbose:
                 print(f"\n🔍 FEATURE COMPATIBILITY ANALYSIS ONLY")
-                print(f"📊 Loading data to analyze feature availability...")
+                print(f"Loading data to analyze feature availability...")
             
             # Load data and analyze compatibility
             site_df = clusterer.load_site_data()
@@ -206,37 +217,36 @@ Examples:
         )
         
         # Generate visualizations if requested
-        if output_file and (args.visualize or args.quick_viz or args.dashboard):
+        # Always generate visualizations when clustering is successful
+        if output_file:
             if verbose:
                 print(f"\n🎨 Generating visualizations...")
             
             try:
-                # Quick visualization
+                # Always generate comprehensive visualizations
+                strategies = getattr(clusterer, '_all_strategies', None)
+                
+                visualizations = clusterer.visualize_clustering(
+                    strategies=strategies,
+                    include_3d=not args.no_3d if hasattr(args, 'no_3d') else True,
+                    include_dashboard=True,
+                    show_plots=False
+                )
+                
+                if verbose:
+                    print(f"📊 Generated {len(visualizations)} comprehensive visualizations")
+                
+                # Also generate quick visualization if specified
                 if args.quick_viz:
                     viz_file = clusterer.quick_visualize(method=args.quick_viz, show=False)
                     if verbose:
                         print(f"📊 Quick visualization ({args.quick_viz}): {Path(viz_file).name}")
                 
-                # Interactive dashboard
+                # Also generate interactive dashboard if specified
                 if args.dashboard:
                     dashboard_file = clusterer.create_interactive_dashboard()
                     if verbose:
                         print(f"📊 Interactive dashboard: {Path(dashboard_file).name}")
-                
-                # Comprehensive visualizations
-                if args.visualize:
-                    # Get strategies for comparison plots
-                    strategies = getattr(clusterer, '_all_strategies', None)
-                    
-                    visualizations = clusterer.visualize_clustering(
-                        strategies=strategies,
-                        include_3d=not args.no_3d,
-                        include_dashboard=True,
-                        show_plots=False
-                    )
-                    
-                    if verbose:
-                        print(f"📊 Generated {len(visualizations)} comprehensive visualizations")
                         
             except ImportError as e:
                 print(f"⚠️  Visualization libraries not available: {e}")
@@ -274,7 +284,7 @@ Examples:
                 print(f"\n💡 FEATURE EXPERIMENTATION:")
                 print(f"  Try different feature sets to compare clustering results:")
                 current_set = args.feature_set
-                other_sets = [s for s in ['geographic', 'biome', 'climate', 'ecological', 'comprehensive'] if s != current_set]
+                other_sets = [s for s in ['geographic', 'biome', 'climate', 'ecological', 'comprehensive', 'plant_functional', 'v2_hybrid', 'v3_hybrid'] if s != current_set]
                 for alt_set in other_sets[:2]:  # Show 2 alternatives
                     print(f"  python {Path(__file__).name} --feature-set {alt_set} --data-dir {args.data_dir}")
             
