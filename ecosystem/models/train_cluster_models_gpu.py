@@ -347,7 +347,7 @@ class MemoryOptimizedClusterTrainer:
         parquet_files = sorted([f for f in os.listdir(self.parquet_dir) if f.endswith('.parquet')])
         
         for parquet_file in parquet_files:
-            site_name = parquet_file.replace('_comprehensive.parquet', '').replace('.parquet', '')
+            site_name = parquet_file.replace('.parquet', '').replace('.parquet', '')
             file_path = os.path.join(self.parquet_dir, parquet_file)
             
             # Check if this site has a cluster assignment
@@ -494,7 +494,7 @@ class MemoryOptimizedClusterTrainer:
         
         with open(libsvm_file, 'w') as output_file:
             for site_idx, site in enumerate(cluster_sites):
-                parquet_file = os.path.join(self.parquet_dir, f'{site}_comprehensive.parquet')
+                parquet_file = os.path.join(self.parquet_dir, f'{site}.parquet')
                 
                 if not os.path.exists(parquet_file):
                     print(f"    ⚠️  Missing: {parquet_file}")
@@ -902,49 +902,49 @@ class MemoryOptimizedClusterTrainer:
         else:
             # CPU-optimized parameters based on available memory
             available_memory = get_available_memory_gb()
-            if available_memory > 20:  # High memory system
+        if available_memory > 20:  # High memory system
                 params = {
-                    'objective': 'reg:squarederror',
-                    'eval_metric': 'rmse',
-                    'max_depth': 8,
-                    'learning_rate': 0.1,
-                    'subsample': 0.8,
-                    'colsample_bytree': 0.8,
-                    'random_state': self.random_state,
-                    'tree_method': 'hist',
-                    'max_bin': 512,
-                    'verbosity': 1,
-                    'nthread': -1
-                }
-            elif available_memory > 8:
+                'objective': 'reg:squarederror',
+                'eval_metric': 'rmse',
+                'max_depth': 8,
+                'learning_rate': 0.1,
+                'subsample': 0.8,
+                'colsample_bytree': 0.8,
+                'random_state': self.random_state,
+                'tree_method': 'hist',
+                'max_bin': 512,
+                'verbosity': 1,
+                'nthread': -1
+            }
+        elif available_memory > 8:
                 params = {
-                    'objective': 'reg:squarederror',
-                    'eval_metric': 'rmse',
-                    'max_depth': 7,
-                    'learning_rate': 0.1,
-                    'subsample': 0.8,
-                    'colsample_bytree': 0.8,
-                    'random_state': self.random_state,
-                    'tree_method': 'hist',
-                    'max_bin': 256,
-                    'verbosity': 1,
-                    'nthread': -1
-                }
-            else:
+                'objective': 'reg:squarederror',
+                'eval_metric': 'rmse',
+                'max_depth': 7,
+                'learning_rate': 0.1,
+                'subsample': 0.8,
+                'colsample_bytree': 0.8,
+                'random_state': self.random_state,
+                'tree_method': 'hist',
+                'max_bin': 256,
+                'verbosity': 1,
+                'nthread': -1
+            }
+        else:
                 params = {
-                    'objective': 'reg:squarederror',
-                    'eval_metric': 'rmse',
-                    'max_depth': 6,
-                    'learning_rate': 0.1,
-                    'subsample': 0.8,
-                    'colsample_bytree': 0.8,
-                    'random_state': self.random_state,
-                    'tree_method': 'hist',
-                    'max_bin': 128,
-                    'verbosity': 1,
-                    'nthread': -1
-                }
-            print(f"  💻 Using CPU-optimized XGBoost parameters")
+                'objective': 'reg:squarederror',
+                'eval_metric': 'rmse',
+                'max_depth': 6,
+                'learning_rate': 0.1,
+                'subsample': 0.8,
+                'colsample_bytree': 0.8,
+                'random_state': self.random_state,
+                'tree_method': 'hist',
+                'max_bin': 128,
+                'verbosity': 1,
+                'nthread': -1
+            }
+        print(f"  💻 Using CPU-optimized XGBoost parameters")
         
         return params
     
@@ -1159,7 +1159,7 @@ class MemoryOptimizedClusterTrainer:
         successful_sites = []
         
         for site in cluster_sites:
-            parquet_file = os.path.join(self.parquet_dir, f'{site}_comprehensive.parquet')
+            parquet_file = os.path.join(self.parquet_dir, f'{site}.parquet')
             
             if not os.path.exists(parquet_file):
                 print(f"      ⚠️  Missing: {parquet_file}")
@@ -1216,7 +1216,7 @@ class MemoryOptimizedClusterTrainer:
         
         for site in sites:
             try:
-                parquet_file = os.path.join(self.parquet_dir, f'{site}_comprehensive.parquet')
+                parquet_file = os.path.join(self.parquet_dir, f'{site}.parquet')
                 df_site = pd.read_parquet(parquet_file)
                 df_site = df_site.dropna(subset=[self.target_col])
                 
@@ -1333,7 +1333,7 @@ class MemoryOptimizedClusterTrainer:
         
         for site in sites:
             try:
-                parquet_file = os.path.join(self.parquet_dir, f'{site}_comprehensive.parquet')
+                parquet_file = os.path.join(self.parquet_dir, f'{site}.parquet')
                 
                 # Read parquet in chunks
                 import pyarrow.parquet as pq
@@ -1384,7 +1384,7 @@ class MemoryOptimizedClusterTrainer:
         
         # Now train with the combined data
         return self._train_cluster_in_memory(cluster_id, combined_df, sites)
-
+    
     def train_all_cluster_models(self, force_reprocess=False):
         """Train models for all clusters using direct parquet processing (GPU-optimized)"""
         print("🚀 Starting GPU-Optimized Cluster Model Training")
@@ -1443,16 +1443,16 @@ class MemoryOptimizedClusterTrainer:
                         print(f"✅ Cluster {cluster_id} training completed successfully")
                     else:
                         print(f"❌ Cluster {cluster_id} training failed")
-                        
+                    
                 except Exception as e:
                     print(f"❌ Error training cluster {cluster_id}: {e}")
                     import traceback
                     traceback.print_exc()
                     continue
-                
-                log_memory_usage(f"After training cluster {cluster_id}")
             
-            # Print summary
+                log_memory_usage(f"After training cluster {cluster_id}")
+                
+                # Print summary
             if all_metrics:
                 print(f"\n🎉 TRAINING COMPLETED!")
                 print("=" * 50)
@@ -1531,13 +1531,13 @@ def main():
         
         # Train all cluster models using direct parquet processing
         all_metrics = trainer.train_all_cluster_models(args.force_reprocess)
-        
+            
         if all_metrics:
             print(f"\n🎉 GPU-optimized training completed successfully!")
             print(f"📁 Results saved to: {trainer.results_dir}")
             print(f"🎮 GPU acceleration: {'ENABLED' if trainer.use_gpu else 'DISABLED'}")
         else:
-            print(f"\n❌ Training failed - no models were created")
+                print(f"\n❌ Training failed - no models were created")
                 
     except Exception as e:
         print(f"\n❌ Training failed with error: {e}")
