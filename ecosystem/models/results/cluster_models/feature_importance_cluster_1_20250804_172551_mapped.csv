@@ -1,0 +1,61 @@
+feature_index,feature_name,description,category,importance_score
+f48,ta_std_72h,Temperature 72h-hour standard deviation,Rolling,238651.515625
+f56,vpd_std_3h,VPD 3h-hour standard deviation,Rolling,94208.09375
+f31,is_spring,Spring season indicator,Temporal,31273.369140625
+f58,vpd_std_6h,VPD 6h-hour standard deviation,Rolling,20458.8671875
+f19,solar_hour,Solar hour,Temporal,8852.947265625
+f16,day_cos,Cosine of day of year (cyclical),Temporal,6829.708984375
+f7,ext_rad,Extraterrestrial radiation,Environmental,4743.65234375
+f21,solar_hour_sin,Sine of solar hour,Temporal,4639.16259765625
+f28,is_morning,Morning indicator (6-12h),Temporal,4434.29443359375
+f9,day_of_year,Day of year,Temporal,2734.941162109375
+f29,is_afternoon,Afternoon indicator (12-18h),Temporal,2275.44970703125
+f60,vpd_std_12h,VPD 12h-hour standard deviation,Rolling,1937.470947265625
+f13,hour_sin,Sine of hour (cyclical),Temporal,1923.3592529296875
+f39,ta_mean_6h,Temperature 6h-hour mean,Rolling,1852.211669921875
+f45,ta_mean_48h,Temperature 48h-hour mean,Rolling,1574.169921875
+f57,vpd_mean_6h,VPD 6h-hour mean,Rolling,1520.605712890625
+f51,ta_mean_336h,Temperature 336h-hour mean,Rolling,1456.2117919921875
+f12,day_of_week,Day of week,Temporal,1452.84130859375
+f6,vpd,Vapor pressure deficit,Environmental,1300.4112548828125
+f27,is_weekend,Weekend indicator,Temporal,1145.38671875
+f43,ta_mean_24h,Temperature 24h-hour mean,Rolling,1052.5289306640625
+f46,ta_std_48h,Temperature 48h-hour standard deviation,Rolling,1039.55224609375
+f61,vpd_mean_24h,VPD 24h-hour mean,Rolling,1037.4232177734375
+f24,solar_day_cos,Cosine of solar day,Temporal,783.0005493164062
+f37,ta_mean_3h,Temperature 3h-hour mean,Rolling,768.4420166015625
+f26,is_peak_sunlight,Peak sunlight indicator (10-16h),Temporal,714.1631469726562
+f41,ta_mean_12h,Temperature 12h-hour mean,Rolling,672.9912719726562
+f11,year,Year,Temporal,652.1727905273438
+f25,is_daylight,Daylight indicator (6-18h),Temporal,637.47119140625
+f2,sw_in,Shortwave incoming radiation,Environmental,609.4453735351562
+f44,ta_std_24h,Temperature 24h-hour standard deviation,Rolling,589.2577514648438
+f40,ta_std_6h,Temperature 6h-hour standard deviation,Rolling,572.2803955078125
+f64,vpd_std_48h,VPD 48h-hour standard deviation,Rolling,570.6561889648438
+f10,month,Month,Temporal,554.2534790039062
+f15,day_sin,Sine of day of year (cyclical),Temporal,535.7218017578125
+f50,ta_std_168h,Temperature 168h-hour standard deviation,Rolling,488.7232971191406
+f42,ta_std_12h,Temperature 12h-hour standard deviation,Rolling,475.25714111328125
+f17,month_sin,Sine of month (cyclical),Temporal,449.5899963378906
+f5,ppfd_in,Photosynthetic photon flux density,Environmental,414.45184326171875
+f47,ta_mean_72h,Temperature 72h-hour mean,Rolling,399.9749755859375
+f4,precip,Precipitation,Environmental,372.6870422363281
+f35,hours_since_sunrise,Hours since sunrise,Temporal,311.2469787597656
+f18,month_cos,Cosine of month (cyclical),Temporal,291.3719177246094
+f1,rh,Relative humidity,Environmental,285.38720703125
+f52,ta_std_336h,Temperature 336h-hour standard deviation,Rolling,281.2146301269531
+f14,hour_cos,Cosine of hour (cyclical),Temporal,242.62762451171875
+f22,solar_hour_cos,Cosine of solar hour,Temporal,241.4340362548828
+f3,ws,Wind speed,Environmental,238.8815155029297
+f20,solar_day_of_year,Solar day of year,Temporal,196.20826721191406
+f32,is_summer,Summer season indicator,Temporal,195.41171264648438
+f65,vpd_mean_72h,VPD 72h-hour mean,Rolling,192.9632568359375
+f33,is_autumn,Autumn season indicator,Temporal,186.0888214111328
+f8,hour,Hour of day,Temporal,174.24021911621094
+f59,vpd_mean_12h,VPD 12h-hour mean,Rolling,170.83204650878906
+f23,solar_day_sin,Sine of solar day,Temporal,150.78207397460938
+f30,is_night,Night indicator,Temporal,134.0924072265625
+f34,is_winter,Winter season indicator,Temporal,130.9035186767578
+f0,ta,Air temperature,Environmental,129.50335693359375
+f62,vpd_std_24h,VPD 24h-hour standard deviation,Rolling,116.7243881225586
+f63,vpd_mean_48h,VPD 48h-hour mean,Rolling,99.30754852294922
