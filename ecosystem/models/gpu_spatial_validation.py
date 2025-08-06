@@ -53,16 +53,26 @@ class ParquetSpatialValidator:
                  results_dir='./results/parquet_spatial_validation',
                  optimize_hyperparams=False,
                  force_gpu=False,
-                 cluster_file=None):
+                 cluster_file=None,
+                 run_name=None):
         self.parquet_dir = parquet_dir
         self.models_dir = models_dir
-        self.results_dir = results_dir
         self.cluster_col = 'ecosystem_cluster'
         self.target_col = 'sap_flow'
         self.timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
         self.optimize_hyperparams = optimize_hyperparams
         self.optimized_params = {}
         self.cluster_file = cluster_file
+        self.run_name = run_name
+        
+        # Create run-specific results directory
+        if run_name:
+            self.results_dir = os.path.join(results_dir, f"{run_name}_{self.timestamp}")
+        else:
+            self.results_dir = os.path.join(results_dir, f"run_{self.timestamp}")
+        
+        # Store original base directory for reference
+        self.base_results_dir = results_dir
         
         # GPU Detection and Configuration
         self.use_gpu = False
@@ -161,12 +171,15 @@ class ParquetSpatialValidator:
                 print("  ⚠️  Note: GPU was forced but detection failed - errors may occur")
         
         # Create results directory
-        os.makedirs(results_dir, exist_ok=True)
+        os.makedirs(self.results_dir, exist_ok=True)
         
         print(f"🌍 GPU-Optimized Parquet Spatial Validator initialized")
         print(f"📁 Parquet directory: {parquet_dir}")
         print(f"🤖 Models directory: {models_dir}")
-        print(f"📁 Results directory: {results_dir}")
+        print(f"📁 Results directory: {self.results_dir}")
+        if run_name:
+            print(f"🏷️  Run name: {run_name}")
+        print(f"⏰ Timestamp: {self.timestamp}")
         print(f"💡 RAW PARQUET WORKFLOW: Uses original parquet files directly")
         print(f"⚡ GPU Acceleration: {'ENABLED' if self.use_gpu else 'DISABLED'}")
     
@@ -1173,6 +1186,8 @@ def main():
                         help="Force GPU usage even if detection fails (use with caution)")
     parser.add_argument('--cluster-file', default=None,
                         help="Path to specific cluster assignment CSV file (if not provided, uses most recent)")
+    parser.add_argument('--run-name', default=None,
+                        help="Name for this validation run (will be appended with timestamp for directory naming)")
     
     args = parser.parse_args()
     
@@ -1183,7 +1198,8 @@ def main():
             results_dir=args.results_dir,
             optimize_hyperparams=args.optimize_hyperparams,
             force_gpu=args.force_gpu,
-            cluster_file=args.cluster_file
+            cluster_file=args.cluster_file,
+            run_name=args.run_name
         )
         
         fold_results, cluster_summaries = validator.run_validation()

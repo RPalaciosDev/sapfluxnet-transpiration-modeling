@@ -95,17 +95,26 @@ class MemoryOptimizedClusterTrainer:
     """
     
     def __init__(self, parquet_dir='../../processed_parquet', results_dir='./results/cluster_models', 
-                 cluster_file=None, force_gpu=False):
+                 cluster_file=None, force_gpu=False, run_name=None):
         self.parquet_dir = parquet_dir
-        self.results_dir = results_dir
         self.cluster_file = cluster_file
-        self.preprocessed_dir = os.path.join(results_dir, 'preprocessed_libsvm')
         self.target_col = 'sap_flow'
         self.cluster_col = 'ecosystem_cluster'
         self.test_size = 0.2
         self.random_state = 42
         self.timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
         self.force_gpu = force_gpu
+        self.run_name = run_name
+        
+        # Create run-specific results directory
+        if run_name:
+            self.results_dir = os.path.join(results_dir, f"{run_name}_{self.timestamp}")
+        else:
+            self.results_dir = os.path.join(results_dir, f"run_{self.timestamp}")
+        
+        # Store original base directory for reference
+        self.base_results_dir = results_dir
+        self.preprocessed_dir = os.path.join(self.results_dir, 'preprocessed_libsvm')
         
         # GPU Detection and Configuration
         self.use_gpu = False
@@ -116,7 +125,7 @@ class MemoryOptimizedClusterTrainer:
         self._configure_memory_settings()
         
         # Create directories
-        os.makedirs(results_dir, exist_ok=True)
+        os.makedirs(self.results_dir, exist_ok=True)
         os.makedirs(self.preprocessed_dir, exist_ok=True)
         
         # Load cluster assignments
@@ -134,8 +143,11 @@ class MemoryOptimizedClusterTrainer:
         
         print(f"🚀 GPU-Optimized Cluster Trainer initialized")
         print(f"📁 Parquet directory: {parquet_dir}")
-        print(f"📁 Results directory: {results_dir}")
+        print(f"📁 Results directory: {self.results_dir}")
         print(f"📁 Preprocessed directory: {self.preprocessed_dir}")
+        if run_name:
+            print(f"🏷️  Run name: {run_name}")
+        print(f"⏰ Timestamp: {self.timestamp}")
         print(f"🎯 Target column: {self.target_col}")
         print(f"🎮 GPU enabled: {self.use_gpu}")
         if cluster_file:
@@ -1501,6 +1513,8 @@ def main():
                         help="Specific cluster CSV file to use (e.g., '../evaluation/clustering_results/biome_20250804_123456/flexible_site_clusters_20250804_123456.csv')")
     parser.add_argument('--force-gpu', action='store_true',
                         help="Force GPU usage even if detection fails")
+    parser.add_argument('--run-name', default=None,
+                        help="Name for this training run (will be appended with timestamp for directory naming)")
     
     args = parser.parse_args()
     
@@ -1530,7 +1544,8 @@ def main():
             parquet_dir=args.parquet_dir,
             results_dir=args.results_dir,
             cluster_file=args.cluster_file,
-            force_gpu=args.force_gpu
+            force_gpu=args.force_gpu,
+            run_name=args.run_name
         )
         
         # Modern direct parquet processing - no more libsvm preprocessing needed!
