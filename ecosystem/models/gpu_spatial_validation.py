@@ -504,43 +504,69 @@ class ParquetSpatialValidator:
                 dtest = xgb.DMatrix(X_test, label=y_test)
                 
                 # CRITICAL FIX: RETRAIN model for this fold to eliminate data leakage
-                # GPU-optimized parameters
-                if self.use_gpu:
-                    xgb_params = {
-                        'objective': 'reg:squarederror',
-                        'eval_metric': 'rmse',
-                        'tree_method': 'gpu_hist',      # GPU acceleration
-                        'gpu_id': self.gpu_id,          # GPU device
-                        'max_depth': 10,                # Deeper trees on GPU
-                        'learning_rate': 0.15,          # Higher learning rate
-                        'subsample': 0.8,
-                        'colsample_bytree': 0.8,
-                        'random_state': 42,
-                        'verbosity': 1
-                    }
-                    print(f"    🚀 Using GPU acceleration for cluster {cluster_id} (tree_method=gpu_hist)")
+                # Use optimized parameters if available, otherwise GPU/CPU-optimized defaults
+                cluster_key = str(int(cluster_id))  # Convert to string for consistency
+                if cluster_key in self.optimized_params:
+                    xgb_params = self.optimized_params[cluster_key].copy()
+                    # Add GPU acceleration to optimized params
+                    if self.use_gpu:
+                        xgb_params.update({
+                            'objective': 'reg:squarederror',
+                            'eval_metric': 'rmse',
+                            'tree_method': 'gpu_hist',
+                            'gpu_id': self.gpu_id,
+                            'random_state': 42,
+                            'verbosity': 1
+                        })
+                    else:
+                        xgb_params.update({
+                            'objective': 'reg:squarederror',
+                            'eval_metric': 'rmse',
+                            'tree_method': 'hist',
+                            'n_jobs': -1,
+                            'random_state': 42,
+                            'verbosity': 1
+                        })
+                    print(f"    🎯 Using optimized parameters for cluster {cluster_id} ({'GPU tree_method=gpu_hist' if self.use_gpu else 'CPU tree_method=hist'})")
                 else:
-                    xgb_params = {
-                        'objective': 'reg:squarederror',
-                        'eval_metric': 'rmse',
-                        'tree_method': 'hist',          # CPU histogram
-                        'max_depth': 8,
-                        'learning_rate': 0.1,
-                        'subsample': 0.8,
-                        'colsample_bytree': 0.8,
-                        'random_state': 42,
-                        'n_jobs': -1,                   # Use all CPU cores
-                        'verbosity': 1
-                    }
-                    print(f"    💻 Using CPU for cluster {cluster_id} (tree_method=hist)")
+                    # Default parameters optimized for GPU or CPU
+                    if self.use_gpu:
+                        xgb_params = {
+                            'objective': 'reg:squarederror',
+                            'eval_metric': 'rmse',
+                            'tree_method': 'gpu_hist',      # GPU acceleration
+                            'gpu_id': self.gpu_id,          # GPU device
+                            'max_depth': 10,                # Deeper trees on GPU
+                            'learning_rate': 0.15,          # Higher learning rate
+                            'subsample': 0.8,
+                            'colsample_bytree': 0.8,
+                            'random_state': 42,
+                            'verbosity': 1
+                        }
+                        print(f"    🚀 Using GPU defaults for cluster {cluster_id} (tree_method=gpu_hist)")
+                    else:
+                        xgb_params = {
+                            'objective': 'reg:squarederror',
+                            'eval_metric': 'rmse',
+                            'tree_method': 'hist',          # CPU histogram
+                            'max_depth': 8,
+                            'learning_rate': 0.1,
+                            'subsample': 0.8,
+                            'colsample_bytree': 0.8,
+                            'random_state': 42,
+                            'n_jobs': -1,                   # Use all CPU cores
+                            'verbosity': 1
+                        }
+                        print(f"    💻 Using CPU defaults for cluster {cluster_id} (tree_method=hist)")
                 
                 # Train new model ONLY on training sites for this fold
-                # Use more boost rounds on GPU for better performance
-                num_boost_round = 200 if self.use_gpu else 100
+                # Use optimized n_estimators if available, otherwise GPU-optimized defaults
+                default_estimators = 200 if self.use_gpu else 100
+                n_estimators = xgb_params.pop('n_estimators', default_estimators)
                 fold_model = xgb.train(
                     params=xgb_params,
                     dtrain=dtrain,
-                    num_boost_round=num_boost_round,
+                    num_boost_round=n_estimators,
                     verbose_eval=False
                 )
                 
