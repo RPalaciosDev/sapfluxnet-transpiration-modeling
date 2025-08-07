@@ -52,6 +52,7 @@ class ParquetSpatialValidator:
                  models_dir='./results/cluster_models',
                  results_dir='./results/parquet_spatial_validation',
                  optimize_hyperparams=False,
+                 load_optimized_params=None,
                  force_gpu=False,
                  cluster_file=None,
                  run_name=None):
@@ -64,6 +65,16 @@ class ParquetSpatialValidator:
         self.optimized_params = {}
         self.cluster_file = cluster_file
         self.run_name = run_name
+        
+        # Load existing optimized parameters if provided
+        if load_optimized_params:
+            try:
+                with open(load_optimized_params, 'r') as f:
+                    self.optimized_params = json.load(f)
+                print(f"✅ Loaded optimized parameters for {len(self.optimized_params)} clusters from: {os.path.basename(load_optimized_params)}")
+            except Exception as e:
+                print(f"❌ Failed to load optimized parameters from {load_optimized_params}: {e}")
+                self.optimized_params = {}
         
         # Create run-specific results directory
         if run_name:
@@ -1182,6 +1193,8 @@ def main():
                         help="Directory to save validation results")
     parser.add_argument('--optimize-hyperparams', action='store_true',
                         help="Run hyperparameter optimization based on existing results")
+    parser.add_argument('--load-optimized-params', default=None,
+                        help="Path to existing optimized parameters JSON file to use during validation")
     parser.add_argument('--force-gpu', action='store_true',
                         help="Force GPU usage even if detection fails (use with caution)")
     parser.add_argument('--cluster-file', default=None,
@@ -1197,6 +1210,7 @@ def main():
             models_dir=args.models_dir,
             results_dir=args.results_dir,
             optimize_hyperparams=args.optimize_hyperparams,
+            load_optimized_params=args.load_optimized_params,
             force_gpu=args.force_gpu,
             cluster_file=args.cluster_file,
             run_name=args.run_name
