@@ -1,0 +1,19 @@
+{
+  "processed_features": [
+    "longitude",
+    "latitude",
+    "elevation",
+    "mean_annual_temp",
+    "mean_annual_precip",
+    "koppen_geiger_code_encoded",
+    "biome_code_encoded",
+    "igbp_class_code_encoded"
+  ],
+  "num_features": 8,
+  "categorical_encoders": [
+    "biome_code",
+    "igbp_class_code"
+  ],
+  "scaler_fitted": true,
+  "preprocessing_complete": true
+}

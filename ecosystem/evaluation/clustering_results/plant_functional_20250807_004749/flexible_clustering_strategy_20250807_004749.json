@@ -1,0 +1,38 @@
+{
+  "selected_strategy": "K-means (4 clusters)",
+  "algorithm": "K-means",
+  "n_clusters": 4,
+  "silhouette_score": 0.9557258407833121,
+  "balance_ratio": 0.4642857142857143,
+  "final_score": 1.8978744754606827,
+  "feature_set_name": "plant_functional",
+  "feature_set_description": "Plant functional group classifications and key functional traits",
+  "features_used": [
+    "species_functional_group_code_encoded"
+  ],
+  "total_features_used": 1,
+  "numeric_features_requested": [],
+  "categorical_features_requested": [
+    "species_functional_group_code"
+  ],
+  "site_split_file": null,
+  "train_only_clustering": false,
+  "all_sites_clustering": true,
+  "train_sites_count": null,
+  "test_sites_count": null,
+  "total_sites_clustered": 87,
+  "preprocessing_summary": {
+    "processed_features": [
+      "species_functional_group_code_encoded"
+    ],
+    "num_features": 1,
+    "categorical_encoders": [
+      "species_functional_group_code"
+    ],
+    "scaler_fitted": true,
+    "preprocessing_complete": true
+  },
+  "timestamp": "20250807_004749",
+  "data_directory": "../../parquet_default",
+  "flexible_clusterer_version": "1.0"
+}
