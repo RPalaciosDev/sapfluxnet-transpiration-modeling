@@ -571,10 +571,10 @@ class EnsembleTestPipeline:
                 X[col] = X[col].astype(int)
             elif X[col].dtype == 'object':
                 # Try to convert object columns to numeric, fill non-numeric with 0
-                X[col] = pd.to_numeric(X[col], errors='coerce').fillna(0)
+                X[col] = pd.to_numeric(X[col], errors='coerce')
         
         # Fill remaining NaN values with 0 (EXACTLY like training pipeline)
-        X = X.fillna(0)
+        # Leave NaNs for models that can handle missing values (e.g., XGBoost)
         
         # Check for any remaining issues
         nan_count = X.isnull().sum().sum()
@@ -646,7 +646,7 @@ class EnsembleTestPipeline:
         # Ensure we're passing clean numeric data
         if X.isnull().sum().sum() > 0:
             print(f"    ⚠️  Found NaN values before prediction, filling with 0")
-            X = X.fillna(0)
+            # Leave NaNs as-is
         
         if np.isinf(X.select_dtypes(include=[np.number])).sum().sum() > 0:
             print(f"    ⚠️  Found infinite values before prediction, replacing with 0")

@@ -149,7 +149,7 @@ def create_feature_category_analysis(importance_df, output_dir):
     category_importance = importance_df.groupby(['cluster', 'feature_category'])['importance'].sum().reset_index()
     
     # Create stacked bar plot
-    pivot_data = category_importance.pivot(index='cluster', columns='feature_category', values='importance').fillna(0)
+    pivot_data = category_importance.pivot(index='cluster', columns='feature_category', values='importance')
     
     plt.figure(figsize=(12, 8))
     pivot_data.plot(kind='bar', stacked=True, ax=plt.gca(), colormap='Set3')
