@@ -1119,6 +1119,26 @@ class ParquetSpatialValidator:
                     cluster_summaries.append(cluster_summary)
                 
                 log_memory_usage(f"After cluster {cluster_id} validation")
+                # Aggressive cleanup between clusters
+                try:
+                    import gc
+                    del fold_results, cluster_summary
+                except Exception:
+                    pass
+                # Optional: clear CUDA cache if torch is available
+                try:
+                    import importlib
+                    torch_spec = importlib.util.find_spec('torch')
+                    if torch_spec is not None:
+                        import torch  # type: ignore
+                        if getattr(torch.cuda, 'is_available', lambda: False)():
+                            getattr(torch.cuda, 'empty_cache', lambda: None)()
+                except Exception:
+                    pass
+                try:
+                    gc.collect()
+                except Exception:
+                    pass
             
             # Save results
             self.save_results(all_fold_results, cluster_summaries)

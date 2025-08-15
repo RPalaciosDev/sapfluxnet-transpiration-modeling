@@ -172,7 +172,15 @@ class FeatureManager:
                     # Core hydro/soil moisture drivers
                     'swc_shallow',
                     'swc_deep',  # if available
-                    'precip', 'mean_precip'
+                    'precip', 'mean_precip',
+                    'vpd', 'mean_vpd',
+                    'rh', 'mean_rh',
+                    # Radiation and PET (atmospheric demand / energy)
+                    'pet_oudin_mm_day', 'net_radiation', 'sw_in', 'mean_sw_in',
+                    # Light/wind (optional if present)
+                    'ppfd_in', 'mean_ws',
+                    # Keep basic geography for stability
+                    'longitude', 'latitude'
                 ],
                 categorical_features=[],
                 description='Water-balance focused features emphasizing soil moisture, precipitation, atmospheric demand (PET, VPD), and energy inputs'
