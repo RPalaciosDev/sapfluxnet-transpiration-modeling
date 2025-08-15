@@ -1,0 +1,10 @@
+Feature family,Definition / Formula
+Lagged value,"x(t - k)"
+Rate of change,"x(t) − x(t − k)"
+Rolling mean,"mean{x(t−i)} for i=0..w−1"
+Rolling std,"std{x(t−i)} for i=0..w−1"
+Rolling min,"min{x(t−i)} for i=0..w−1"
+Rolling max,"max{x(t−i)} for i=0..w−1"
+Rolling range,"max{x(t−i)} − min{x(t−i)}"
+Rolling sum (additive),"∑_{i=0}^{w−1} x(t−i)"
+

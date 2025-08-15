@@ -6,28 +6,43 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 
 def find_run_dir(results_root: str) -> str:
-    # If given a run dir, use it; else pick most recent subdir with fold/summaries CSVs
+    """Resolve a run directory that contains fold results.
+
+    Supports both legacy names (parquet_spatial_*) and new names (spatial_*).
+    """
+    patterns = [
+        "spatial_fold_results_*.csv",
+        "parquet_spatial_fold_results_*.csv",
+    ]
     if os.path.isfile(results_root):
         return os.path.dirname(results_root)
     if os.path.isdir(results_root):
-        # if it already contains fold file, return
-        if glob.glob(os.path.join(results_root, "parquet_spatial_fold_results_*.csv")):
-            return results_root
-        # else search children
+        # If it already contains a fold file, return it
+        for pat in patterns:
+            if glob.glob(os.path.join(results_root, pat)):
+                return results_root
+        # Else search immediate children
         candidates = []
         for d in glob.glob(os.path.join(results_root, "*")):
-            if os.path.isdir(d) and glob.glob(os.path.join(d, "parquet_spatial_fold_results_*.csv")):
-                candidates.append(d)
+            if not os.path.isdir(d):
+                continue
+            for pat in patterns:
+                if glob.glob(os.path.join(d, pat)):
+                    candidates.append(d)
+                    break
         if not candidates:
-            raise FileNotFoundError("No run directories with parquet_spatial_fold_results_*.csv found")
+            raise FileNotFoundError("No run directories with spatial fold results found")
         candidates.sort(key=lambda p: os.path.getmtime(p), reverse=True)
         return candidates[0]
     raise FileNotFoundError(f"Path not found: {results_root}")
 
 def load_fold_results(run_dir: str) -> pd.DataFrame:
-    paths = sorted(glob.glob(os.path.join(run_dir, "parquet_spatial_fold_results_*.csv")))
+    # Prefer new naming, fallback to legacy
+    paths = sorted(glob.glob(os.path.join(run_dir, "spatial_fold_results_*.csv")))
     if not paths:
-        raise FileNotFoundError("No parquet_spatial_fold_results_*.csv in run_dir")
+        paths = sorted(glob.glob(os.path.join(run_dir, "parquet_spatial_fold_results_*.csv")))
+    if not paths:
+        raise FileNotFoundError("No spatial fold results CSV in run_dir")
     df = pd.read_csv(paths[-1])
     # normalize column names
     cols = {c.lower(): c for c in df.columns}

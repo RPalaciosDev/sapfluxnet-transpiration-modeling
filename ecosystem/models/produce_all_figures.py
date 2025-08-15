@@ -29,6 +29,74 @@ def _save(fig, path_no_ext: str) -> None:
     plt.close(fig)
 
 
+def _cluster_performance_table(df_folds: pd.DataFrame) -> pd.DataFrame:
+    # Aggregate cluster metrics; log-scale friendly values for RMSE/MAE
+    def safe_log10(x: pd.Series) -> pd.Series:
+        return np.log10(np.clip(x.astype(float), 1e-6, None))
+
+    grp = df_folds.groupby("cluster")
+    tbl = pd.DataFrame({
+        "median_r2": grp["test_r2"].median(),
+        "frac_r2_pos": grp["test_r2"].apply(lambda s: float(np.mean(s > 0))),
+        "median_log10_rmse": grp["test_rmse"].apply(lambda s: float(safe_log10(s).median())),
+        "median_log10_mae": grp["test_mae"].apply(lambda s: float(safe_log10(s).median())),
+        "n_folds": grp.size(),
+    }).reset_index()
+    # Sort by median R² descending for readability
+    tbl = tbl.sort_values("median_r2", ascending=False).reset_index(drop=True)
+    return tbl
+
+
+def plot_cluster_performance_heatmap(df_folds: pd.DataFrame, outdir: str) -> None:
+    tbl = _cluster_performance_table(df_folds)
+    display_cols = ["median_r2", "frac_r2_pos", "median_log10_rmse", "median_log10_mae"]
+    data = tbl[display_cols]
+    # Normalize columns for color scaling to make mixed units comparable
+    normed = (data - data.min()) / (data.max() - data.min() + 1e-12)
+    fig, ax = plt.subplots(figsize=(8, max(3.5, 0.35 * len(tbl))))
+    sns.heatmap(
+        normed,
+        cmap="YlGnBu",
+        annot=data.round({
+            "median_r2": 2,
+            "frac_r2_pos": 2,
+            "median_log10_rmse": 2,
+            "median_log10_mae": 2,
+        }),
+        fmt="",
+        cbar_kws={"label": "Normalized score"},
+        ax=ax,
+        yticklabels=tbl["cluster"].astype(str).tolist(),
+        xticklabels=["median R²", "frac R²>0", "log₁₀ median RMSE", "log₁₀ median MAE"],
+    )
+    ax.set_xlabel("Metric")
+    ax.set_ylabel("Cluster (sorted by median R²)")
+    ax.set_title("Cluster performance summary")
+    _save(fig, os.path.join(outdir, "cluster_performance_heatmap"))
+
+
+def plot_r2_dumbbell(df_folds: pd.DataFrame, outdir: str, scale_r2: str = "linear", r2_linthresh: float = 0.1) -> None:
+    # Compute per-cluster median and IQR for R²
+    grp = df_folds.groupby("cluster")["test_r2"]
+    stats = grp.agg(median="median", q1=lambda s: np.percentile(s, 25), q3=lambda s: np.percentile(s, 75)).reset_index()
+    stats = stats.sort_values("median", ascending=False).reset_index(drop=True)
+    y = np.arange(len(stats))
+    fig, ax = plt.subplots(figsize=(8, max(3.5, 0.35 * len(stats))))
+    # IQR segments
+    ax.hlines(y, stats["q1"], stats["q3"], color="#4e79a7", linewidth=3)
+    # Median points
+    ax.scatter(stats["median"], y, color="#e15759", s=30, zorder=3)
+    # Vertical reference at R²=0
+    ax.axvline(0.0, color="k", linestyle="--", linewidth=1)
+    if scale_r2 == "symlog":
+        ax.set_xscale("symlog", linthresh=r2_linthresh)
+    ax.set_yticks(y)
+    ax.set_yticklabels(stats["cluster"].astype(str))
+    ax.set_xlabel("Test R² (median and IQR)")
+    ax.set_ylabel("Cluster")
+    ax.set_title("Cluster R² distribution (dumbbell)")
+    _save(fig, os.path.join(outdir, "r2_dumbbell_by_cluster"))
+
 def plot_cluster_sizes(cluster_assignments_csv: str, outdir: str) -> None:
     df = pd.read_csv(cluster_assignments_csv)
     # Expect columns: site, cluster (case-insensitive)
@@ -166,6 +234,10 @@ def main():
         plot_feature_importance_panels(args.models_root, outdir_root, top_n=10)
     else:
         print("Models root not found or empty; skipping feature importance panels.")
+
+    # Eyecatching summaries
+    plot_cluster_performance_heatmap(df, outdir_root)
+    plot_r2_dumbbell(df, outdir_root, scale_r2=args.scale_r2, r2_linthresh=args.r2_linthresh)
 
     # Placeholders (not generated without additional inputs):
     print("Note: Site map, covariate distributions/embeddings, domain-shift metrics, residual analyses, and time-series plots \n"

@@ -1,0 +1,291 @@
+<html>
+  <head>
+    <title>Math API</title>
+    <meta name="viewport" content="width=device-width" />
+    <style>
+      :root {
+        --bg: white;
+        --text: black;
+        --accent: rgb(94, 5, 255);
+      }
+
+      /* @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #040b31;
+          --text: white;
+          --accent: rgb(75 196 255);
+        }
+      } */
+
+      body {
+        background: var(--bg);
+        color: var(--text);
+        padding: 15px;
+      }
+
+      a:link,
+      a:visited,
+      a:hover,
+      a:active {
+        color: var(--text);
+      }
+
+      @media screen and (max-width: 600px) {
+        #heading {
+          width: 100%;
+        }
+      }
+
+      .main {
+        max-width: 800px;
+        margin: 0 auto 80px auto;
+      }
+
+      .notation {
+        font-weight: bold;
+        color: rgb(239, 83, 81);
+      }
+
+      .equation {
+        font-weight: bold;
+        color: var(--accent);
+      }
+
+      h1,
+      h2 {
+        margin-top: 80px;
+      }
+
+      h3 {
+        margin-top: 30px;
+      }
+
+      .input-field {
+        padding: 16px;
+        font-size: 15px;
+        border: none;
+        background: var(--accent);
+        color: var(--bg) !important;
+        border-radius: 4px;
+      }
+
+      #request {
+        width: 100%;
+        height: 120px;
+      }
+
+      .responseField {
+        display: block;
+        width: 100%;
+        padding: 16px;
+        font-size: 14px;
+        font-family: monospace;
+        border: 2px solid var(--accent);
+        background: var(--bg);
+        color: var(--accent);
+      }
+    </style>
+    <script
+      async
+      defer
+      data-website-id="77d81656-31f9-4892-b510-0ea2044298e5"
+      src="https://analytics.uechi.io/umami.js"
+    ></script>
+  </head>
+  <body style="font-family: monospace">
+    <div class="main">
+      <h1>Math API</h1>
+      <p>
+        <img
+          src="/?from=\xrightarrow{\infty}%5Ctext%7BPlace%20%7D%20%5CLaTeX%20%5Ctext%7B%20Math%20equation%20on%20anywhere%20as%20%7D%20%5Ctexttt%7B%3Cimg%3E%7D%20%5Ctext%7B%20tag.%7D"
+          id="heading"
+        />
+      </p>
+      <h2>Usage</h2>
+      <p style="font-size: 20px">
+        https://math.vercel.app?from=<span class="equation"
+          >[LaTeX Math Equation]</span
+        >
+      </p>
+
+      <h3>Block notation</h3>
+      <p>
+        https://math.vercel.app?<span class="notation">from</span>=<span
+          class="equation"
+          >\frac{1}{\Gamma(s)}\int_{0}^{\infty}\frac{u^{s-1}}{e^{u}-1}\mathrm{d}u</span
+        >
+      </p>
+      <img
+        src="/?from=%5Cfrac%7B1%7D%7B%5CGamma(s)%7D%5Cint_%7B0%7D%5E%7B%5Cinfty%7D%5Cfrac%7Bu%5E%7Bs-1%7D%7D%7Be%5E%7Bu%7D-1%7D%5Cmathrm%7Bd%7Du"
+      />
+
+      <h3>Inline notation</h3>
+      <p>
+        https://math.vercel.app?<span class="notation">inline</span>=<span
+          class="equation"
+          >\frac{1}{\Gamma(s)}\int_{0}^{\infty}\frac{u^{s-1}}{e^{u}-1}\mathrm{d}u</span
+        >
+      </p>
+      <img
+        src="/?inline=%5Cfrac%7B1%7D%7B%5CGamma(s)%7D%5Cint_%7B0%7D%5E%7B%5Cinfty%7D%5Cfrac%7Bu%5E%7Bs-1%7D%7D%7Be%5E%7Bu%7D-1%7D%5Cmathrm%7Bd%7Du"
+      />
+
+      <h3>Color</h3>
+      <p>
+        By default, the text color is black. You can manually change this
+        behavior by passing `color` parameter.
+      </p>
+      <p>
+        https://math.vercel.app?<span class="equation">color</span>=<span
+          class="notation"
+          >red</span
+        >&from=\frac{1}{\Gamma(s)}\int_{0}^{\infty}\frac{u^{s-1}}{e^{u}-1}\mathrm{d}u
+      </p>
+      <img
+        src="/?from=\frac{1}{\Gamma(s)}\int_{0}^{\infty}\frac{u^{s-1}}{e^{u}-1}\mathrm{d}u&color=red"
+      />
+
+      <h3>Background Color</h3>
+      <p>
+        By default, the background is transparent. You can manually change this
+        behavior by passing `bgcolor` parameter. `auto` or any CSS color name
+        can be used.
+      </p>
+      <p>
+        https://math.vercel.app?<span class="equation">color</span>=<span
+          class="notation"
+          >white</span
+        >&<span class="equation">bgcolor</span>=<span class="notation"
+          >auto</span
+        >&from=\frac{1}{\Gamma(s)}\int_{0}^{\infty}\frac{u^{s-1}}{e^{u}-1}\mathrm{d}u
+      </p>
+      <img
+        src="/?from=\frac{1}{\Gamma(s)}\int_{0}^{\infty}\frac{u^{s-1}}{e^{u}-1}\mathrm{d}u&color=white&bgcolor=auto"
+      />
+
+      <h2 id="online-editor">Online Editor</h2>
+      <textarea id="request" class="input-field" onKeyup="onTextChanged(this)">
+\text{Edit this}\ \LaTeX</textarea
+      ><br /><br />
+      <div style="text-align: right">
+        <label>Text: </label
+        ><input
+          id="color"
+          class="input-field"
+          onKeyup="onColorChanged(this)"
+          placeholder="CSS color name"
+        /><br /><br />
+        <label>Background: </label
+        ><input
+          id="bgColor"
+          class="input-field"
+          onKeyup="onBackgroundColorChanged(this)"
+          value="auto"
+          placeholder="auto or CSS color name"
+        />
+      </div>
+      <div>
+        <h3>Preview</h3>
+        <img id="responseImage" src="/?from=\text{Edit this}\%20\LaTeX.svg" />
+        <h3>HTML</h3>
+        <input
+          id="responseHTML"
+          class="responseField"
+          readonly="true"
+          onClick="this.select();"
+        />
+        <h3>Markdown</h3>
+        <input
+          id="responseMarkdown"
+          class="responseField"
+          readonly="true"
+          onClick="this.select();"
+        />
+        <h3>URL</h3>
+        <input
+          id="responseURL"
+          class="responseField"
+          readonly="true"
+          onClick="this.select();"
+        />
+      </div>
+
+      <script>
+        var equation = "\\text{Edit this}\\ \\LaTeX";
+        var color = "";
+        var bgColor = "";
+
+        const responseHTML = document.querySelector("#responseHTML");
+        const responseMarkdown = document.querySelector("#responseMarkdown");
+        const responseImage = document.querySelector("#responseImage");
+        const colorElement = document.querySelector("#color");
+        const bgColorElement = document.querySelector("#bgColor");
+
+        var timer;
+
+        function render() {
+          const purifiedURL =
+            location.origin +
+            "/?" +
+            (color ? "color=" + encodeURIComponent(color) + "&" : "") +
+            (bgColor ? "bgcolor=" + encodeURIComponent(bgColor) + "&" : "") +
+            "from=" +
+            encodeURIComponent(equation)
+              .replace(/\(/g, "%28")
+              .replace(/\)/g, "%29") +
+            ".svg";
+          responseHTML.value = '<img src="' + purifiedURL + '" />';
+          responseMarkdown.value = "![Equation](" + purifiedURL + ")";
+          responseURL.value = purifiedURL;
+          responseImage.src = purifiedURL;
+        }
+
+        function onTextChanged(e) {
+          equation = e.value;
+          clearTimeout(timer);
+          timer = setTimeout(() => render(), 1000);
+        }
+
+        function onColorChanged(e) {
+          color = e.value;
+          clearTimeout(timer);
+          timer = setTimeout(() => render(), 1000);
+        }
+
+        function onBackgroundColorChanged(e) {
+          bgColor = e.value;
+          clearTimeout(timer);
+          timer = setTimeout(() => render(), 1000);
+        }
+
+        document.addEventListener("DOMContentLoaded", () => {
+          //           const isSafari =
+          //             /Safari/.test(navigator.userAgent) &&
+          //             !/Chrome/.test(navigator.userAgent);
+          //           if (isSafari) {
+          //             const style = document.createElement("style");
+          //             style.innerHTML = `
+          // :root {
+          //   --bg: white;
+          //   --text: black;
+          //   --accent: rgb(94, 5, 255);
+          // }`;
+          //             document.body.appendChild(style);
+          //           }
+
+          color = colorElement.value;
+          bgColor = bgColorElement.value;
+
+          render();
+        });
+      </script>
+      <h2>Resources</h2>
+      <a href="https://github.com/uetchy/math-api">Source Code (GitHub)</a
+      ><br />
+      <a href="https://twitter.com/uechz">Author (Twitter)</a><br />
+      <a href="https://dev.to/uetchy/math-api-latex-math-as-svg-image-m4p"
+        >Math API: LaTeX Math as SVG image - DEV Community 👩‍💻👨‍💻</a
+      ><br />
+    </div>
+  </body>
+</html>

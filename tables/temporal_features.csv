@@ -1,0 +1,15 @@
+Feature,Definition / Formula
+hour_sin,"sin(2π · hour_local / 24)"
+hour_cos,"cos(2π · hour_local / 24)"
+day_sin,"sin(2π · day_of_year / 365)"
+day_cos,"cos(2π · day_of_year / 365)"
+month_sin,"sin(2π · month / 12)"
+month_cos,"cos(2π · month / 12)"
+is_daylight,"1 if sun above horizon"
+is_spring,"1 if month ∈ {3,4,5}, else 0"
+is_summer,"1 if month ∈ {6,7,8}, else 0"
+is_autumn,"1 if month ∈ {9,10,11}, else 0"
+is_winter,"1 if month ∈ {12,1,2}, else 0"
+time_since_sunrise_hours,"Hours since sunrise at local time"
+time_since_sunset_hours,"Hours since sunset at local time"
+
