@@ -1,0 +1,23 @@
+{
+  "processed_features": [
+    "swc_shallow",
+    "precip",
+    "mean_precip",
+    "vpd",
+    "mean_vpd",
+    "rh",
+    "mean_rh",
+    "pet_oudin_mm_day",
+    "net_radiation",
+    "sw_in",
+    "mean_sw_in",
+    "ppfd_in",
+    "mean_ws",
+    "longitude",
+    "latitude"
+  ],
+  "num_features": 15,
+  "categorical_encoders": [],
+  "scaler_fitted": true,
+  "preprocessing_complete": true
+}

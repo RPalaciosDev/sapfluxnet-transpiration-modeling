@@ -1,0 +1,42 @@
+% Engineered feature formulas (LaTeX). Where a feature is source-provided (not engineered), formula is omitted.
+\begin{description}
+  \item[Absolute latitude] $\mathrm{latitude\_abs} = |\mathrm{latitude}|$.
+
+  \item[Aridity index] $\mathrm{AI} = \dfrac{P}{\mathrm{PET}}$.\\
+  Commonly, precipitation $P$ over potential evapotranspiration $\mathrm{PET}$ (UNEP definition).
+
+  \item[Extraterrestrial radiation] $R_\mathrm{a} = \dfrac{24\,60}{\pi} G_\mathrm{sc} d_r [\omega_s \sin\varphi\,\sin\delta + \cos\varphi\,\cos\delta\,\sin\omega_s]$.\\
+  Where: $G_\mathrm{sc}$ is the solar constant (0.0820 MJ m$^{-2}$ min$^{-1}$), $d_r = 1 + 0.033\cos(\tfrac{2\pi J}{365})$ inverse relative Earth--Sun distance, $\delta = 0.409\sin(\tfrac{2\pi J}{365} - 1.39)$ solar declination, $\omega_s = \arccos(-\tan\varphi\,\tan\delta)$ sunset hour angle, $\varphi$ latitude (radians), $J$ day of year. (FAO-56.)
+
+  \item[Net shortwave] $R_\mathrm{ns} = (1-\alpha)\,R_\mathrm{s}$, with albedo $\alpha\approx 0.23$ (FAO-56 grass) and $R_\mathrm{s}$ in MJ m$^{-2}$ per period.
+
+  \item[Clear-sky shortwave] $R_\mathrm{so}=(0.75+2\times10^{-5}\,z)\,R_\mathrm{a}$, elevation $z$ in m; $R_\mathrm{a}$ as above.
+
+  \item[Net longwave (daily)] $R_\mathrm{nl}=\sigma\,\dfrac{T_{\max,K}^4 + T_{\min,K}^4}{2}\,(0.34-0.14\sqrt{e_a})\,(1.35\,R_\mathrm{s}/R_\mathrm{so}-0.35)$,\\ $\sigma=4.903\times10^{-9}$ MJ K$^{-4}$ m$^{-2}$ d$^{-1}$, $e_a=(\mathrm{RH}/100)\,e_s(T)$, $e_s(T)=0.6108\exp\!(\tfrac{17.27T}{T+237.3})$.
+
+  \item[Net longwave (sub-daily)] $R_\mathrm{nl}=\sigma_\Delta T\,T_K^4\,(0.34-0.14\sqrt{e_a})\,(1.35\,R_\mathrm{s}/R_\mathrm{so}-0.35)$,\\ $\sigma_\Delta T=4.903\times10^{-9}\,\tfrac{\Delta t}{24}$ MJ K$^{-4}$ m$^{-2}$ per step of $\Delta t$ hours.
+
+  \item[Net radiation] $R_\mathrm{n}=R_\mathrm{ns}-R_\mathrm{nl}$.
+
+  \item[Daylight hours] $N = \dfrac{24}{\pi}\,\omega_s$ (hours).
+
+  \item[Oudin PET (proxy)] $\mathrm{PET}_\mathrm{Oudin} = \begin{cases}
+    \dfrac{R_\mathrm{a}}{\lambda}\,\dfrac{T+5}{100}, & T>-5^\circ\!\mathrm{C} \\
+    0, & \text{otherwise}
+  \end{cases}$, where $\lambda=2.45$ MJ kg$^{-1}$.
+
+  \item[Vapor pressure deficit] $\mathrm{VPD} = e_s(T_\mathrm{a}) \Big(1 - \tfrac{\mathrm{RH}}{100}\Big)$, with $e_s(T_\mathrm{a}) = 0.6108\,\exp\!\Big(\dfrac{17.27\,T_\mathrm{a}}{T_\mathrm{a}+237.3}\Big)$ kPa.\\
+  Here $T_\mathrm{a}$ is air temperature ($^\circ$C) and RH is relative humidity (\%). Also useful: slope $\Delta=\dfrac{4098\,e_s(T_\mathrm{a})}{(T_\mathrm{a}+237.3)^2}$ kPa $\,^{\circ}\!$C$^{-1}$.
+
+  \item[Sapwood-to-leaf area ratio] $\mathrm{sapwood\_leaf\_ratio} = \dfrac{\mathrm{pl\_sapw\_area}}{\mathrm{pl\_leaf\_area}}$.
+
+  \item[Tree volume index] Example proxy $\mathrm{tree\_volume\_index} \propto \mathrm{pl\_dbh}^2 \cdot \mathrm{pl\_height}$.\\
+  Exact form depends on site protocol; adjust if a different allometry is used.
+
+  \item[PPFD (if derived from shortwave)] $\mathrm{PPFD} \approx \alpha\, S$, with conversion factor $\alpha$ ($\sim 2.02\,\mu\mathrm{mol}\;\mathrm{J}^{-1}$) when spectra are unknown.\\
+  If $\mathrm{ppfd\_in}$ is measured, no conversion is applied.
+
+  \item[Air pressure (from elevation)] $P=101.3\Big(\dfrac{293-0.0065\,z}{293}\Big)^{5.26}$ kPa, elevation $z$ in m; psychrometric constant $\gamma=0.000665\,P$ kPa $\,^{\circ}\!$C$^{-1}$.
+
+  \item[Clear-sky shortwave radiation] $R_\mathrm{so}=(0.75+2\times10^{-5}\,z)\,R_\mathrm{a}$.
+\end{description}

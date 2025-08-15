@@ -1,0 +1,190 @@
+\documentclass{beamer}
+\usetheme{Madrid}
+
+\title{Ecosystem-Based Spatial Validation of ML Models for Global Plant Transpiration}
+\author{Roberto Palacios}
+\date{\\Draft}
+
+\begin{document}
+
+% 1. Title
+\begin{frame}
+  \titlepage
+\end{frame}
+
+% 2. Motivation
+\begin{frame}{Motivation}
+  \begin{itemize}
+    \item Predicting plant transpiration (sap flux) at scale is valuable for ecohydrology and carbon cycle studies.
+    \item Site-level ML models perform well in-sample; cross-site transferability remains unclear.
+    \item We evaluate spatial generalization with strict site-level holdout and ecologically informed clustering.
+  \end{itemize}
+\end{frame}
+
+% 3. Background (brief)
+\begin{frame}{Background}
+  \begin{itemize}
+    \item Sap flux provides high-frequency, plant-scale transpiration estimates.
+    \item Prior work: strong within-site ML performance with meteorological/RS drivers.
+    \item Key challenge: domain shift across sites (covariate and conditional shifts).
+  \end{itemize}
+\end{frame}
+
+% 4. Dataset
+\begin{frame}{Dataset}
+  \begin{itemize}
+    \item SAPFLUXNET v0.1.5 subset: 87 sites, 23 years, 5 biomes, harmonized metadata.
+    \item Drivers: shortwave radiation, VPD, air temperature, precipitation, RH, temporal encodings.
+    \item Feature policy avoids site-identity leakage.
+  \end{itemize}
+\end{frame}
+
+% 5. Workflow overview
+\begin{frame}{Workflow Overview}
+  \begin{itemize}
+    \item Ecologically informed clustering of sites (climate normals, biomes, geolocation).
+    \item Per-cluster XGBoost models trained on cluster members only.
+    \item Spatial validation: within-cluster leave-one-site-out (LOSO), retrain each fold from scratch.
+  \end{itemize}
+  \vspace{0.5em}
+  \centering
+  \textit{(See paper Figure: pipeline flowchart)}
+\end{frame}
+
+% 6. Clustering approach
+\begin{frame}{Clustering Approach}
+  \begin{itemize}
+    \item Goal: group by environmental similarity rather than identity.
+    \item Features standardized; common algorithms considered; selection by internal diagnostics and balance.
+    \item Clusters define modeling partitions and evaluation splits.
+  \end{itemize}
+\end{frame}
+
+% 7. Modeling approach
+\begin{frame}{Modeling Approach}
+  \begin{itemize}
+    \item Learner: gradient-boosted trees (XGBoost) for nonlinear tabular relationships.
+    \item One regressor per cluster; leakage-aware preprocessing; GPU when available.
+    \item Optional hyperparameter optimization (Optuna) with leakage-aware folds.
+  \end{itemize}
+\end{frame}
+
+% 8. Spatial validation protocol
+\begin{frame}{Spatial Validation Protocol (LOSO)}
+  \begin{itemize}
+    \item Hold out one entire site per fold within a cluster; retrain from scratch on remaining sites.
+    \item Mimics deployment to unseen sites; prevents spatial/temporal leakage.
+    \item Report fold-level, cluster-level, and cross-cluster summaries.
+  \end{itemize}
+\end{frame}
+
+% 9. Metrics
+\begin{frame}{Metrics}
+  \begin{itemize}
+    \item Test \(R^2\): retained even when negative to reflect difficulty.
+    \item RMSE and MAE per fold; mean and dispersion summarized by cluster.
+    \item Emphasis on variability across held-out sites (dispersion).
+  \end{itemize}
+\end{frame}
+
+% 10. Training (80/20) performance
+\begin{frame}{Cluster-Split Training (80/20)}
+  \begin{itemize}
+    \item Within-cluster 80/20 splits produce moderate in-sample fits (e.g., \(R^2 \gtrsim 0.75\)).
+    \item These results do not anticipate cross-site generalization.
+    \item Reported for completeness; not used to infer transferability.
+  \end{itemize}
+\end{frame}
+
+% 11. LOSO results: overview
+\begin{frame}{LOSO Results: Overview}
+  \begin{itemize}
+    \item Predictive accuracy varies widely across held-out sites within the same cluster.
+    \item Many held-out sites show negative test \(R^2\).
+    \item Large dispersion in RMSE across folds/sites.
+  \end{itemize}
+\end{frame}
+
+% 12. LOSO results: key numbers
+\begin{frame}{LOSO Results: Key Numbers}
+  \begin{itemize}
+    \item Best-performing cluster: mean test \(R^2 \approx -4.07\), RMSE \(\approx 5.46\).
+    \item Performance far below 80/20 baselines, indicating limited cross-site transfer.
+    \item Distribution of scores: a minority of sites modestly predictable; many with large errors.
+  \end{itemize}
+\end{frame}
+
+% 13. Variability and dispersion
+\begin{frame}{Variability and Dispersion}
+  \begin{itemize}
+    \item Cluster summaries (mean \(\pm\) SD) show large dispersion in \(R^2\) and RMSE.
+    \item Strong site effects persist even within ecologically coherent clusters.
+    \item Highlights heterogeneity and domain shift within clusters.
+  \end{itemize}
+\end{frame}
+
+% 14. Hyperparameter optimization
+\begin{frame}{Hyperparameter Optimization (HPO)}
+  \begin{itemize}
+    \item Optuna tuning yields cluster-specific parameters.
+    \item Produces small changes in mean fold metrics; does not resolve regime mismatch.
+    \item Tuning alone is insufficient for transferable performance under LOSO.
+  \end{itemize}
+\end{frame}
+
+% 15. Feature importance patterns
+\begin{frame}{Feature Importance Patterns}
+  \begin{itemize}
+    \item Influential: VPD, shortwave radiation, air temperature, diurnal/seasonal encodings.
+    \item Lagged/rolling features rank highly, reflecting antecedent-state sensitivity.
+    \item Rankings differ by cluster, indicating shifting ecological controls.
+  \end{itemize}
+\end{frame}
+
+% 16. Failure modes and uncertainty
+\begin{frame}{Failure Modes and Uncertainty}
+  \begin{itemize}
+    \item Errors largest at sites whose covariates differ markedly from the training subset within a cluster.
+    \item Residuals increase during periods of extreme atmospheric demand (high VPD, radiation, temperature).
+    \item Consistent with regime mismatch between training and test conditions.
+  \end{itemize}
+\end{frame}
+
+% 17. Interpretation: domain shift vs capacity
+\begin{frame}{Interpretation: Domain Shift vs Model Capacity}
+  \begin{itemize}
+    \item Patterns implicate domain shift as the primary limitation to transferability.
+    \item Negative \(R^2\) retained to reflect difficulty rather than truncating at zero.
+    \item Suggests need for domain-aware strategies beyond hyperparameter tuning.
+  \end{itemize}
+\end{frame}
+
+% 18. Computational notes
+\begin{frame}{Computational Notes}
+  \begin{itemize}
+    \item XGBoost is CPU-friendly; GPU substantially reduces per-fold training/validation time.
+    \item All models retrained per fold; careful to avoid leakage across folds.
+  \end{itemize}
+\end{frame}
+
+% 19. Applications
+\begin{frame}{Applications}
+  \begin{itemize}
+    \item Within-site gap-filling and short-term forecasting are feasible.
+    \item Cross-site deployment likely requires site calibration or domain adaptation.
+    \item Richer, site-calibrated features (traits, soils, stand structure, protocol metadata) can aid transfer.
+  \end{itemize}
+\end{frame}
+
+% 20. Concerns, Next Steps, and Conclusion
+\begin{frame}{Concerns, Next Steps, and Conclusion}
+  \begin{itemize}
+    \item Concerns: coverage biases, protocol heterogeneity, limited features, single-learner focus.
+    \item Next steps: domain adaptation/hierarchical models; richer features; standardized metadata; uncertainty; broader benchmarks.
+    \item Conclusion: Domain shift, not capacity, limits transfer. Domain-aware methods and site-calibrated features are needed for cross-site generalization.
+  \end{itemize}
+\end{frame}
+
+\end{document}
+
+

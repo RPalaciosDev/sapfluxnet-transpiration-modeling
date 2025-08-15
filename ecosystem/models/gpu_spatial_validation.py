@@ -50,7 +50,7 @@ class ParquetSpatialValidator:
     
     def __init__(self, parquet_dir='../../processed_parquet', 
                  models_dir='./results/cluster_models',
-                 results_dir='./results/parquet_spatial_validation',
+                 results_dir='./results/spatial_validation',
                  optimize_hyperparams=False,
                  load_optimized_params=None,
                  force_gpu=False,
@@ -1161,19 +1161,19 @@ class ParquetSpatialValidator:
         # Save detailed fold results
         if all_fold_results:
             fold_results_df = pd.DataFrame(all_fold_results)
-            fold_results_path = os.path.join(self.results_dir, f'parquet_spatial_fold_results_{self.timestamp}.csv')
+            fold_results_path = os.path.join(self.results_dir, f'spatial_fold_results_{self.timestamp}.csv')
             fold_results_df.to_csv(fold_results_path, index=False)
             print(f"  ✅ Fold results: {fold_results_path}")
         
         # Save cluster summaries
         if cluster_summaries:
             summaries_df = pd.DataFrame(cluster_summaries)
-            summaries_path = os.path.join(self.results_dir, f'parquet_spatial_summaries_{self.timestamp}.csv')
+            summaries_path = os.path.join(self.results_dir, f'spatial_summaries_{self.timestamp}.csv')
             summaries_df.to_csv(summaries_path, index=False)
             print(f"  ✅ Cluster summaries: {summaries_path}")
         
         # Save comprehensive report
-        report_path = os.path.join(self.results_dir, f'parquet_spatial_report_{self.timestamp}.txt')
+        report_path = os.path.join(self.results_dir, f'spatial_report_{self.timestamp}.txt')
         with open(report_path, 'w') as f:
             f.write("SAPFLUXNET Cluster-Based Spatial Validation Report (PARQUET)\n")
             f.write("=" * 60 + "\n")
@@ -1239,7 +1239,7 @@ def main():
                         help="Directory containing parquet files")
     parser.add_argument('--models-dir', default='./results/cluster_models',
                         help="Directory containing cluster models")
-    parser.add_argument('--results-dir', default='./results/parquet_spatial_validation',
+    parser.add_argument('--results-dir', default='./results/spatial_validation',
                         help="Directory to save validation results")
     parser.add_argument('--optimize-hyperparams', action='store_true',
                         help="Run hyperparameter optimization based on existing results")

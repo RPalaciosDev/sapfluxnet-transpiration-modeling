@@ -1,0 +1,39 @@
+SAPFLUXNET Cluster-Based Spatial Validation Report (PARQUET)
+============================================================
+Generated: 2025-08-07 03:11:02.168640
+Method: Leave-One-Site-Out within each ecosystem cluster
+Data Source: Raw parquet files (no preprocessing)
+Purpose: Compare with preprocessed libsvm approach
+
+Cluster Performance Summary:
+------------------------------
+Cluster 0:
+  Sites: 18/18
+  Test R²: -4.5822 ± 10.0828
+  Test RMSE: 6.7459 ± 7.7646
+
+Cluster 1:
+  Sites: 20/20
+  Test R²: -0.3600 ± 1.5297
+  Test RMSE: 3.3274 ± 2.5373
+
+Cluster 2:
+  Sites: 19/19
+  Test R²: -9.2066 ± 30.1563
+  Test RMSE: 7.6314 ± 4.8212
+
+Cluster 3:
+  Sites: 13/13
+  Test R²: -0.3425 ± 2.3985
+  Test RMSE: 4.0552 ± 1.4323
+
+Cluster 4:
+  Sites: 17/17
+  Test R²: -11013.1511 ± 40944.1591
+  Test RMSE: 62.4361 ± 190.0471
+
+Overall Performance:
+--------------------
+Average Test R² across clusters: -2205.5285
+Average Test RMSE across clusters: 16.8392
+Total successful folds: 87/87

@@ -1,0 +1,964 @@
+[
+  {
+    "name": "kmeans_robust_3",
+    "method": "kmeans",
+    "scaler": "robust",
+    "n_clusters": 3,
+    "labels": "[0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 2 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0\n 0 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 2 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0\n 0 0 0 2 0 0 0 0 0 0 0 0 0]",
+    "balance_ratio": 0.012048192771084338,
+    "silhouette": 0.8357343439694992,
+    "cluster_counts": [
+      83,
+      1,
+      3
+    ]
+  },
+  {
+    "name": "kmeans_robust_4",
+    "method": "kmeans",
+    "scaler": "robust",
+    "n_clusters": 4,
+    "labels": "[0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 0 0 0 0 0 0 0 0 0 3 0 0 0 0 0 0\n 0 2 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0\n 0 0 0 1 0 0 0 0 0 0 0 0 0]",
+    "balance_ratio": 0.012195121951219513,
+    "silhouette": 0.8376156851760279,
+    "cluster_counts": [
+      82,
+      3,
+      1,
+      1
+    ]
+  },
+  {
+    "name": "kmeans_robust_5",
+    "method": "kmeans",
+    "scaler": "robust",
+    "n_clusters": 5,
+    "labels": "[3 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 0 3 0 0 0 0 0 0 0 4 0 0 0 0 0 0\n 0 2 3 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 3 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0\n 0 0 0 1 0 0 0 0 0 0 0 0 0]",
+    "balance_ratio": 0.012658227848101266,
+    "silhouette": 0.7557972649905154,
+    "cluster_counts": [
+      79,
+      2,
+      1,
+      4,
+      1
+    ]
+  },
+  {
+    "name": "kmeans_robust_6",
+    "method": "kmeans",
+    "scaler": "robust",
+    "n_clusters": 6,
+    "labels": "[3 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 2 0 3 0 0 0 0 0 0 0 5 0 0 0 0 0 0\n 4 1 3 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 3 0 4 4 0 0 0 0 0 0 0 0 0 0 0 0\n 0 0 0 2 0 0 0 0 0 0 0 0 0]",
+    "balance_ratio": 0.013157894736842105,
+    "silhouette": 0.7637391478854281,
+    "cluster_counts": [
+      76,
+      1,
+      2,
+      4,
+      3,
+      1
+    ]
+  },
+  {
+    "name": "kmeans_robust_7",
+    "method": "kmeans",
+    "scaler": "robust",
+    "n_clusters": 7,
+    "labels": "[3 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 2 0 3 0 0 0 0 0 0 0 5 6 0 0 0 0 0\n 4 1 3 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 3 0 4 4 0 0 0 0 0 0 0 0 0 0 0 0\n 0 0 0 2 0 0 0 0 0 0 0 0 0]",
+    "balance_ratio": 0.013333333333333334,
+    "silhouette": 0.7574529683830937,
+    "cluster_counts": [
+      75,
+      1,
+      2,
+      4,
+      3,
+      1,
+      1
+    ]
+  },
+  {
+    "name": "kmeans_robust_8",
+    "method": "kmeans",
+    "scaler": "robust",
+    "n_clusters": 8,
+    "labels": "[4 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 2 0 4 0 0 0 0 0 0 0 3 7 0 0 0 0 0\n 5 1 4 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 4 0 5 5 0 0 0 0 0 0 6 0 0 0 0 0\n 0 0 0 2 0 0 0 0 0 0 0 0 0]",
+    "balance_ratio": 0.013513513513513514,
+    "silhouette": 0.7427758035593209,
+    "cluster_counts": [
+      74,
+      1,
+      2,
+      1,
+      4,
+      3,
+      1,
+      1
+    ]
+  },
+  {
+    "name": "kmeans_standard_3",
+    "method": "kmeans",
+    "scaler": "standard",
+    "n_clusters": 3,
+    "labels": "[1 1 2 2 2 2 2 2 2 2 2 2 0 2 2 2 2 2 2 2 1 1 1 1 0 0 1 1 1 1 1 1 1 1 1 1 1\n 0 0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0 0 1 0 0 0 1 1 2 1 1 1 0 0\n 0 0 1 1 1 1 1 1 1 1 1 1 2]",
+    "balance_ratio": 0.25925925925925924,
+    "silhouette": 0.1542376953977006,
+    "cluster_counts": [
+      14,
+      54,
+      19
+    ],
+    "combined_score": 0.039987550658663114,
+    "final_score": 0.04298661695806284
+  },
+  {
+    "name": "kmeans_standard_4",
+    "method": "kmeans",
+    "scaler": "standard",
+    "n_clusters": 4,
+    "labels": "[0 0 3 3 3 3 3 3 3 3 3 3 1 3 3 3 3 3 3 3 2 2 2 2 1 1 2 2 2 2 0 0 2 0 0 0 2\n 1 1 2 2 2 0 2 2 2 2 2 2 0 2 2 2 2 2 0 2 2 2 0 1 1 0 1 1 1 2 2 3 2 2 0 1 1\n 1 1 2 0 2 0 0 2 0 0 0 0 3]",
+    "balance_ratio": 0.4117647058823529,
+    "silhouette": 0.17195661925051103,
+    "cluster_counts": [
+      20,
+      14,
+      34,
+      19
+    ],
+    "combined_score": 0.07080566675021042,
+    "final_score": 0.07788623342523147
+  },
+  {
+    "name": "kmeans_standard_5",
+    "method": "kmeans",
+    "scaler": "standard",
+    "n_clusters": 5,
+    "labels": "[3 3 0 0 0 0 0 0 0 0 0 0 2 0 0 0 0 0 0 0 1 1 1 1 2 2 1 1 1 1 3 3 4 3 3 3 4\n 2 2 1 1 1 3 1 4 4 4 4 1 3 1 1 1 1 1 4 4 1 1 3 2 2 3 2 2 2 1 1 0 1 4 4 2 2\n 2 2 4 3 1 3 3 1 3 3 3 3 0]",
+    "balance_ratio": 0.44,
+    "silhouette": 0.17652677341874304,
+    "cluster_counts": [
+      19,
+      25,
+      14,
+      18,
+      11
+    ],
+    "combined_score": 0.07767178030424694,
+    "final_score": 0.08738075284227781
+  },
+  {
+    "name": "kmeans_standard_6",
+    "method": "kmeans",
+    "scaler": "standard",
+    "n_clusters": 6,
+    "labels": "[5 5 1 1 1 1 1 1 1 1 1 1 0 1 1 1 1 1 1 1 3 3 3 3 0 0 3 3 3 3 5 5 3 5 5 5 3\n 0 0 3 3 3 5 3 3 3 3 3 3 5 3 3 3 3 3 5 3 3 3 5 0 0 5 0 0 0 3 3 2 3 3 4 0 0\n 0 0 3 5 3 5 5 3 5 5 5 5 1]",
+    "balance_ratio": 0.029411764705882353,
+    "silhouette": 0.16950706295458307,
+    "cluster_counts": [
+      14,
+      18,
+      1,
+      34,
+      1,
+      19
+    ]
+  },
+  {
+    "name": "kmeans_standard_7",
+    "method": "kmeans",
+    "scaler": "standard",
+    "n_clusters": 7,
+    "labels": "[4 4 0 0 0 0 0 0 0 0 0 0 1 0 0 0 0 0 0 0 3 3 3 3 1 1 3 3 3 3 4 4 3 4 4 4 1\n 1 2 3 3 3 4 3 1 1 1 1 3 4 3 3 3 3 3 4 3 3 3 4 1 1 4 1 1 1 3 3 6 3 1 5 1 1\n 1 1 3 4 3 4 4 3 4 4 4 4 0]",
+    "balance_ratio": 0.03571428571428571,
+    "silhouette": 0.17417620479472243,
+    "cluster_counts": [
+      18,
+      19,
+      1,
+      28,
+      19,
+      1,
+      1
+    ]
+  },
+  {
+    "name": "kmeans_standard_8",
+    "method": "kmeans",
+    "scaler": "standard",
+    "n_clusters": 8,
+    "labels": "[1 1 0 0 0 0 0 0 0 0 0 0 3 0 0 0 0 0 0 0 2 2 2 2 2 0 2 2 2 2 1 1 2 1 1 1 7\n 6 5 2 2 2 1 2 7 7 7 7 2 1 2 2 2 2 2 1 2 2 2 1 6 6 1 0 0 2 2 2 4 2 7 1 3 3\n 3 6 2 1 2 1 1 2 1 1 1 1 0]",
+    "balance_ratio": 0.03333333333333333,
+    "silhouette": 0.206877847322421,
+    "cluster_counts": [
+      21,
+      20,
+      30,
+      4,
+      1,
+      1,
+      4,
+      6
+    ]
+  },
+  {
+    "name": "kmeans_minmax_3",
+    "method": "kmeans",
+    "scaler": "minmax",
+    "n_clusters": 3,
+    "labels": "[2 2 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 1 1 1 1 0 1 1 1 1 2 2 1 2 2 2 1\n 1 0 1 1 1 2 1 1 1 1 1 1 2 1 1 1 1 1 2 1 1 1 2 0 2 2 0 0 1 1 1 0 1 1 2 2 2\n 2 2 1 2 1 2 2 1 2 2 2 2 0]",
+    "balance_ratio": 0.6756756756756757,
+    "silhouette": 0.2835295409044973,
+    "cluster_counts": [
+      25,
+      37,
+      25
+    ],
+    "combined_score": 0.19157401412466032,
+    "final_score": 0.20594206518400984
+  },
+  {
+    "name": "kmeans_minmax_4",
+    "method": "kmeans",
+    "scaler": "minmax",
+    "n_clusters": 4,
+    "labels": "[2 2 0 0 0 0 0 0 0 0 0 0 3 0 0 0 0 0 0 0 1 1 1 1 3 3 1 1 1 1 2 2 1 2 2 2 1\n 3 3 1 1 1 2 1 1 1 1 1 1 2 1 1 1 1 1 2 1 1 1 2 3 3 2 3 3 3 1 1 0 1 1 2 3 3\n 3 3 1 2 1 2 2 1 2 2 2 2 0]",
+    "balance_ratio": 0.4117647058823529,
+    "silhouette": 0.32620592035528867,
+    "cluster_counts": [
+      19,
+      34,
+      20,
+      14
+    ],
+    "combined_score": 0.13432008485217767,
+    "final_score": 0.14775209333739545
+  },
+  {
+    "name": "kmeans_minmax_5",
+    "method": "kmeans",
+    "scaler": "minmax",
+    "n_clusters": 5,
+    "labels": "[2 2 1 1 1 1 1 1 1 1 1 1 4 1 1 1 1 1 1 1 3 3 3 3 4 4 3 3 3 3 2 2 0 2 2 2 0\n 4 4 3 0 0 2 3 0 0 0 0 0 2 3 3 3 3 3 2 0 3 3 2 4 4 2 4 4 4 3 0 1 0 0 2 4 4\n 4 4 0 2 0 2 2 3 2 2 2 2 1]",
+    "balance_ratio": 0.7,
+    "silhouette": 0.29311364518419925,
+    "cluster_counts": [
+      15,
+      19,
+      20,
+      19,
+      14
+    ],
+    "combined_score": 0.20517955162893947,
+    "final_score": 0.2308269955825569
+  },
+  {
+    "name": "kmeans_minmax_6",
+    "method": "kmeans",
+    "scaler": "minmax",
+    "n_clusters": 6,
+    "labels": "[2 2 5 5 5 5 5 5 5 5 5 5 0 5 5 5 5 5 5 5 3 3 3 3 0 0 3 3 3 3 4 4 1 4 4 4 1\n 0 0 3 1 1 4 3 1 1 1 1 1 4 3 3 3 3 3 4 1 3 3 4 0 0 4 0 0 0 3 1 5 1 1 4 0 0\n 0 0 1 4 1 4 4 3 4 2 2 2 5]",
+    "balance_ratio": 0.2631578947368421,
+    "silhouette": 0.3116183990297126,
+    "cluster_counts": [
+      14,
+      15,
+      5,
+      19,
+      15,
+      19
+    ],
+    "combined_score": 0.08200484184992436,
+    "final_score": 0.094305568127413
+  },
+  {
+    "name": "kmeans_minmax_7",
+    "method": "kmeans",
+    "scaler": "minmax",
+    "n_clusters": 7,
+    "labels": "[5 5 0 0 0 0 0 0 0 0 0 0 4 0 0 0 0 0 0 0 3 3 3 3 6 6 3 3 3 3 1 1 2 1 1 1 2\n 6 6 3 2 2 1 3 2 2 2 2 2 1 3 3 3 3 3 1 2 3 3 1 6 6 1 6 6 6 3 2 0 2 2 1 4 4\n 4 4 2 1 2 1 1 3 1 5 5 5 0]",
+    "balance_ratio": 0.2631578947368421,
+    "silhouette": 0.31978346870516766,
+    "cluster_counts": [
+      19,
+      15,
+      15,
+      19,
+      5,
+      5,
+      9
+    ],
+    "combined_score": 0.08415354439609675,
+    "final_score": 0.09888041466541368
+  },
+  {
+    "name": "kmeans_minmax_8",
+    "method": "kmeans",
+    "scaler": "minmax",
+    "n_clusters": 8,
+    "labels": "[2 2 1 1 1 1 1 1 1 1 1 1 5 1 1 1 1 1 1 1 7 7 7 0 6 6 7 7 0 0 3 3 0 3 3 3 4\n 6 6 7 0 0 3 7 4 4 4 4 0 3 0 0 0 0 0 3 0 7 7 3 6 5 3 6 6 6 0 0 1 0 4 3 5 5\n 5 5 4 3 4 3 3 7 3 2 2 2 1]",
+    "balance_ratio": 0.2631578947368421,
+    "silhouette": 0.31696936303605494,
+    "cluster_counts": [
+      16,
+      19,
+      5,
+      15,
+      8,
+      6,
+      8,
+      10
+    ],
+    "combined_score": 0.08341299027264604,
+    "final_score": 0.10009558832717524
+  },
+  {
+    "name": "kmeans_power_3",
+    "method": "kmeans",
+    "scaler": "power",
+    "n_clusters": 3,
+    "labels": "[1 1 2 2 2 2 2 2 2 2 2 2 0 2 2 2 2 2 2 2 1 1 1 1 0 0 1 1 1 1 1 1 1 1 1 1 0\n 0 2 1 1 1 1 1 0 0 0 0 1 1 1 1 1 1 1 1 1 1 1 1 2 0 1 0 0 0 1 1 2 1 0 1 0 0\n 0 0 1 1 1 1 1 0 1 2 0 1 2]",
+    "balance_ratio": 0.4444444444444444,
+    "silhouette": 0.1482580287482129,
+    "cluster_counts": [
+      20,
+      45,
+      22
+    ],
+    "combined_score": 0.06589245722142795,
+    "final_score": 0.07083439151303504
+  },
+  {
+    "name": "kmeans_power_4",
+    "method": "kmeans",
+    "scaler": "power",
+    "n_clusters": 4,
+    "labels": "[0 0 1 1 1 1 1 1 1 1 1 1 3 1 1 1 1 1 1 1 0 0 0 0 3 3 0 0 0 0 0 0 0 0 0 0 2\n 3 3 0 0 0 0 0 2 2 2 2 0 0 0 0 0 0 0 0 0 0 0 0 3 3 0 3 3 3 0 0 1 0 2 2 2 2\n 2 3 0 0 0 0 0 0 0 0 0 0 1]",
+    "balance_ratio": 0.2127659574468085,
+    "silhouette": 0.16423939729686368,
+    "cluster_counts": [
+      47,
+      19,
+      10,
+      11
+    ],
+    "combined_score": 0.03494455261635398,
+    "final_score": 0.03843900787798938
+  },
+  {
+    "name": "kmeans_power_5",
+    "method": "kmeans",
+    "scaler": "power",
+    "n_clusters": 5,
+    "labels": "[1 1 0 0 0 0 0 0 0 0 0 0 3 0 0 0 0 0 0 0 2 2 2 2 3 3 2 2 2 2 1 1 2 1 1 1 4\n 3 3 2 2 2 2 2 4 4 4 4 2 2 2 2 2 2 2 2 2 2 2 1 3 3 2 3 3 3 2 2 0 2 4 4 4 4\n 4 3 2 2 2 2 2 2 2 2 2 2 0]",
+    "balance_ratio": 0.20512820512820512,
+    "silhouette": 0.17026613794006856,
+    "cluster_counts": [
+      19,
+      8,
+      39,
+      11,
+      10
+    ],
+    "combined_score": 0.03492638726975765,
+    "final_score": 0.03929218567847736
+  },
+  {
+    "name": "kmeans_power_6",
+    "method": "kmeans",
+    "scaler": "power",
+    "n_clusters": 6,
+    "labels": "[0 0 4 4 4 4 4 4 4 4 4 4 3 4 4 4 4 4 4 4 2 2 2 2 5 5 2 2 2 2 3 3 2 0 0 0 2\n 5 5 2 2 2 0 2 1 1 1 1 2 0 2 2 2 2 2 2 2 2 2 0 5 5 2 5 5 5 2 2 4 2 1 2 3 3\n 3 5 2 0 2 0 0 2 2 0 0 0 4]",
+    "balance_ratio": 0.15151515151515152,
+    "silhouette": 0.2072825748861958,
+    "cluster_counts": [
+      14,
+      5,
+      33,
+      6,
+      19,
+      10
+    ],
+    "combined_score": 0.0314064507403327,
+    "final_score": 0.0361174183513826
+  },
+  {
+    "name": "kmeans_power_7",
+    "method": "kmeans",
+    "scaler": "power",
+    "n_clusters": 7,
+    "labels": "[2 2 1 1 1 1 1 1 1 1 0 0 4 0 0 0 0 0 0 0 3 3 3 3 6 6 3 3 3 3 4 4 3 2 2 2 3\n 6 6 3 3 3 2 3 3 3 3 3 3 2 3 3 3 3 3 2 3 3 3 2 6 6 2 6 6 6 3 3 0 3 3 5 4 4\n 4 6 3 2 3 2 2 3 3 1 1 1 1]",
+    "balance_ratio": 0.02857142857142857,
+    "silhouette": 0.151028233104205,
+    "cluster_counts": [
+      10,
+      12,
+      13,
+      35,
+      6,
+      1,
+      10
+    ]
+  },
+  {
+    "name": "kmeans_power_8",
+    "method": "kmeans",
+    "scaler": "power",
+    "n_clusters": 8,
+    "labels": "[2 2 0 0 0 0 0 0 0 0 3 3 7 3 3 3 3 3 3 3 5 5 5 5 4 4 5 5 5 5 7 7 5 2 2 2 1\n 4 4 5 5 5 2 5 1 1 1 1 5 2 5 5 5 5 5 1 5 5 5 2 4 4 5 4 4 4 5 5 3 5 1 6 7 7\n 7 4 5 2 5 2 2 5 2 2 2 2 3]",
+    "balance_ratio": 0.034482758620689655,
+    "silhouette": 0.18669006347934963,
+    "cluster_counts": [
+      8,
+      7,
+      15,
+      11,
+      10,
+      29,
+      1,
+      6
+    ]
+  },
+  {
+    "name": "hierarchical_ward_3",
+    "method": "hierarchical",
+    "linkage": "ward",
+    "n_clusters": 3,
+    "labels": "[1 1 0 0 0 0 0 0 0 0 0 0 2 0 0 0 0 0 0 0 1 1 1 1 0 0 1 1 1 1 2 2 1 1 1 1 1\n 0 0 1 1 1 1 1 2 2 2 2 1 1 1 1 1 1 1 1 1 1 1 1 0 0 1 0 0 0 1 1 0 1 2 1 2 2\n 2 0 1 1 1 1 1 1 1 1 1 1 0]",
+    "balance_ratio": 0.23404255319148937,
+    "silhouette": 0.16001220930370727,
+    "cluster_counts": [
+      29,
+      47,
+      11
+    ],
+    "combined_score": 0.03744966600725064,
+    "final_score": 0.04025839095779443
+  },
+  {
+    "name": "hierarchical_ward_4",
+    "method": "hierarchical",
+    "linkage": "ward",
+    "n_clusters": 4,
+    "labels": "[0 0 1 1 1 1 1 1 1 1 1 1 2 1 1 1 1 1 1 1 0 0 0 0 3 3 0 0 0 0 2 2 0 0 0 0 0\n 3 3 0 0 0 0 0 2 2 2 2 0 0 0 0 0 0 0 0 0 0 0 0 3 3 0 3 3 3 0 0 1 0 2 0 2 2\n 2 3 0 0 0 0 0 0 0 0 0 0 1]",
+    "balance_ratio": 0.2127659574468085,
+    "silhouette": 0.16777332200057854,
+    "cluster_counts": [
+      47,
+      19,
+      11,
+      10
+    ],
+    "combined_score": 0.0356964514894848,
+    "final_score": 0.03926609663843328
+  },
+  {
+    "name": "hierarchical_ward_5",
+    "method": "hierarchical",
+    "linkage": "ward",
+    "n_clusters": 5,
+    "labels": "[0 0 1 1 1 1 1 1 1 1 1 1 2 1 1 1 1 1 1 1 4 4 4 4 3 3 4 4 4 4 2 2 4 0 0 0 4\n 3 3 4 4 4 0 4 2 2 2 2 4 0 4 4 4 4 4 4 4 4 4 0 3 3 4 3 3 3 4 4 1 4 2 0 2 2\n 2 3 4 0 4 0 0 4 4 0 0 0 1]",
+    "balance_ratio": 0.3125,
+    "silhouette": 0.19013142167769076,
+    "cluster_counts": [
+      15,
+      19,
+      11,
+      10,
+      32
+    ],
+    "combined_score": 0.059416069274278366,
+    "final_score": 0.06684307793356316
+  },
+  {
+    "name": "hierarchical_ward_6",
+    "method": "hierarchical",
+    "linkage": "ward",
+    "n_clusters": 6,
+    "labels": "[2 2 1 1 1 1 1 1 1 1 1 1 0 1 1 1 1 1 1 1 4 4 4 4 3 3 4 4 4 4 0 0 4 2 2 2 4\n 3 3 4 4 4 2 4 0 0 0 0 4 2 4 4 4 4 4 4 4 4 4 2 3 3 4 3 3 3 4 4 1 4 0 5 0 0\n 0 3 4 2 4 2 2 4 4 2 2 2 1]",
+    "balance_ratio": 0.03125,
+    "silhouette": 0.1896173184355834,
+    "cluster_counts": [
+      11,
+      19,
+      14,
+      10,
+      32,
+      1
+    ]
+  },
+  {
+    "name": "hierarchical_ward_7",
+    "method": "hierarchical",
+    "linkage": "ward",
+    "n_clusters": 7,
+    "labels": "[2 2 0 0 0 0 0 0 0 0 0 0 4 0 0 0 0 0 0 0 1 1 1 1 3 3 1 1 1 1 4 4 1 2 2 2 1\n 3 3 1 1 1 2 1 6 6 6 6 1 2 1 1 1 1 1 1 1 1 1 2 3 3 1 3 3 3 1 1 0 1 6 5 4 4\n 4 3 1 2 1 2 2 1 1 2 2 2 0]",
+    "balance_ratio": 0.03125,
+    "silhouette": 0.21688830381669846,
+    "cluster_counts": [
+      19,
+      32,
+      14,
+      10,
+      6,
+      1,
+      5
+    ]
+  },
+  {
+    "name": "hierarchical_ward_8",
+    "method": "hierarchical",
+    "linkage": "ward",
+    "n_clusters": 8,
+    "labels": "[2 2 7 7 7 7 7 7 7 7 3 3 4 3 3 3 3 3 3 3 0 0 0 0 1 1 0 0 0 0 4 4 0 2 2 2 0\n 1 1 0 0 0 2 0 6 6 6 6 0 2 0 0 0 0 0 0 0 0 0 2 1 1 0 1 1 1 0 0 3 0 6 5 4 4\n 4 1 0 2 0 2 2 0 0 2 2 2 3]",
+    "balance_ratio": 0.03125,
+    "silhouette": 0.1917549533856349,
+    "cluster_counts": [
+      32,
+      10,
+      14,
+      11,
+      6,
+      1,
+      5,
+      8
+    ]
+  },
+  {
+    "name": "hierarchical_complete_3",
+    "method": "hierarchical",
+    "linkage": "complete",
+    "n_clusters": 3,
+    "labels": "[0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 2 2 0 0 0 0 0 0 0 0 0 0 0\n 2 2 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 2 2 0 2 2 2 0 0 0 0 0 1 0 0\n 0 2 0 0 0 0 0 0 0 0 0 0 0]",
+    "balance_ratio": 0.013157894736842105,
+    "silhouette": 0.16238320089749222,
+    "cluster_counts": [
+      76,
+      1,
+      10
+    ]
+  },
+  {
+    "name": "hierarchical_complete_4",
+    "method": "hierarchical",
+    "linkage": "complete",
+    "n_clusters": 4,
+    "labels": "[1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0 0 0 1 2 2 1 1 1 1 0 0 1 1 1 1 0\n 2 2 1 1 1 1 1 0 0 0 0 1 1 1 1 1 1 1 1 1 0 1 1 2 2 1 2 2 2 1 1 1 1 0 3 0 0\n 0 2 1 1 1 1 1 1 0 1 1 1 1]",
+    "balance_ratio": 0.016666666666666666,
+    "silhouette": 0.13923816450110435,
+    "cluster_counts": [
+      16,
+      60,
+      10,
+      1
+    ]
+  },
+  {
+    "name": "hierarchical_complete_5",
+    "method": "hierarchical",
+    "linkage": "complete",
+    "n_clusters": 5,
+    "labels": "[1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0 0 0 1 2 2 1 1 1 1 4 4 1 1 1 1 0\n 2 2 1 1 1 1 1 4 4 4 4 1 1 1 1 1 1 1 1 1 0 1 1 2 2 1 2 2 2 1 1 1 1 4 3 4 4\n 4 2 1 1 1 1 1 1 0 1 1 1 1]",
+    "balance_ratio": 0.016666666666666666,
+    "silhouette": 0.13886419435919228,
+    "cluster_counts": [
+      6,
+      60,
+      10,
+      1,
+      10
+    ]
+  },
+  {
+    "name": "hierarchical_complete_6",
+    "method": "hierarchical",
+    "linkage": "complete",
+    "n_clusters": 6,
+    "labels": "[0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 5 5 5 0 2 2 0 0 0 0 1 1 0 0 0 0 4\n 2 2 0 0 0 0 0 1 1 1 1 0 0 0 0 0 0 0 0 0 5 0 0 2 2 0 2 2 2 0 0 0 0 1 3 1 1\n 1 2 0 0 0 0 0 0 4 0 0 0 0]",
+    "balance_ratio": 0.016666666666666666,
+    "silhouette": 0.12316668721113942,
+    "cluster_counts": [
+      60,
+      10,
+      10,
+      1,
+      2,
+      4
+    ]
+  },
+  {
+    "name": "hierarchical_complete_7",
+    "method": "hierarchical",
+    "linkage": "complete",
+    "n_clusters": 7,
+    "labels": "[0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 5 5 5 0 2 2 0 0 0 0 1 1 0 0 0 0 4\n 2 2 0 0 0 0 0 1 1 1 1 0 0 0 0 0 0 0 0 0 5 0 0 2 2 0 2 2 2 0 0 6 0 1 3 1 1\n 1 2 0 0 0 0 0 0 4 0 0 0 6]",
+    "balance_ratio": 0.017241379310344827,
+    "silhouette": 0.08521876378947517,
+    "cluster_counts": [
+      58,
+      10,
+      10,
+      1,
+      2,
+      4,
+      2
+    ]
+  },
+  {
+    "name": "hierarchical_complete_8",
+    "method": "hierarchical",
+    "linkage": "complete",
+    "n_clusters": 8,
+    "labels": "[2 2 3 3 3 3 3 3 3 3 3 3 2 3 3 3 3 3 3 3 5 5 5 2 0 0 3 3 2 2 1 1 2 2 2 2 4\n 0 0 3 2 2 2 2 1 1 1 1 3 2 2 2 2 2 2 2 2 5 3 2 0 0 2 0 0 0 3 3 6 2 1 7 1 1\n 1 0 3 2 3 2 2 2 4 2 2 2 6]",
+    "balance_ratio": 0.03125,
+    "silhouette": 0.11643299690358876,
+    "cluster_counts": [
+      10,
+      10,
+      32,
+      26,
+      2,
+      4,
+      2,
+      1
+    ]
+  },
+  {
+    "name": "hierarchical_average_3",
+    "method": "hierarchical",
+    "linkage": "average",
+    "n_clusters": 3,
+    "labels": "[0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0\n 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 2 0 0 1 0 0\n 0 0 0 0 0 0 0 0 0 0 0 0 0]",
+    "balance_ratio": 0.011764705882352941,
+    "silhouette": 0.16630055610849184,
+    "cluster_counts": [
+      85,
+      1,
+      1
+    ]
+  },
+  {
+    "name": "hierarchical_average_4",
+    "method": "hierarchical",
+    "linkage": "average",
+    "n_clusters": 4,
+    "labels": "[0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1\n 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 2 0 0 3 0 0\n 0 0 0 0 0 0 0 0 1 0 0 0 0]",
+    "balance_ratio": 0.012048192771084338,
+    "silhouette": 0.12699713425156992,
+    "cluster_counts": [
+      83,
+      2,
+      1,
+      1
+    ]
+  },
+  {
+    "name": "hierarchical_average_5",
+    "method": "hierarchical",
+    "linkage": "average",
+    "n_clusters": 5,
+    "labels": "[0 0 0 0 0 0 0 0 0 0 0 0 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 1 0 0 0 0 4\n 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 2 0 0 3 1 1\n 1 0 0 0 0 0 0 0 4 0 0 0 0]",
+    "balance_ratio": 0.012987012987012988,
+    "silhouette": 0.12878054922087614,
+    "cluster_counts": [
+      77,
+      6,
+      1,
+      1,
+      2
+    ]
+  },
+  {
+    "name": "hierarchical_average_6",
+    "method": "hierarchical",
+    "linkage": "average",
+    "n_clusters": 6,
+    "labels": "[0 0 0 0 0 0 0 0 0 0 0 0 1 0 0 0 0 0 0 0 0 5 0 0 0 0 0 0 0 0 1 1 0 0 0 0 4\n 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 2 0 0 3 1 1\n 1 0 0 0 0 0 0 0 4 0 0 0 0]",
+    "balance_ratio": 0.013157894736842105,
+    "silhouette": 0.08494745534531777,
+    "cluster_counts": [
+      76,
+      6,
+      1,
+      1,
+      2,
+      1
+    ]
+  },
+  {
+    "name": "hierarchical_average_7",
+    "method": "hierarchical",
+    "linkage": "average",
+    "n_clusters": 7,
+    "labels": "[0 0 0 0 0 0 0 0 0 0 0 0 1 0 0 0 0 0 0 0 0 5 0 0 2 2 0 0 0 0 1 1 0 0 0 0 4\n 2 2 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 2 2 0 2 2 2 0 0 6 0 0 3 1 1\n 1 2 0 0 0 0 0 0 4 0 0 0 0]",
+    "balance_ratio": 0.015151515151515152,
+    "silhouette": 0.11096532740285728,
+    "cluster_counts": [
+      66,
+      6,
+      10,
+      1,
+      2,
+      1,
+      1
+    ]
+  },
+  {
+    "name": "hierarchical_average_8",
+    "method": "hierarchical",
+    "linkage": "average",
+    "n_clusters": 8,
+    "labels": "[1 1 1 1 1 1 1 1 1 1 1 1 0 1 1 1 1 1 1 1 1 5 1 1 2 2 1 1 1 1 0 0 1 1 1 1 4\n 2 2 1 1 1 1 1 3 3 3 3 1 1 1 1 1 1 1 1 1 1 1 1 2 2 1 2 2 2 1 1 6 1 3 7 0 0\n 0 2 1 1 1 1 1 1 4 1 1 1 1]",
+    "balance_ratio": 0.01639344262295082,
+    "silhouette": 0.1274174444033915,
+    "cluster_counts": [
+      6,
+      61,
+      10,
+      5,
+      2,
+      1,
+      1,
+      1
+    ]
+  },
+  {
+    "name": "hierarchical_single_3",
+    "method": "hierarchical",
+    "linkage": "single",
+    "n_clusters": 3,
+    "labels": "[0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 2\n 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 0 0\n 0 0 0 0 0 0 0 0 0 0 0 0 0]",
+    "balance_ratio": 0.011764705882352941,
+    "silhouette": 0.20165411070687272,
+    "cluster_counts": [
+      85,
+      1,
+      1
+    ]
+  },
+  {
+    "name": "hierarchical_single_4",
+    "method": "hierarchical",
+    "linkage": "single",
+    "n_clusters": 4,
+    "labels": "[0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 2\n 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 3 0 0\n 0 0 0 0 0 0 0 0 1 0 0 0 0]",
+    "balance_ratio": 0.011904761904761904,
+    "silhouette": 0.1284213919948394,
+    "cluster_counts": [
+      84,
+      1,
+      1,
+      1
+    ]
+  },
+  {
+    "name": "hierarchical_single_5",
+    "method": "hierarchical",
+    "linkage": "single",
+    "n_clusters": 5,
+    "labels": "[0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 2\n 0 4 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 3 0 0\n 0 0 0 0 0 0 0 0 1 0 0 0 0]",
+    "balance_ratio": 0.012048192771084338,
+    "silhouette": 0.11604510977824523,
+    "cluster_counts": [
+      83,
+      1,
+      1,
+      1,
+      1
+    ]
+  },
+  {
+    "name": "hierarchical_single_6",
+    "method": "hierarchical",
+    "linkage": "single",
+    "n_clusters": 6,
+    "labels": "[0 0 0 0 0 0 0 0 0 0 0 0 2 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 5\n 0 4 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 3 2 2\n 2 0 0 0 0 0 0 0 1 0 0 0 0]",
+    "balance_ratio": 0.012658227848101266,
+    "silhouette": 0.12045349594985484,
+    "cluster_counts": [
+      79,
+      1,
+      4,
+      1,
+      1,
+      1
+    ]
+  },
+  {
+    "name": "hierarchical_single_7",
+    "method": "hierarchical",
+    "linkage": "single",
+    "n_clusters": 7,
+    "labels": "[0 0 0 0 0 0 0 0 0 0 0 0 2 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 5\n 6 4 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 3 2 2\n 2 0 0 0 0 0 0 0 1 0 0 0 0]",
+    "balance_ratio": 0.01282051282051282,
+    "silhouette": 0.11802991109287643,
+    "cluster_counts": [
+      78,
+      1,
+      4,
+      1,
+      1,
+      1,
+      1
+    ]
+  },
+  {
+    "name": "hierarchical_single_8",
+    "method": "hierarchical",
+    "linkage": "single",
+    "n_clusters": 8,
+    "labels": "[0 0 0 0 0 0 0 0 0 0 0 0 2 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 5\n 6 4 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 7 0 0 0 3 2 2\n 2 0 0 0 0 0 0 0 1 0 0 0 0]",
+    "balance_ratio": 0.012987012987012988,
+    "silhouette": 0.049479796757731904,
+    "cluster_counts": [
+      77,
+      1,
+      4,
+      1,
+      1,
+      1,
+      1,
+      1
+    ]
+  },
+  {
+    "name": "gmm_3",
+    "method": "gmm",
+    "n_clusters": 3,
+    "labels": "[1 1 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 1 1 1 1 2 2 1 1 1 1 0 1 0 1 1 1 2\n 2 2 1 1 1 1 1 2 2 2 2 1 1 1 1 1 1 1 0 1 1 1 1 2 2 0 2 2 2 1 1 1 1 1 0 2 2\n 2 2 1 1 1 1 1 1 1 2 2 2 2]",
+    "balance_ratio": 0.11904761904761904,
+    "silhouette": 0.12216615654710808,
+    "cluster_counts": [
+      5,
+      42,
+      40
+    ],
+    "combined_score": 0.014543590065131914,
+    "final_score": 0.01563435932001681
+  },
+  {
+    "name": "gmm_4",
+    "method": "gmm",
+    "n_clusters": 4,
+    "labels": "[1 1 2 2 2 2 2 2 2 2 2 2 3 2 2 2 2 2 2 2 1 1 1 1 3 3 1 1 1 1 0 1 0 1 1 1 2\n 3 3 1 1 1 1 1 2 2 2 2 1 1 1 1 1 1 1 0 1 1 1 1 3 3 0 3 3 3 1 1 2 1 2 0 3 3\n 3 3 1 1 1 1 1 1 1 2 2 2 2]",
+    "balance_ratio": 0.125,
+    "silhouette": 0.13369540689943696,
+    "cluster_counts": [
+      5,
+      40,
+      28,
+      14
+    ],
+    "combined_score": 0.01671192586242962,
+    "final_score": 0.018383118448672582
+  },
+  {
+    "name": "gmm_5",
+    "method": "gmm",
+    "n_clusters": 5,
+    "labels": "[4 4 2 2 2 2 2 2 2 2 2 2 3 2 2 2 2 2 2 2 1 1 1 1 3 3 1 1 1 1 4 4 0 4 4 4 1\n 3 3 1 1 1 4 1 2 2 2 2 1 4 1 1 1 1 1 0 1 1 1 4 3 3 0 3 3 3 1 1 2 1 1 0 3 3\n 3 3 1 4 1 4 4 1 1 4 4 4 2]",
+    "balance_ratio": 0.13333333333333333,
+    "silhouette": 0.16047258535423628,
+    "cluster_counts": [
+      4,
+      30,
+      23,
+      14,
+      16
+    ],
+    "combined_score": 0.02139634471389817,
+    "final_score": 0.024070887803135443
+  },
+  {
+    "name": "gmm_6",
+    "method": "gmm",
+    "n_clusters": 6,
+    "labels": "[4 4 2 2 2 2 2 2 2 2 2 2 3 2 2 2 2 2 2 2 1 5 1 1 5 5 1 1 1 1 4 4 0 4 4 4 1\n 5 3 1 1 1 4 1 2 2 2 2 1 4 1 1 1 1 1 0 1 1 1 4 3 3 0 5 5 5 1 1 2 1 1 0 3 3\n 3 3 1 4 1 4 4 1 1 4 4 4 2]",
+    "balance_ratio": 0.13793103448275862,
+    "silhouette": 0.16618454055687373,
+    "cluster_counts": [
+      4,
+      29,
+      23,
+      8,
+      16,
+      7
+    ],
+    "combined_score": 0.02292200559405155,
+    "final_score": 0.02636030643315928
+  },
+  {
+    "name": "gmm_7",
+    "method": "gmm",
+    "n_clusters": 7,
+    "labels": "[4 4 2 2 2 2 2 2 2 2 2 2 3 2 2 2 2 2 2 2 1 5 1 1 5 5 1 1 1 1 4 4 0 4 4 4 6\n 5 3 1 1 1 4 1 6 6 6 6 1 4 1 1 1 1 1 0 1 1 1 4 3 3 0 5 5 5 1 1 2 1 6 0 3 3\n 3 3 1 4 1 4 4 1 1 4 4 4 2]",
+    "balance_ratio": 0.14814814814814814,
+    "silhouette": 0.20441259309511872,
+    "cluster_counts": [
+      4,
+      27,
+      19,
+      8,
+      16,
+      7,
+      6
+    ],
+    "combined_score": 0.03028334712520277,
+    "final_score": 0.035582932872113254
+  },
+  {
+    "name": "gmm_8",
+    "method": "gmm",
+    "n_clusters": 8,
+    "labels": "[3 3 2 2 2 2 2 2 2 2 2 2 7 2 2 2 2 2 2 2 6 6 6 6 6 2 1 1 1 1 4 4 0 4 4 4 5\n 6 2 1 1 1 3 6 5 5 5 5 1 3 6 6 6 6 6 0 6 6 1 3 2 3 0 2 6 6 1 1 2 1 5 0 7 7\n 7 3 6 3 1 3 3 1 1 3 3 3 2]",
+    "balance_ratio": 0.17391304347826086,
+    "silhouette": 0.17931077651277455,
+    "cluster_counts": [
+      4,
+      15,
+      23,
+      13,
+      5,
+      6,
+      17,
+      4
+    ],
+    "combined_score": 0.03118448287178688,
+    "final_score": 0.03742137944614425
+  },
+  {
+    "name": "dbscan_eps2.0_min3",
+    "method": "dbscan",
+    "eps": 2.0,
+    "min_samples": 3,
+    "n_clusters": 2,
+    "labels": "[-1 -1 -1 -1 -1  0  0  0  0  0 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1\n -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1\n -1 -1 -1  1  1  1  1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1\n -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1]",
+    "balance_ratio": 0.8,
+    "silhouette": -0.13282741957446975,
+    "cluster_counts": [
+      5,
+      4
+    ],
+    "combined_score": -0.10626193565957581,
+    "final_score": -0.11157503244255461
+  },
+  {
+    "name": "dbscan_eps2.5_min3",
+    "method": "dbscan",
+    "eps": 2.5,
+    "min_samples": 3,
+    "n_clusters": 3,
+    "labels": "[-1 -1 -1 -1 -1  0  0  0  0  0 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1\n -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1  1  1  1  1\n -1 -1 -1  2  2  2  2 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1\n -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1]",
+    "balance_ratio": 0.8,
+    "silhouette": -0.09569722560995927,
+    "cluster_counts": [
+      5,
+      4,
+      4
+    ],
+    "combined_score": -0.07655778048796742,
+    "final_score": -0.08229961402456498
+  }
+]

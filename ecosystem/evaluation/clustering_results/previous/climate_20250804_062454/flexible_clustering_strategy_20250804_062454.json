@@ -1,0 +1,67 @@
+{
+  "selected_strategy": "K-means (3 clusters)",
+  "algorithm": "K-means",
+  "n_clusters": 3,
+  "silhouette_score": 0.2966168875025072,
+  "balance_ratio": 0.75,
+  "final_score": 1.1949253312537609,
+  "feature_set_name": "climate",
+  "feature_set_description": "Geographic + climate variables, biome classifications, and K\u00f6ppen-Geiger climate zones",
+  "features_used": [
+    "longitude",
+    "latitude",
+    "elevation",
+    "mean_annual_temp",
+    "mean_annual_precip",
+    "seasonal_temp_range",
+    "seasonal_precip_range",
+    "koppen_geiger_code_encoded",
+    "biome_code_encoded",
+    "igbp_class_code_encoded"
+  ],
+  "total_features_used": 10,
+  "numeric_features_requested": [
+    "longitude",
+    "latitude",
+    "elevation",
+    "mean_annual_temp",
+    "mean_annual_precip",
+    "seasonal_temp_range",
+    "seasonal_precip_range",
+    "koppen_geiger_code_encoded"
+  ],
+  "categorical_features_requested": [
+    "biome_code",
+    "igbp_class_code"
+  ],
+  "site_split_file": null,
+  "train_only_clustering": false,
+  "all_sites_clustering": true,
+  "train_sites_count": null,
+  "test_sites_count": null,
+  "total_sites_clustered": 87,
+  "preprocessing_summary": {
+    "processed_features": [
+      "longitude",
+      "latitude",
+      "elevation",
+      "mean_annual_temp",
+      "mean_annual_precip",
+      "seasonal_temp_range",
+      "seasonal_precip_range",
+      "koppen_geiger_code_encoded",
+      "biome_code_encoded",
+      "igbp_class_code_encoded"
+    ],
+    "num_features": 10,
+    "categorical_encoders": [
+      "biome_code",
+      "igbp_class_code"
+    ],
+    "scaler_fitted": true,
+    "preprocessing_complete": true
+  },
+  "timestamp": "20250804_062454",
+  "data_directory": "../../parquet_ecological",
+  "flexible_clusterer_version": "1.0"
+}

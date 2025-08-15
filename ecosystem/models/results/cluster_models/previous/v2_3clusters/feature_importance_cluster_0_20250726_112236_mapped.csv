@@ -1,0 +1,270 @@
+feature_index,feature_name,description,category,importance_score
+f270,temp_soil_interaction,Temperature × soil interaction,Interaction,303924.90625
+f230,n_trees,N Trees,Other,96824.7578125
+f7,ext_rad,Extraterrestrial radiation,Environmental,82443.7265625
+f228,stand_height,Stand Height,Structural,65919.4453125
+f223,elevation,Elevation,Geographic,63840.4453125
+f224,mean_annual_temp,Mean Annual Temp,Other,54604.9609375
+f258,species_functional_group_code,Species Functional Group Code,Ecological,50342.4140625
+f22,solar_hour_cos,Cosine of solar hour,Temporal,36778.55859375
+f122,vpd_lag_2h,VPD lag 2h,Lagged,33161.18359375
+f1,rh,Relative humidity,Environmental,28298.44140625
+f26,is_peak_sunlight,Peak sunlight indicator (10-16h),Temporal,27281.748046875
+f3,sw_in,Shortwave incoming radiation,Environmental,26198.501953125
+f221,latitude,Latitude,Geographic,25693.876953125
+f218,stomatal_conductance_proxy,Stomatal conductance proxy,Other,24407.740234375
+f2,vpd,Vapor pressure deficit,Environmental,23645.005859375
+f251,igbp_class_code,Igbp Class Code,Ecological,22170.126953125
+f212,precip_cum_72h,Cumulative precipitation 72h,Cumulative,19803.15234375
+f249,measurement_frequency,Measurement Frequency,Metadata,19691.9140625
+f33,is_autumn,Autumn season indicator,Temporal,19664.322265625
+f18,month_cos,Cosine of month (cyclical),Temporal,19528.498046875
+f211,precip_cum_24h,Cumulative precipitation 24h,Cumulative,18959.56640625
+f116,rh_lag_2h,Relative humidity lag 2h,Lagged,18958.2265625
+f225,mean_annual_precip,Mean Annual Precip,Other,18709.970703125
+f244,igbp_code,Igbp Code,Ecological,15892.9248046875
+f235,pl_leaf_area,Pl Leaf Area,Structural,14961.828125
+f236,pl_bark_thick,Pl Bark Thick,Structural,13215.451171875
+f233,pl_dbh,Pl Dbh,Structural,12847.939453125
+f156,ppfd_in_lag_24h,PPFD lag 24h,Lagged,11035.5810546875
+f243,biome_code,Biome Code,Ecological,8993.869140625
+f29,is_afternoon,Afternoon indicator (12-18h),Temporal,8764.01953125
+f89,sw_in_mean_720h,Shortwave radiation 720h-hour mean,Rolling,8434.2900390625
+f201,rh_rate_24h,Relative humidity rate of change 24h,Rate of Change,8281.50390625
+f203,sw_in_rate_6h,Shortwave radiation rate of change 6h,Rate of Change,8209.9658203125
+f238,pl_sapw_depth,Pl Sapw Depth,Structural,8182.16845703125
+f186,vpd_range_168h,VPD 168h-hour range,Rolling,7679.5087890625
+f240,latitude_abs,Latitude Abs,Other,7558.423828125
+f11,year,Year,Temporal,6982.3818359375
+f239,climate_zone_code,Climate Zone Code,Climate,6960.4091796875
+f256,tree_size_class_code,Tree Size Class Code,Structural,6850.3544921875
+f265,silt_percentage,Silt Percentage,Soil,6775.63916015625
+f200,rh_rate_6h,Relative humidity rate of change 6h,Rate of Change,6759.82421875
+f35,hours_since_sunrise,Hours since sunrise,Temporal,6660.78076171875
+f253,terrain_code,Terrain Code,Identity,6531.66748046875
+f202,sw_in_rate_1h,Shortwave radiation rate of change 1h,Rate of Change,6462.345703125
+f32,is_summer,Summer season indicator,Temporal,6121.0634765625
+f222,longitude,Longitude,Geographic,5994.46533203125
+f231,measurement_timestep,Measurement Timestep,Metadata,5892.9765625
+f264,sand_percentage,Sand Percentage,Soil,5686.57666015625
+f271,humidity_soil_interaction,Humidity × soil interaction,Interaction,5501.41455078125
+f234,pl_height,Pl Height,Structural,5437.37646484375
+f205,vpd_rate_1h,VPD rate of change 1h,Rate of Change,5253.8134765625
+f246,sapwood_leaf_ratio,Sapwood to leaf area ratio,Interaction,5096.814453125
+f164,rh_max_72h,Relative humidity 72h-hour maximum,Rolling,4710.46923828125
+f34,is_winter,Winter season indicator,Temporal,4694.51806640625
+f250,koppen_geiger_code_encoded,Koppen Geiger Code Encoded,Climate,4673.91455078125
+f24,solar_day_cos,Cosine of solar day,Temporal,4661.41748046875
+f214,sw_in_cum_24h,Cumulative shortwave radiation 24h,Cumulative,4609.076171875
+f80,sw_in_std_24h,Shortwave radiation 24h-hour standard deviation,Rolling,4305.7666015625
+f242,leaf_habit_code,Leaf Habit Code,Ecological,4236.2275390625
+f197,ta_max_336h,Temperature 336h-hour maximum,Rolling,4184.265625
+f261,seasonal_precip_range,Seasonal precipitation range,Temporal,4054.840087890625
+f16,day_cos,Cosine of day of year (cyclical),Temporal,3918.688232421875
+f181,vpd_min_72h,VPD 72h-hour minimum,Rolling,3864.989501953125
+f163,rh_min_72h,Relative humidity 72h-hour minimum,Rolling,3773.9912109375
+f90,sw_in_std_720h,Shortwave radiation 720h-hour standard deviation,Rolling,3757.009521484375
+f23,solar_day_sin,Sine of solar day,Temporal,3695.034912109375
+f31,is_spring,Spring season indicator,Temporal,3645.71044921875
+f25,is_daylight,Daylight indicator (6-18h),Temporal,3445.863037109375
+f107,rh_mean_720h,Relative humidity 720h-hour mean,Rolling,3314.147216796875
+f21,solar_hour_sin,Sine of solar hour,Temporal,3289.568359375
+f229,soil_depth,Soil Depth,Soil,3288.8564453125
+f241,aridity_index,Aridity Index,Interaction,3165.47998046875
+f209,ta_rate_6h,Temperature rate of change 6h,Rate of Change,3144.588134765625
+f173,sw_in_max_72h,Shortwave radiation 72h-hour maximum,Rolling,3122.08349609375
+f161,wind_vpd_interaction,Wind × VPD interaction,Interaction,3060.168701171875
+f128,sw_in_lag_2h,Shortwave radiation lag 2h,Lagged,2967.107421875
+f38,ta_std_3h,Temperature 3h-hour standard deviation,Rolling,2837.3603515625
+f155,ppfd_in_lag_12h,PPFD lag 12h,Lagged,2760.72119140625
+f210,ta_rate_24h,Temperature rate of change 24h,Rate of Change,2702.90576171875
+f189,vpd_range_336h,VPD 336h-hour range,Rolling,2594.624755859375
+f6,ppfd_in,Photosynthetic photon flux density,Environmental,2571.514404296875
+f91,rh_mean_3h,Relative humidity 3h-hour mean,Rolling,2540.783203125
+f8,hour,Hour of day,Temporal,2515.396728515625
+f193,ta_min_168h,Temperature 168h-hour minimum,Rolling,2418.5595703125
+f17,month_sin,Sine of month (cyclical),Temporal,2402.87451171875
+f167,rh_max_168h,Relative humidity 168h-hour maximum,Rolling,2389.900146484375
+f140,precip_lag_2h,Precipitation lag 2h,Lagged,2322.30517578125
+f111,ta_lag_3h,Temperature lag 3h,Lagged,2242.74560546875
+f227,stand_age,Stand Age,Structural,2224.25732421875
+f20,solar_day_of_year,Solar day of year,Temporal,2214.276611328125
+f178,sw_in_min_336h,Shortwave radiation 336h-hour minimum,Rolling,2198.179931640625
+f42,ta_std_12h,Temperature 12h-hour standard deviation,Rolling,2176.42333984375
+f226,is_inside_country,Is Inside Country,Temporal,2175.2578125
+f195,ta_range_168h,Temperature 168h-hour range,Rolling,2158.62548828125
+f245,social_status_code,Social Status Code,Identity,2121.558837890625
+f170,rh_max_336h,Relative humidity 336h-hour maximum,Rolling,2112.412353515625
+f13,hour_sin,Sine of hour (cyclical),Temporal,2063.404296875
+f37,ta_mean_3h,Temperature 3h-hour mean,Rolling,2057.607177734375
+f28,is_morning,Morning indicator (6-12h),Temporal,2016.84130859375
+f157,vpd_ppfd_interaction,VPD × PPFD interaction,Interaction,2003.1900634765625
+f149,swc_shallow_lag_12h,Soil water content lag 12h,Lagged,1990.955078125
+f217,temp_deviation,Temperature deviation from optimal (25°C),Domain,1983.894775390625
+f194,ta_max_168h,Temperature 168h-hour maximum,Rolling,1979.7806396484373
+f213,precip_cum_168h,Cumulative precipitation 168h,Cumulative,1971.6181640625
+f82,sw_in_std_48h,Shortwave radiation 48h-hour standard deviation,Rolling,1953.548828125
+f15,day_sin,Sine of day of year (cyclical),Temporal,1932.8514404296875
+f53,ta_mean_720h,Temperature 720h-hour mean,Rolling,1930.0977783203125
+f199,rh_rate_1h,Relative humidity rate of change 1h,Rate of Change,1928.7510986328125
+f237,pl_sapw_area,Pl Sapw Area,Structural,1916.9052734375
+f58,vpd_std_6h,VPD 6h-hour standard deviation,Rolling,1905.5037841796875
+f220,stomatal_control_index,Stomatal control index,Interaction,1884.298828125
+f166,rh_min_168h,Relative humidity 168h-hour minimum,Rolling,1867.838623046875
+f190,ta_min_72h,Temperature 72h-hour minimum,Rolling,1863.8731689453125
+f93,rh_mean_6h,Relative humidity 6h-hour mean,Rolling,1861.9271240234373
+f121,vpd_lag_1h,VPD lag 1h,Lagged,1851.4599609375
+f152,ppfd_in_lag_2h,PPFD lag 2h,Lagged,1828.4959716796875
+f262,swc_shallow,Soil water content (shallow),Environmental,1798.379638671875
+f71,vpd_mean_720h,VPD 720h-hour mean,Rolling,1783.3614501953125
+f151,ppfd_in_lag_1h,PPFD lag 1h,Lagged,1768.880615234375
+f36,hours_since_sunset,Hours since sunset,Temporal,1714.6331787109375
+f171,rh_range_336h,Relative humidity 336h-hour range,Rolling,1698.56591796875
+f74,sw_in_std_3h,Shortwave radiation 3h-hour standard deviation,Rolling,1695.0654296875
+f146,swc_shallow_lag_2h,Soil water content lag 2h,Lagged,1694.908203125
+f72,vpd_std_720h,VPD 720h-hour standard deviation,Rolling,1678.2061767578125
+f87,sw_in_mean_336h,Shortwave radiation 336h-hour mean,Rolling,1655.8779296875
+f44,ta_std_24h,Temperature 24h-hour standard deviation,Rolling,1632.4169921875
+f252,soil_texture_code,Soil Texture Code,Soil,1624.6240234375
+f160,light_efficiency,Light efficiency,Other,1623.352783203125
+f216,ppfd_efficiency,PPFD efficiency,Other,1614.499755859375
+f85,sw_in_mean_168h,Shortwave radiation 168h-hour mean,Rolling,1589.9539794921875
+f56,vpd_std_3h,VPD 3h-hour standard deviation,Rolling,1587.651123046875
+f232,pl_age,Pl Age,Structural,1577.2855224609375
+f180,sw_in_range_336h,Shortwave radiation 336h-hour range,Rolling,1565.4176025390625
+f62,vpd_std_24h,VPD 24h-hour standard deviation,Rolling,1535.0301513671875
+f14,hour_cos,Cosine of hour (cyclical),Temporal,1501.343994140625
+f55,vpd_mean_3h,VPD 3h-hour mean,Rolling,1493.5782470703125
+f40,ta_std_6h,Temperature 6h-hour standard deviation,Rolling,1491.1348876953125
+f9,day_of_year,Day of year,Temporal,1487.8056640625
+f204,sw_in_rate_24h,Shortwave radiation rate of change 24h,Rate of Change,1482.411865234375
+f165,rh_range_72h,Relative humidity 72h-hour range,Rolling,1461.6114501953125
+f192,ta_range_72h,Temperature 72h-hour range,Rolling,1453.8570556640625
+f248,timezone_offset,Timezone Offset,Other,1452.138671875
+f106,rh_std_336h,Relative humidity 336h-hour standard deviation,Rolling,1438.7337646484375
+f12,day_of_week,Day of week,Temporal,1422.4849853515625
+f61,vpd_mean_24h,VPD 24h-hour mean,Rolling,1412.2601318359375
+f27,is_weekend,Weekend indicator,Temporal,1374.325439453125
+f115,rh_lag_1h,Relative humidity lag 1h,Lagged,1365.215576171875
+f19,solar_hour,Solar hour,Temporal,1353.7855224609375
+f208,ta_rate_1h,Temperature rate of change 1h,Rate of Change,1348.705810546875
+f79,sw_in_mean_24h,Shortwave radiation 24h-hour mean,Rolling,1341.5555419921875
+f254,growth_condition_code,Growth Condition Code,Identity,1341.553955078125
+f182,vpd_max_72h,VPD 72h-hour maximum,Rolling,1318.42919921875
+f175,sw_in_min_168h,Shortwave radiation 168h-hour minimum,Rolling,1301.0870361328125
+f191,ta_max_72h,Temperature 72h-hour maximum,Rolling,1266.5814208984375
+f10,month,Month,Temporal,1254.733154296875
+f105,rh_mean_336h,Relative humidity 336h-hour mean,Rolling,1250.1666259765625
+f129,sw_in_lag_3h,Shortwave radiation lag 3h,Lagged,1244.3575439453125
+f150,swc_shallow_lag_24h,Soil water content lag 24h,Lagged,1242.4144287109375
+f174,sw_in_range_72h,Shortwave radiation 72h-hour range,Rolling,1236.8450927734375
+f108,rh_std_720h,Relative humidity 720h-hour standard deviation,Rolling,1229.85546875
+f54,ta_std_720h,Temperature 720h-hour standard deviation,Rolling,1225.897216796875
+f148,swc_shallow_lag_6h,Soil water content lag 6h,Lagged,1218.78759765625
+f110,ta_lag_2h,Temperature lag 2h,Lagged,1195.2581787109375
+f139,precip_lag_1h,Precipitation lag 1h,Lagged,1188.528564453125
+f219,wind_stress,Wind stress,Other,1173.2196044921875
+f75,sw_in_mean_6h,Shortwave radiation 6h-hour mean,Rolling,1129.9346923828125
+f88,sw_in_std_336h,Shortwave radiation 336h-hour standard deviation,Rolling,1114.6075439453125
+f162,radiation_temp_interaction,Radiation × temperature interaction,Interaction,1113.39404296875
+f177,sw_in_range_168h,Shortwave radiation 168h-hour range,Rolling,1072.821533203125
+f103,rh_mean_168h,Relative humidity 168h-hour mean,Rolling,1066.6654052734375
+f158,vpd_ta_interaction,VPD × Temperature interaction,Interaction,1063.117431640625
+f131,sw_in_lag_12h,Shortwave radiation lag 12h,Lagged,1057.875732421875
+f184,vpd_min_168h,VPD 168h-hour minimum,Rolling,1036.0528564453125
+f176,sw_in_max_168h,Shortwave radiation 168h-hour maximum,Rolling,1019.4132080078124
+f159,temp_humidity_ratio,Temperature/humidity ratio,Interaction,1016.2186889648438
+f60,vpd_std_12h,VPD 12h-hour standard deviation,Rolling,1012.8248291015624
+f172,sw_in_min_72h,Shortwave radiation 72h-hour minimum,Rolling,1002.7623901367188
+f84,sw_in_std_72h,Shortwave radiation 72h-hour standard deviation,Rolling,991.677734375
+f127,sw_in_lag_1h,Shortwave radiation lag 1h,Lagged,991.4292602539062
+f187,vpd_min_336h,VPD 336h-hour minimum,Rolling,973.3290405273438
+f263,clay_percentage,Clay Percentage,Soil,959.3442993164062
+f169,rh_min_336h,Relative humidity 336h-hour minimum,Rolling,950.727294921875
+f70,vpd_std_336h,VPD 336h-hour standard deviation,Rolling,946.171630859375
+f104,rh_std_168h,Relative humidity 168h-hour standard deviation,Rolling,928.8928833007812
+f109,ta_lag_1h,Temperature lag 1h,Lagged,927.5245361328124
+f98,rh_std_24h,Relative humidity 24h-hour standard deviation,Rolling,921.4694213867188
+f179,sw_in_max_336h,Shortwave radiation 336h-hour maximum,Rolling,896.3779907226562
+f198,ta_range_336h,Temperature 336h-hour range,Rolling,895.34326171875
+f132,sw_in_lag_24h,Shortwave radiation lag 24h,Lagged,894.822509765625
+f39,ta_mean_6h,Temperature 6h-hour mean,Rolling,882.040771484375
+f185,vpd_max_168h,VPD 168h-hour maximum,Rolling,872.4735717773438
+f94,rh_std_6h,Relative humidity 6h-hour standard deviation,Rolling,852.8701782226562
+f206,vpd_rate_6h,VPD rate of change 6h,Rate of Change,847.5283203125
+f46,ta_std_48h,Temperature 48h-hour standard deviation,Rolling,839.3756103515625
+f126,vpd_lag_24h,VPD lag 24h,Lagged,839.1148071289062
+f69,vpd_mean_336h,VPD 336h-hour mean,Rolling,811.5445556640625
+f123,vpd_lag_3h,VPD lag 3h,Lagged,798.791259765625
+f77,sw_in_mean_12h,Shortwave radiation 12h-hour mean,Rolling,792.7201538085938
+f113,ta_lag_12h,Temperature lag 12h,Lagged,783.1630859375
+f41,ta_mean_12h,Temperature 12h-hour mean,Rolling,781.590087890625
+f124,vpd_lag_6h,VPD lag 6h,Lagged,777.367431640625
+f147,swc_shallow_lag_3h,Soil water content lag 3h,Lagged,773.0518188476562
+f255,pl_social_code,Pl Social Code,Structural,772.456787109375
+f196,ta_min_336h,Temperature 336h-hour minimum,Rolling,769.0982666015625
+f117,rh_lag_3h,Relative humidity lag 3h,Lagged,761.1799926757812
+f51,ta_mean_336h,Temperature 336h-hour mean,Rolling,747.7215576171875
+f207,vpd_rate_24h,VPD rate of change 24h,Rate of Change,746.5054931640625
+f65,vpd_mean_72h,VPD 72h-hour mean,Rolling,743.6546020507812
+f188,vpd_max_336h,VPD 336h-hour maximum,Rolling,731.8713989257812
+f92,rh_std_3h,Relative humidity 3h-hour standard deviation,Rolling,727.8432006835938
+f78,sw_in_std_12h,Shortwave radiation 12h-hour standard deviation,Rolling,723.2110595703125
+f52,ta_std_336h,Temperature 336h-hour standard deviation,Rolling,721.1622924804688
+f112,ta_lag_6h,Temperature lag 6h,Lagged,715.9775390625
+f259,pl_species_code,Pl Species Code,Ecological,714.6026000976562
+f57,vpd_mean_6h,VPD 6h-hour mean,Rolling,713.53857421875
+f154,ppfd_in_lag_6h,PPFD lag 6h,Lagged,712.2822265625
+f83,sw_in_mean_72h,Shortwave radiation 72h-hour mean,Rolling,705.4375610351562
+f130,sw_in_lag_6h,Shortwave radiation lag 6h,Lagged,691.8155517578125
+f86,sw_in_std_168h,Shortwave radiation 168h-hour standard deviation,Rolling,689.4758911132812
+f97,rh_mean_24h,Relative humidity 24h-hour mean,Rolling,686.9302368164062
+f260,seasonal_temp_range,Seasonal temperature range,Temporal,684.1296997070312
+f215,sw_in_cum_72h,Cumulative shortwave radiation 72h,Cumulative,682.6309814453125
+f96,rh_std_12h,Relative humidity 12h-hour standard deviation,Rolling,675.92529296875
+f102,rh_std_72h,Relative humidity 72h-hour standard deviation,Rolling,671.9747314453125
+f63,vpd_mean_48h,VPD 48h-hour mean,Rolling,671.2537841796875
+f100,rh_std_48h,Relative humidity 48h-hour standard deviation,Rolling,671.14453125
+f101,rh_mean_72h,Relative humidity 72h-hour mean,Rolling,670.0283813476562
+f47,ta_mean_72h,Temperature 72h-hour mean,Rolling,669.6305541992188
+f81,sw_in_mean_48h,Shortwave radiation 48h-hour mean,Rolling,668.385009765625
+f95,rh_mean_12h,Relative humidity 12h-hour mean,Rolling,645.6409912109375
+f64,vpd_std_48h,VPD 48h-hour standard deviation,Rolling,632.1046752929688
+f43,ta_mean_24h,Temperature 24h-hour mean,Rolling,620.2352294921875
+f114,ta_lag_24h,Temperature lag 24h,Lagged,616.2215576171875
+f73,sw_in_mean_3h,Shortwave radiation 3h-hour mean,Rolling,614.1971435546875
+f66,vpd_std_72h,VPD 72h-hour standard deviation,Rolling,610.8126220703125
+f5,precip,Precipitation,Environmental,603.7568359375
+f49,ta_mean_168h,Temperature 168h-hour mean,Rolling,597.3302612304688
+f183,vpd_range_72h,VPD 72h-hour range,Rolling,588.654052734375
+f50,ta_std_168h,Temperature 168h-hour standard deviation,Rolling,584.969970703125
+f67,vpd_mean_168h,VPD 168h-hour mean,Rolling,581.2862548828125
+f30,is_night,Night indicator,Temporal,570.233642578125
+f247,tree_volume_index,Tree Volume Index,Interaction,562.1205444335938
+f266,basal_area,Basal Area,Structural,558.6593017578125
+f125,vpd_lag_12h,VPD lag 12h,Lagged,539.6155395507812
+f120,rh_lag_24h,Relative humidity lag 24h,Lagged,532.4960327148438
+f119,rh_lag_12h,Relative humidity lag 12h,Lagged,520.7899780273438
+f59,vpd_mean_12h,VPD 12h-hour mean,Rolling,511.9147338867188
+f168,rh_range_168h,Relative humidity 168h-hour range,Rolling,501.6203918457031
+f133,ws_lag_1h,Wind speed lag 1h,Lagged,495.9722290039063
+f4,ws,Wind speed,Environmental,495.205322265625
+f144,precip_lag_24h,Precipitation lag 24h,Lagged,488.8366088867188
+f99,rh_mean_48h,Relative humidity 48h-hour mean,Rolling,487.60833740234375
+f118,rh_lag_6h,Relative humidity lag 6h,Lagged,479.992919921875
+f48,ta_std_72h,Temperature 72h-hour standard deviation,Rolling,479.523681640625
+f68,vpd_std_168h,VPD 168h-hour standard deviation,Rolling,453.7869262695313
+f142,precip_lag_6h,Precipitation lag 6h,Lagged,450.290771484375
+f76,sw_in_std_6h,Shortwave radiation 6h-hour standard deviation,Rolling,437.73052978515625
+f45,ta_mean_48h,Temperature 48h-hour mean,Rolling,417.1572265625
+f141,precip_lag_3h,Precipitation lag 3h,Lagged,408.3405456542969
+f0,ta,Air temperature,Environmental,388.2218017578125
+f153,ppfd_in_lag_3h,PPFD lag 3h,Lagged,360.27911376953125
+f143,precip_lag_12h,Precipitation lag 12h,Lagged,342.0955505371094
+f135,ws_lag_3h,Wind speed lag 3h,Lagged,329.9872436523437
+f138,ws_lag_24h,Wind speed lag 24h,Lagged,248.243896484375
+f145,swc_shallow_lag_1h,Soil water content lag 1h,Lagged,243.11231994628903
+f134,ws_lag_2h,Wind speed lag 2h,Lagged,229.23736572265625
+f136,ws_lag_6h,Wind speed lag 6h,Lagged,205.93698120117188
+f137,ws_lag_12h,Wind speed lag 12h,Lagged,183.3879852294922
+f257,tree_age_class_code,Tree Age Class Code,Structural,147.10494995117188

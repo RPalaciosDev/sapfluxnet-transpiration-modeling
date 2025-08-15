@@ -1,0 +1,35 @@
+﻿flowchart TD
+  %% Clean, top-down, concise, numbered steps
+  A1["1) SAPFLUXNET v0.1.5"] --> P1["2) Preprocess: drop target-NaN; exclude id/proxy"]
+  P1 --> P2["3) Coerce numeric; booleans0/1"]
+  P2 --> P3["4) Feature engineering (lags/rolling/seasonality/interactions)"]
+  P3 --> P4["5) Impute feature NaN0"]
+  P4 --> D1[("6) Processed per-site parquet")]
+  D1 --> C1["7) Clustering: select features (climate/biome/geo)"]
+  C1 --> C2["8) Standardize (z-score)"]
+  C2 --> C3["9) Pick strategy (KMeans/Agglo/GMM) & assign sites"]
+  C3 --> A2[("10) Site → Cluster assignments")]
+
+  %% Parallel branches after clustering
+  %% Modeling branch
+  A2 --> MJOIN
+  D1 --> MJOIN
+  subgraph M["Per-cluster modeling (independent)"]
+    MJOIN --> M1["11) Join assignments with processed parquet"]
+    M1 --> M2["12) Train XGBoost per cluster (GPU primary; CPU legacy)"]
+    M2 --> M3["13) (Optional) HPO (Optuna; pre-training)"]
+    M3 --> MOUT["Models + feature importance + metrics"]
+  end
+
+  %% Validation branch
+  D1 --> VJOIN
+  A2 --> VJOIN
+  subgraph V["Spatial validation (independent)"]
+    VJOIN --> V0["14) (Optional) HPO (pre-validation; sample-based)"]
+    V0 --> V1["15) LOSO within cluster (retrain each fold)"]
+    V1 --> V2["16) Predict on held-out site"]
+    V2 --> VOUT["Fold metrics: R^2, RMSE, MAE; summaries"]
+  end
+
+  classDef step font-size:12px
+  class A1,P1,P2,P3,P4,D1,C1,C2,C3,A2,M1,M2,M3,MOUT,V0,V1,V2,VOUT step;
