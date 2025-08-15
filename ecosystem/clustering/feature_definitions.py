@@ -65,7 +65,7 @@ class FeatureManager:
                     'koppen_geiger_code_encoded'  # Already encoded as numeric in data pipeline
                 ],
                 categorical_features=[
-                    'biome_code', 'igbp_class_code'
+                    'biome_code', 'igbp_code'
                 ],
                 description='Climate-based clustering focused on Köppen-Geiger classification and biome characteristics'
             ),
@@ -97,7 +97,7 @@ class FeatureManager:
                 ],
                 categorical_features=[
                     'species_functional_group_code', 'leaf_habit_code',
-                    'biome_code', 'igbp_class_code'
+                    'biome_code', 'igbp_code'
                 ],
                 description='Geographic + stand characteristics and species traits'
             ),
@@ -136,7 +136,7 @@ class FeatureManager:
                     'mean_sap_flux', 'max_sap_flux', 'sap_flux_variability'  # if available
                 ],
                 categorical_features=[
-                    'biome_code', 'igbp_class_code'
+                    'biome_code', 'igbp_code'
                 ],
                 description='Geographic + climate + aggregated performance metrics'
             ),

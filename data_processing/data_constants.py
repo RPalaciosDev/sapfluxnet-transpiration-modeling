@@ -128,7 +128,7 @@ CATEGORICAL_ENCODINGS = {
 PROBLEMATIC_COLUMNS_TO_EXCLUDE = [
     # Basic problematic columns
     'pl_name',           # Plant name - causes inconsistencies
-    'swc_deep',          # Deep soil water content - often missing/inconsistent
+    # 'swc_deep',          # Deep soil water content - allow for water_balance clustering
     'netrad',            # Net radiation - inconsistent across sites
     'seasonal_leaf_area', # Seasonal leaf area - sparse data
     

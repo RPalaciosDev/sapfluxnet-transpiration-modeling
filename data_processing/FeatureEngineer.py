@@ -1224,7 +1224,7 @@ class FeatureEngineer:
         ta = self._get_column('ta', np.nan)
         vpd = self._get_column('vpd', np.nan)
         ws = self._get_column('ws', np.nan)
-        ext_rad = self._get_column('ext_rad', np.nan)
+        ext_rad = self._get_column('ext_rad_fao56', np.nan)
         pl_dbh = self._get_column('pl_dbh', np.nan)
         pl_sapw_area = self._get_column('pl_sapw_area', np.nan)
         pl_leaf_area = self._get_column('pl_leaf_area', np.nan)
@@ -1249,7 +1249,8 @@ class FeatureEngineer:
         # Enhanced interactions with extraterrestrial radiation - ALWAYS CREATE
         ext_rad = self._get_column('ext_rad', np.nan)
         self.df['stomatal_control_index'] = vpd * ppfd_in * ext_rad
-        self.df['light_efficiency'] = ppfd_in / (ext_rad + 1e-6)
+        # Avoid name collision with ppfd_efficiency; keep both metrics
+        self.df['light_efficiency_ext'] = ppfd_in / (ext_rad + 1e-6)
         
         # Tree-specific features - ALWAYS CREATE
         pl_dbh = self._get_column('pl_dbh', np.nan)

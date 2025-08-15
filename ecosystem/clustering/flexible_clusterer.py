@@ -193,6 +193,37 @@ class FlexibleEcosystemClusterer:
             min_availability=min_availability
         )
         
+        # Compute site-level means if requested by feature set but missing
+        try:
+            requested_features = self.feature_manager.get_feature_set(self.feature_set_name).numeric_features
+        except Exception:
+            requested_features = features
+
+        raw_to_mean = {
+            'ta': 'mean_ta', 'rh': 'mean_rh', 'vpd': 'mean_vpd', 'sw_in': 'mean_sw_in',
+            'precip': 'mean_precip', 'ws': 'mean_ws', 'ppfd_in': 'mean_ppfd_in',
+            'swc_shallow': 'mean_swc_shallow', 'swc_deep': 'mean_swc_deep'
+        }
+
+        needs_means = any(f in requested_features for f in (
+            'mean_ta','mean_rh','mean_vpd','mean_sw_in','mean_precip','mean_ws','mean_ppfd_in','mean_swc_shallow','mean_swc_deep'
+        ))
+
+        if needs_means:
+            # If parquet already carried mean_* columns, they are in clustering_df; otherwise try to copy if present
+            for raw_col, mean_col in raw_to_mean.items():
+                if mean_col in requested_features and mean_col not in clustering_df.columns:
+                    if mean_col in site_df.columns:
+                        clustering_df[mean_col] = site_df[mean_col]
+                    else:
+                        # No precomputed mean in site_df; leave NaN (cannot compute from single-row site_df)
+                        clustering_df[mean_col] = np.nan
+
+            # Ensure the feature list includes the newly added columns where requested
+            for mean_name in raw_to_mean.values():
+                if mean_name in requested_features and mean_name not in features:
+                    features.append(mean_name)
+
         self.processed_features = features
         return clustering_df, features
     
