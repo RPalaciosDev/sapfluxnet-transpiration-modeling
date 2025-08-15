@@ -1087,6 +1087,32 @@ class MemoryOptimizedClusterTrainer:
                 
         except Exception as e:
             print(f"  ⚠️  Could not save feature importance: {e}")
+
+        # Save per-cluster metrics and at-a-glance summary
+        try:
+            # Metrics CSV append/update
+            metrics_csv = os.path.join(self.results_dir, f'metrics_summary_{self.timestamp}.csv')
+            metrics_df = pd.DataFrame([metrics])
+            if os.path.exists(metrics_csv):
+                # Append without header
+                metrics_df.to_csv(metrics_csv, mode='a', header=False, index=False)
+            else:
+                metrics_df.to_csv(metrics_csv, index=False)
+            print(f"  💾 Metrics appended: {metrics_csv}")
+
+            # At-a-glance TXT per cluster
+            glance_txt = os.path.join(self.results_dir, f'cluster_{cluster_id}_summary_{self.timestamp}.txt')
+            with open(glance_txt, 'w', encoding='utf-8') as f:
+                f.write(f"Cluster {cluster_id} Summary\n")
+                f.write("="*40 + "\n\n")
+                f.write(f"Samples: train={metrics.get('train_samples')}, test={metrics.get('test_samples')}, total={metrics.get('total_rows')}\n")
+                f.write(f"Features: {metrics.get('feature_count')}\n\n")
+                f.write(f"Train: RMSE={metrics.get('train_rmse'):.4f}, MAE={metrics.get('train_mae'):.4f}, R2={metrics.get('train_r2'):.4f}\n")
+                f.write(f"Test : RMSE={metrics.get('test_rmse'):.4f}, MAE={metrics.get('test_mae'):.4f}, R2={metrics.get('test_r2'):.4f}\n")
+                f.write(f"Best iteration: {metrics.get('best_iteration')}\n")
+            print(f"  📝 At-a-glance summary saved: {glance_txt}")
+        except Exception as e:
+            print(f"  ⚠️  Could not save metrics/summary: {e}")
     
     def _map_feature_importance(self, importance_df, cluster_id):
         """Map feature importance using the v2 feature mapping"""
