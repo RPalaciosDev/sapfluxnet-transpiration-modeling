@@ -1,0 +1,6 @@
+{
+  "mean_test_r2": 0.7973731558355964,
+  "mean_test_rmse": 2.6494912420969357,
+  "mean_test_mae": 1.1896263701381338,
+  "clusters_trained": 3
+}
