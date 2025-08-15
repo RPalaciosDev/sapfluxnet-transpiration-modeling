@@ -1,0 +1,12 @@
+{
+  "processed_features": [
+    "swc_shallow",
+    "swc_deep",
+    "precip",
+    "mean_precip"
+  ],
+  "num_features": 4,
+  "categorical_encoders": [],
+  "scaler_fitted": true,
+  "preprocessing_complete": true
+}

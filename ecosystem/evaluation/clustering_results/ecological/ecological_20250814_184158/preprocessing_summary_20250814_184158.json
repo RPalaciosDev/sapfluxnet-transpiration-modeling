@@ -1,0 +1,24 @@
+{
+  "processed_features": [
+    "longitude",
+    "latitude",
+    "elevation",
+    "basal_area",
+    "tree_density",
+    "leaf_area_index",
+    "koppen_geiger_code_encoded",
+    "species_functional_group_code_encoded",
+    "leaf_habit_code_encoded",
+    "biome_code_encoded",
+    "igbp_code_encoded"
+  ],
+  "num_features": 11,
+  "categorical_encoders": [
+    "species_functional_group_code",
+    "leaf_habit_code",
+    "biome_code",
+    "igbp_code"
+  ],
+  "scaler_fitted": true,
+  "preprocessing_complete": true
+}

@@ -1,0 +1,98 @@
+
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Clustering Visualization Report</title>
+            <style>
+                body { font-family: Arial, sans-serif; margin: 40px; }
+                h1 { color: #2c3e50; }
+                h2 { color: #34495e; }
+                .summary { background-color: #ecf0f1; padding: 20px; border-radius: 5px; }
+                .visualization { margin: 20px 0; }
+                .stats { display: flex; gap: 20px; }
+                .stat-box { background: #3498db; color: white; padding: 10px; border-radius: 5px; }
+            </style>
+        </head>
+        <body>
+            <h1>Clustering Visualization Report</h1>
+            <p><strong>Generated:</strong> 2025-08-14 22:23:35</p>
+            
+            <div class="summary">
+                <h2>Clustering Summary</h2>
+                <div class="stats">
+                    <div class="stat-box">
+                        <strong>Sites:</strong> 87
+                    </div>
+                    <div class="stat-box">
+                        <strong>Clusters:</strong> 5
+                    </div>
+                    <div class="stat-box">
+                        <strong>Features:</strong> 2
+                    </div>
+                    <div class="stat-box">
+                        <strong>Algorithm:</strong> K-means (5 clusters)
+                    </div>
+                    <div class="stat-box">
+                        <strong>Silhouette:</strong> 0.717
+                    </div>
+                </div>
+                
+                <h3>Features Used:</h3>
+                <p>longitude, latitude</p>
+            </div>
+            
+            <h2>Visualizations</h2>
+        
+                <div class="visualization">
+                    <h3>Pca 2D</h3>
+                    <img src="feature_space_pca_20250814_222332.png" style="max-width: 100%; height: auto;" alt="pca_2d">
+                </div>
+                
+                <div class="visualization">
+                    <h3>Tsne 2D</h3>
+                    <img src="feature_space_tsne_20250814_222333.png" style="max-width: 100%; height: auto;" alt="tsne_2d">
+                </div>
+                
+                <div class="visualization">
+                    <h3>Silhouette</h3>
+                    <img src="silhouette_analysis_20250814_222333.png" style="max-width: 100%; height: auto;" alt="silhouette">
+                </div>
+                
+                <div class="visualization">
+                    <h3>Geographic</h3>
+                    <img src="geographic_clusters_20250814_222334.png" style="max-width: 100%; height: auto;" alt="geographic">
+                </div>
+                
+                <div class="visualization">
+                    <h3>Interactive Geographic</h3>
+                    <p><a href="interactive_geographic_clusters.html" target="_blank">Open Interactive Visualization</a></p>
+                </div>
+                
+                <div class="visualization">
+                    <h3>Strategy Comparison</h3>
+                    <img src="strategy_comparison_20250814_222334.png" style="max-width: 100%; height: auto;" alt="strategy_comparison">
+                </div>
+                
+                <div class="visualization">
+                    <h3>Feature Importance</h3>
+                    <img src="feature_importance_20250814_222335.png" style="max-width: 100%; height: auto;" alt="feature_importance">
+                </div>
+                
+                <div class="visualization">
+                    <h3>Pca 3D</h3>
+                    <img src="" style="max-width: 100%; height: auto;" alt="pca_3d">
+                </div>
+                
+                <div class="visualization">
+                    <h3>Tsne 3D</h3>
+                    <img src="" style="max-width: 100%; height: auto;" alt="tsne_3d">
+                </div>
+                
+                <div class="visualization">
+                    <h3>Dashboard</h3>
+                    <p><a href="clustering_dashboard_20250814_222335.html" target="_blank">Open Interactive Visualization</a></p>
+                </div>
+                
+            </body>
+            </html>
+        

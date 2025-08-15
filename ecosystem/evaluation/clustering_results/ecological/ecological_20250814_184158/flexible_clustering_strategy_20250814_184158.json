@@ -1,0 +1,72 @@
+{
+  "selected_strategy": "GMM (3 clusters)",
+  "algorithm": "GMM",
+  "n_clusters": 3,
+  "silhouette_score": 0.21723946762100835,
+  "balance_ratio": 0.6944444444444444,
+  "final_score": 1.020303645875957,
+  "feature_set_name": "ecological",
+  "feature_set_description": "Geographic + stand characteristics and species traits",
+  "features_used": [
+    "longitude",
+    "latitude",
+    "elevation",
+    "basal_area",
+    "tree_density",
+    "leaf_area_index",
+    "koppen_geiger_code_encoded",
+    "species_functional_group_code_encoded",
+    "leaf_habit_code_encoded",
+    "biome_code_encoded",
+    "igbp_code_encoded"
+  ],
+  "total_features_used": 11,
+  "numeric_features_requested": [
+    "longitude",
+    "latitude",
+    "elevation",
+    "basal_area",
+    "tree_density",
+    "leaf_area_index",
+    "koppen_geiger_code_encoded"
+  ],
+  "categorical_features_requested": [
+    "species_functional_group_code",
+    "leaf_habit_code",
+    "biome_code",
+    "igbp_code"
+  ],
+  "site_split_file": null,
+  "train_only_clustering": false,
+  "all_sites_clustering": true,
+  "train_sites_count": null,
+  "test_sites_count": null,
+  "total_sites_clustered": 87,
+  "preprocessing_summary": {
+    "processed_features": [
+      "longitude",
+      "latitude",
+      "elevation",
+      "basal_area",
+      "tree_density",
+      "leaf_area_index",
+      "koppen_geiger_code_encoded",
+      "species_functional_group_code_encoded",
+      "leaf_habit_code_encoded",
+      "biome_code_encoded",
+      "igbp_code_encoded"
+    ],
+    "num_features": 11,
+    "categorical_encoders": [
+      "species_functional_group_code",
+      "leaf_habit_code",
+      "biome_code",
+      "igbp_code"
+    ],
+    "scaler_fitted": true,
+    "preprocessing_complete": true
+  },
+  "timestamp": "20250814_184158",
+  "data_directory": "../../parquet_ecological",
+  "flexible_clusterer_version": "1.0"
+}

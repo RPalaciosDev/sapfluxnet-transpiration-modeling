@@ -1,0 +1,20 @@
+{
+  "processed_features": [
+    "longitude",
+    "latitude",
+    "mean_annual_temp",
+    "mean_annual_precip",
+    "seasonal_temp_range",
+    "seasonal_precip_range",
+    "koppen_geiger_code_encoded",
+    "biome_code_encoded",
+    "igbp_code_encoded"
+  ],
+  "num_features": 9,
+  "categorical_encoders": [
+    "biome_code",
+    "igbp_code"
+  ],
+  "scaler_fitted": true,
+  "preprocessing_complete": true
+}
