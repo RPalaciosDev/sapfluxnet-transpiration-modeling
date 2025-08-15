@@ -147,6 +147,19 @@ class FlexibleEcosystemClusterer:
                 # Take first row for site-level features (same for all rows of a site)
                 site_features = df_sample.iloc[0].to_dict()
                 
+                # Compute site-level means for key dynamic drivers if available
+                mean_map = {
+                    'ta': 'mean_ta', 'rh': 'mean_rh', 'vpd': 'mean_vpd', 'sw_in': 'mean_sw_in',
+                    'precip': 'mean_precip', 'ws': 'mean_ws', 'ppfd_in': 'mean_ppfd_in',
+                    'swc_shallow': 'mean_swc_shallow', 'swc_deep': 'mean_swc_deep'
+                }
+                for raw_col, mean_col in mean_map.items():
+                    if raw_col in df_sample.columns and mean_col not in site_features:
+                        try:
+                            site_features[mean_col] = pd.to_numeric(df_sample[raw_col], errors='coerce').mean()
+                        except Exception:
+                            pass
+
                 # Add site identifier
                 site_features['site'] = site_name
                 
@@ -215,14 +228,18 @@ class FlexibleEcosystemClusterer:
                 if mean_col in requested_features and mean_col not in clustering_df.columns:
                     if mean_col in site_df.columns:
                         clustering_df[mean_col] = site_df[mean_col]
-                    else:
-                        # No precomputed mean in site_df; leave NaN (cannot compute from single-row site_df)
-                        clustering_df[mean_col] = np.nan
+                    # If not present, skip creating an all-NaN column
 
-            # Ensure the feature list includes the newly added columns where requested
-            for mean_name in raw_to_mean.values():
-                if mean_name in requested_features and mean_name not in features:
-                    features.append(mean_name)
+            # Ensure features include only columns that actually exist and are not entirely NaN
+            for mean_name in list(raw_to_mean.values()):
+                if mean_name in requested_features:
+                    if mean_name in clustering_df.columns and not clustering_df[mean_name].isna().all():
+                        if mean_name not in features:
+                            features.append(mean_name)
+                    else:
+                        # Remove from requested if it slipped in
+                        if mean_name in features:
+                            features.remove(mean_name)
 
         self.processed_features = features
         return clustering_df, features

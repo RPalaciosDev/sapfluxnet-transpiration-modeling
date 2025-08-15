@@ -12,7 +12,7 @@ from .logging_utils import logger
 class FileManager:
     """Handles all file I/O operations, format validation, and metadata loading"""
     
-    def __init__(self, export_format='csv', base_output_dir='comprehensive_processed', 
+    def __init__(self, export_format='parquet', base_output_dir='comprehensive_processed', 
                  compress_output=False, config=None, stats=None):
         """
         Initialize FileManager

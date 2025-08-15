@@ -291,7 +291,7 @@ class ProcessingConfig:
 class SAPFLUXNETOrchestrator:
     """Main orchestrator for SAPFLUXNET data processing pipeline - coordinates all components"""
     
-    def __init__(self, output_dir='comprehensive_processed', chunk_size=1000, max_memory_gb=12, force_reprocess=False, skip_problematic_sites=True, use_quality_flags=True, compress_output=False, optimize_io=True, export_format='csv', config_overrides=None, clean_mode=False, feature_set='comprehensive'):
+    def __init__(self, output_dir='comprehensive_processed', chunk_size=1000, max_memory_gb=12, force_reprocess=False, skip_problematic_sites=True, use_quality_flags=True, compress_output=False, optimize_io=True, export_format='parquet', config_overrides=None, clean_mode=False, feature_set='comprehensive'):
         # Store core configuration
         self.base_output_dir = output_dir
         self.chunk_size = chunk_size
