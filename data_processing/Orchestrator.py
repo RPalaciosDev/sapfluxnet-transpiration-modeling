@@ -78,7 +78,8 @@ class ProcessingConfig:
     # Feature creation settings
     FEATURE_SETTINGS = {
         'max_lag_hours': 24,        # Maximum lag hours for all files
-        'rolling_windows': [3, 6, 12, 24, 48, 72, 168, 336, 720],  # Enhanced rolling window sizes (added 7-day, 14-day, 30-day)
+        # Reduce temporal windows to ≤72h to keep feature space compact
+        'rolling_windows': [3, 6, 12, 24, 48, 72],
         'memory_percentage': 0.1,   # Target memory usage per chunk (10%)
         'estimated_memory_per_row_mb': 0.001,  # Estimated memory per row (1KB)
         'advanced_temporal_features': True,  # Enable advanced temporal features

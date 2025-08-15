@@ -107,20 +107,25 @@ class FeatureManager:
                 name='comprehensive',
                 numeric_features=[
                     # Geographic/Climate features
-                    'longitude', 'latitude', 'elevation', 
-                    'mean_annual_temp', 'mean_annual_precip',
+                    'longitude', 'latitude', 'elevation', 'latitude_abs',
+                    'mean_annual_temp', 'mean_annual_precip', 'aridity_index_legacy',
                     # Seasonal features
                     'seasonal_temp_range', 'seasonal_precip_range',
                     # Stand characteristics
-                    'basal_area', 'tree_density', 'leaf_area_index',
+                    'basal_area', 'tree_density', 'leaf_area_index', 'stand_age', 'stand_height',
+                    # Soil characteristics
+                    'clay_percentage', 'sand_percentage', 'silt_percentage', 'soil_depth',
                     # Climate classification (already encoded as numeric)
                     'koppen_geiger_code_encoded',
                     # Physics-based environmental drivers (if available)
-                    'pet_oudin_mm_day', 'net_radiation', 'ext_rad_fao56'
+                    'pet_oudin_mm_day', 'net_radiation', 'ext_rad_fao56',
+                    # Aggregated means if present
+                    'mean_ta', 'mean_rh', 'mean_vpd', 'mean_sw_in', 'mean_precip', 'mean_ws', 'mean_ppfd_in',
+                    'mean_swc_shallow', 'mean_swc_deep'
                 ],
                 categorical_features=[
                     'species_functional_group_code', 'leaf_habit_code',
-                    'biome_code', 'igbp_class_code'
+                    'biome_code', 'igbp_code'
                 ],
                 # Note: koppen_geiger_code_encoded moved to numeric_features since it's already encoded
                 description='All available ecological and climate features including Köppen-Geiger climate classification'
