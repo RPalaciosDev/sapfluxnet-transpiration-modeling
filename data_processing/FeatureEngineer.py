@@ -78,6 +78,17 @@ class FeatureEngineer:
             'igbp_class': 'igbp_class' in self.df.columns,
             'solar_TIMESTAMP': 'solar_TIMESTAMP' in self.df.columns
         })
+
+    def _is_enabled(self, flag_name: str, default: bool = False) -> bool:
+        """Check feature flag from config or use default."""
+        try:
+            if self._has_get_feature_setting:
+                val = self.config.get_feature_setting(flag_name)
+                return bool(val) if val is not None else default
+            else:
+                return bool(self.config.get(flag_name, default))
+        except Exception:
+            return default
     
     def _default_config(self):
         """Default configuration for feature creation"""
@@ -1022,10 +1033,141 @@ class FeatureEngineer:
             self._column_exists_cache['mean_annual_precip']):
             self.df['koppen_geiger_code'] = self._classify_koppen_geiger_vectorized()
         
-        # Aridity index
+        # Aridity index (updated: provide PET-based proxy in addition to legacy)
         if (self._column_exists_cache['mean_annual_temp'] and 
             self._column_exists_cache['mean_annual_precip']):
-            self.df['aridity_index'] = self.df['mean_annual_precip'] / (self.df['mean_annual_temp'] + 10)
+            # Legacy simple proxy retained for backward compatibility
+            self.df['aridity_index_legacy'] = self.df['mean_annual_precip'] / (self.df['mean_annual_temp'] + 10)
+
+        # Compute extraterrestrial radiation (daily, FAO-56) and PET (Oudin) proxies if inputs available
+        try:
+            compute_ra = self._is_enabled('radiation_budget_features', False) or self._is_enabled('pet_features', False)
+            if compute_ra and 'latitude' in self.df.columns and 'day_of_year' in self._temporal_cache:
+                # Vectorized Ra (MJ m^-2 day^-1)
+                lat_rad = np.deg2rad(self.df['latitude'].astype(float))
+                J = self._temporal_cache['day_of_year']
+                dr = 1.0 + 0.033 * np.cos(2.0 * np.pi * J / 365.0)
+                delta = 0.409 * np.sin(2.0 * np.pi * J / 365.0 - 1.39)
+                omega_s = np.arccos(np.clip(-np.tan(lat_rad) * np.tan(delta), -1.0, 1.0))
+                G_sc = 0.0820  # MJ m^-2 min^-1
+                # 24*60/pi * G_sc * dr * [omega_s*sin(phi)*sin(delta) + cos(phi)*cos(delta)*sin(omega_s)]
+                Ra = (24.0 * 60.0 / np.pi) * G_sc * dr * (
+                    omega_s * np.sin(lat_rad) * np.sin(delta) + np.cos(lat_rad) * np.cos(delta) * np.sin(omega_s)
+                )
+                if self._is_enabled('radiation_budget_features', False) or self._is_enabled('faof56_support_terms', False):
+                    self.df['ext_rad_fao56'] = Ra
+                    # Daylight hours N = 24/pi * omega_s
+                    N = (24.0 / np.pi) * omega_s
+                    self.df['daylight_hours'] = N
+
+                # PET Oudin (mm/day): PET = (Ra/lambda) * (T + 5)/100 if T > -5 else 0; lambda=2.45 MJ/kg
+                if self._is_enabled('pet_features', False) and 'ta' in self.df.columns:
+                    T = pd.to_numeric(self.df['ta'], errors='coerce')
+                    lambda_mj = 2.45
+                    pet = (Ra / lambda_mj) * ((T + 5.0) / 100.0)
+                    pet = pet.where(T > -5.0, 0.0)
+                    self.df['pet_oudin_mm_day'] = pet
+
+                # Additional FAO-56 support variables where possible
+                # Saturation vapor pressure and slope at air temperature
+                if self._is_enabled('faof56_support_terms', False) and 'ta' in self.df.columns:
+                    es = 0.6108 * np.exp((17.27 * T) / (T + 237.3))
+                    delta = (4098.0 * es) / ((T + 237.3) ** 2)
+                    self.df['sat_vapor_pressure_kpa'] = es
+                    self.df['slope_vapor_pressure_curve'] = delta
+                # Air pressure and psychrometric constant if elevation available
+                if self._is_enabled('faof56_support_terms', False) and 'elevation' in self.df.columns:
+                    z = pd.to_numeric(self.df['elevation'], errors='coerce')
+                    P = 101.3 * ((293.0 - 0.0065 * z) / 293.0) ** 5.26
+                    gamma = 0.000665 * P
+                    self.df['air_pressure_kpa'] = P
+                    self.df['psychrometric_constant'] = gamma
+        except Exception:
+            # If any issue arises, skip without failing pipeline
+            pass
+
+        # Net radiation per step (approx. FAO-56 scaling). Produces MJ m^-2 per timestep.
+        try:
+            if not self._is_enabled('radiation_budget_features', False):
+                raise Exception('radiation budget disabled')
+            have_sw_col = 'sw_in' in self.df.columns
+            if have_sw_col or ('ta' in self.df.columns and 'ext_rad_fao56' in self.df.columns):
+                # Time step (hours)
+                if 'measurement_timestep' in self.df.columns and pd.notna(self.df['measurement_timestep']).any():
+                    dt_hours = pd.to_numeric(self.df['measurement_timestep'], errors='coerce') / 60.0
+                    dt_hours = dt_hours.fillna(1.0)
+                else:
+                    dt_hours = pd.Series(1.0, index=self.df.index)
+
+                # Shortwave incoming per step in MJ m^-2 (measured if available)
+                if have_sw_col:
+                    Rs_step = pd.to_numeric(self.df['sw_in'], errors='coerce') * (dt_hours * 3600.0) / 1e6
+                else:
+                    Rs_step = pd.Series(np.nan, index=self.df.index)
+
+                # Clear-sky shortwave per step using Ra and elevation
+                if 'ext_rad_fao56' in self.df.columns:
+                    Ra_day = self.df['ext_rad_fao56']  # MJ m^-2 day^-1
+                    N = self.df.get('daylight_hours', pd.Series(12.0, index=self.df.index))
+                    Ra_per_hour = Ra_day / N  # MJ m^-2 h^-1 during daylight
+                    # Scale per time step (can be <1h)
+                    Ra_step = Ra_per_hour * dt_hours
+                    if 'elevation' in self.df.columns:
+                        z = pd.to_numeric(self.df['elevation'], errors='coerce').fillna(0.0)
+                    else:
+                        z = 0.0
+                    Rso_step = (0.75 + 2e-5 * z) * Ra_step
+                else:
+                    Rso_step = Rs_step.replace(0, np.nan)
+
+                # Fallback Rs estimation (Hargreaves–Samani) if measured sw_in missing
+                # Rs_day = kRs * sqrt(Tmax - Tmin) * Ra_day; distribute across daylight hours
+                if self._is_enabled('rs_fallback_estimation', False) and Rs_step.isna().any() and 'ta' in self.df.columns and 'year' in self._temporal_cache and 'day_of_year' in self._temporal_cache and 'ext_rad_fao56' in self.df.columns:
+                    year_series = pd.Series(self._temporal_cache['year'], index=self.df.index)
+                    doy_series = pd.Series(self._temporal_cache['day_of_year'], index=self.df.index)
+                    T_num = pd.to_numeric(self.df['ta'], errors='coerce')
+                    daily = pd.DataFrame({'year': year_series, 'doy': doy_series, 'ta': T_num, 'Ra_day': Ra_day, 'N': N})
+                    agg = daily.groupby(['year', 'doy'], sort=False).agg(
+                        Tmax=('ta', 'max'), Tmin=('ta', 'min'), Ra=('Ra_day', 'mean'), N=('N', 'mean')
+                    ).reset_index()
+                    agg['dtr'] = (agg['Tmax'] - agg['Tmin']).clip(lower=0.0)
+                    kRs = 0.16  # inland default
+                    agg['Rs_day_est'] = kRs * np.sqrt(agg['dtr']) * agg['Ra']
+                    # Map back to rows
+                    key = list(zip(year_series, doy_series))
+                    key_df = pd.Series(key, index=self.df.index)
+                    map_dict_Rs = { (r['year'], r['doy']): r['Rs_day_est'] for _, r in agg.iterrows() }
+                    map_dict_N  = { (r['year'], r['doy']): max(0.1, r['N']) for _, r in agg.iterrows() }
+                    Rs_day_est_series = key_df.map(map_dict_Rs)
+                    N_series = key_df.map(map_dict_N)
+                    # Distribute across daylight hours only
+                    is_daylight = self.df.get('is_daylight', (pd.Series(self._temporal_cache.get('hour', 12), index=self.df.index).between(6, 18)).astype(int))
+                    Rs_step_est = (Rs_day_est_series / N_series) * dt_hours * is_daylight
+                    # Fill missing measured Rs_step with estimate
+                    Rs_step = Rs_step.fillna(Rs_step_est)
+
+                # Net shortwave
+                albedo = 0.23  # FAO-56 reference; could be refined by land cover
+                Rns_step = (1.0 - albedo) * Rs_step
+
+                # Longwave
+                T = pd.to_numeric(self.df.get('ta', pd.Series(np.nan, index=self.df.index)), errors='coerce')
+                T_k = T + 273.16
+                es = 0.6108 * np.exp((17.27 * T) / (T + 237.3))
+                RH = pd.to_numeric(self.df.get('rh', pd.Series(np.nan, index=self.df.index)), errors='coerce')
+                ea = (RH / 100.0) * es
+                # Scale Stefan-Boltzmann daily constant by dt_hours/24
+                sigma_daily = 4.903e-9  # MJ K^-4 m^-2 day^-1
+                sigma_scaled = sigma_daily * (dt_hours / 24.0)
+                cloud_term = (1.35 * (Rs_step / (Rso_step.replace(0, np.nan))) - 0.35).clip(lower=0.0)
+                emissivity_term = (0.34 - 0.14 * np.sqrt(ea.clip(lower=0.0)))
+                Rnl_step = sigma_scaled * (T_k ** 4) * emissivity_term * cloud_term
+                # Net radiation
+                self.df['net_shortwave_radiation'] = Rns_step
+                self.df['net_longwave_radiation'] = Rnl_step
+                self.df['net_radiation'] = Rns_step - Rnl_step
+        except Exception:
+            pass
         
         # Categorical encodings
         if self._column_exists_cache['leaf_habit']:

@@ -54,6 +54,7 @@ class ParquetSpatialValidator:
                  optimize_hyperparams=False,
                  load_optimized_params=None,
                  force_gpu=False,
+                 allow_cpu=False,
                  cluster_file=None,
                  run_name=None):
         self.parquet_dir = parquet_dir
@@ -89,6 +90,7 @@ class ParquetSpatialValidator:
         self.use_gpu = False
         self.gpu_id = 0
         self.force_gpu = force_gpu
+        self.allow_cpu = allow_cpu
         
         # Check CUDA availability first
         print("🔍 Checking GPU and CUDA availability...")
@@ -178,8 +180,10 @@ class ParquetSpatialValidator:
             print("  🎯 FINAL STATUS: GPU acceleration ENABLED")
         else:
             print("  🎯 FINAL STATUS: CPU-only mode")
+            if not self.allow_cpu:
+                raise SystemExit("CPU fallback is disabled. A CUDA-capable GPU is required. Use --allow-cpu to override (legacy).")
             if self.force_gpu:
-                print("  ⚠️  Note: GPU was forced but detection failed - errors may occur")
+                print("  ⚠️  Note: GPU was forced but detection failed - running on CPU (legacy)")
         
         # Create results directory
         os.makedirs(self.results_dir, exist_ok=True)
@@ -429,10 +433,10 @@ class ParquetSpatialValidator:
                 X_df[col] = X_df[col].astype(int)
             elif X_df[col].dtype == 'object':
                 # Try to convert object columns to numeric, fill non-numeric with 0
-                X_df[col] = pd.to_numeric(X_df[col], errors='coerce')
+                X_df[col] = pd.to_numeric(X_df[col], errors='coerce').fillna(0)
         
         # Fill remaining NaN values with 0
-        X = X_df.values
+        X = X_df.fillna(0).values
         y = df[self.target_col].values
         
         return X, y, feature_cols
@@ -1223,6 +1227,8 @@ def main():
                         help="Path to existing optimized parameters JSON file to use during validation")
     parser.add_argument('--force-gpu', action='store_true',
                         help="Force GPU usage even if detection fails (use with caution)")
+    parser.add_argument('--allow-cpu', action='store_true',
+                        help='Permit CPU fallback (legacy); otherwise require GPU')
     parser.add_argument('--cluster-file', default=None,
                         help="Path to specific cluster assignment CSV file (if not provided, uses most recent)")
     parser.add_argument('--run-name', default=None,
@@ -1238,6 +1244,7 @@ def main():
             optimize_hyperparams=args.optimize_hyperparams,
             load_optimized_params=args.load_optimized_params,
             force_gpu=args.force_gpu,
+            allow_cpu=args.allow_cpu,
             cluster_file=args.cluster_file,
             run_name=args.run_name
         )

@@ -77,7 +77,9 @@ class FeatureManager:
                     'longitude', 'latitude', 'elevation',
                     'mean_annual_temp', 'mean_annual_precip',
                     'seasonal_temp_range', 'seasonal_precip_range',
-                    'koppen_geiger_code_encoded'  # Already encoded as numeric in data pipeline
+                    'koppen_geiger_code_encoded',  # Already encoded as numeric in data pipeline
+                    # Physics-based environmental drivers (if available)
+                    'pet_oudin_mm_day', 'net_radiation', 'ext_rad_fao56'
                 ],
                 categorical_features=[
                     'biome_code', 'igbp_class_code'
@@ -112,7 +114,9 @@ class FeatureManager:
                     # Stand characteristics
                     'basal_area', 'tree_density', 'leaf_area_index',
                     # Climate classification (already encoded as numeric)
-                    'koppen_geiger_code_encoded'
+                    'koppen_geiger_code_encoded',
+                    # Physics-based environmental drivers (if available)
+                    'pet_oudin_mm_day', 'net_radiation', 'ext_rad_fao56'
                 ],
                 categorical_features=[
                     'species_functional_group_code', 'leaf_habit_code',
@@ -147,11 +151,34 @@ class FeatureManager:
                     # Environmental features from processed data
                     'mean_ta', 'mean_rh', 'mean_vpd', 'mean_sw_in',  # if available
                     'mean_precip', 'mean_ws',  # if available
+                    # Physics-based summaries, if present
+                    'pet_oudin_mm_day', 'net_radiation', 'ext_rad_fao56'
                     # Climate classification (already encoded as numeric)
-                    'koppen_geiger_code_encoded'
+                    , 'koppen_geiger_code_encoded'
                 ],
                 categorical_features=[],
                 description='Pure environmental/climate variables and climate classifications without biological traits'
+            ),
+
+            # Water-balance focused clustering
+            'water_balance': FeatureSet(
+                name='water_balance',
+                numeric_features=[
+                    # Core hydro/soil moisture drivers
+                    'swc_shallow',
+                    'swc_deep',  # if available
+                    'precip', 'mean_precip',
+                    'vpd', 'mean_vpd',
+                    'rh', 'mean_rh',
+                    # Radiation and PET (atmospheric demand / energy)
+                    'pet_oudin_mm_day', 'net_radiation', 'sw_in', 'mean_sw_in',
+                    # Light/wind (optional if present)
+                    'ppfd_in', 'mean_ws',
+                    # Keep basic geography for stability
+                    'longitude', 'latitude'
+                ],
+                categorical_features=[],
+                description='Water-balance focused features emphasizing soil moisture, precipitation, atmospheric demand (PET, VPD), and energy inputs'
             ),
             
             # Plant functional groups clustering

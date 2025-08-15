@@ -86,6 +86,11 @@ class ProcessingConfig:
         'rate_of_change_features': True,  # Enable rate of change features
         'cumulative_features': True,  # Enable cumulative features
         'seasonality_features': True,  # Enable seasonal temperature/precipitation range features
+        # New physics-based feature switches
+        'radiation_budget_features': True,   # Rns, Rnl, Rn, Ra, Rso, daylight hours
+        'faof56_support_terms': True,        # es(T), Δ, P(z), γ
+        'pet_features': True,                # Oudin PET (lightweight proxy)
+        'rs_fallback_estimation': True,      # Hargreaves Rs when sw_in missing
         'memory_chunking': True,    # Enable memory-based chunking
         'adaptive_chunking': True,  # Enable adaptive chunk sizing
         'parallel_processing': True,  # Enable parallel processing for feature groups
@@ -108,7 +113,11 @@ class ProcessingConfig:
             'seasonality_features': False,
             'categorical_encoding': True,  # Always encode categorical variables
             'metadata_features': True,    # Always include available metadata
-            'advanced_temporal_features': False
+            'advanced_temporal_features': False,
+            'radiation_budget_features': False,
+            'faof56_support_terms': False,
+            'pet_features': False,
+            'rs_fallback_estimation': False
         },
         'temporal': {
             'name': 'Temporal Features',
@@ -123,7 +132,11 @@ class ProcessingConfig:
             'seasonality_features': True,
             'categorical_encoding': True,
             'metadata_features': True,
-            'advanced_temporal_features': True
+            'advanced_temporal_features': True,
+            'radiation_budget_features': False,
+            'faof56_support_terms': False,
+            'pet_features': False,
+            'rs_fallback_estimation': False
         },
         'ecological': {
             'name': 'Ecological Features',
@@ -138,7 +151,11 @@ class ProcessingConfig:
             'seasonality_features': True, # Seasonal climate patterns
             'categorical_encoding': True,
             'metadata_features': True,
-            'advanced_temporal_features': False
+            'advanced_temporal_features': False,
+            'radiation_budget_features': True,
+            'faof56_support_terms': True,
+            'pet_features': True,
+            'rs_fallback_estimation': True
         },
         'interaction': {
             'name': 'Interaction Features',
@@ -153,7 +170,11 @@ class ProcessingConfig:
             'seasonality_features': False,
             'categorical_encoding': True,
             'metadata_features': True,
-            'advanced_temporal_features': False
+            'advanced_temporal_features': False,
+            'radiation_budget_features': False,
+            'faof56_support_terms': False,
+            'pet_features': False,
+            'rs_fallback_estimation': False
         },
         'comprehensive': {
             'name': 'Comprehensive (All Features)',
@@ -168,7 +189,11 @@ class ProcessingConfig:
             'seasonality_features': True,
             'categorical_encoding': True,
             'metadata_features': True,
-            'advanced_temporal_features': True
+            'advanced_temporal_features': True,
+            'radiation_budget_features': True,
+            'faof56_support_terms': True,
+            'pet_features': True,
+            'rs_fallback_estimation': True
         }
     }
     
@@ -255,7 +280,9 @@ class ProcessingConfig:
             if key in ['temporal_features', 'rolling_features', 'lagged_features', 
                       'interaction_features', 'rate_of_change_features', 'cumulative_features',
                       'domain_features', 'seasonality_features', 'categorical_encoding',
-                      'metadata_features', 'advanced_temporal_features']:
+                      'metadata_features', 'advanced_temporal_features',
+                      'radiation_budget_features', 'faof56_support_terms', 'pet_features',
+                      'rs_fallback_estimation']:
                 updated_settings[key] = value
         
         return updated_settings

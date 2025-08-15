@@ -58,7 +58,7 @@ Examples:
     
     # Feature selection (the main improvement!)
     parser.add_argument('--feature-set',
-                        choices=['geographic', 'biome', 'climate', 'ecological', 'comprehensive', 'performance', 'environmental', 'plant_functional', 'v2_core', 'v2_advanced', 'v2_hybrid', 'v3_hybrid', 'advanced_core', 'advanced_derived', 'advanced_hybrid'],
+                        choices=['geographic', 'biome', 'climate', 'ecological', 'comprehensive', 'performance', 'environmental', 'water_balance', 'plant_functional', 'v2_core', 'v2_advanced', 'v2_hybrid', 'v3_hybrid', 'advanced_core', 'advanced_derived', 'advanced_hybrid'],
                        default='comprehensive',
                        help='Feature set to use for clustering (default: comprehensive)')
     

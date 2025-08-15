@@ -421,10 +421,10 @@ class MemoryOptimizedClusterTrainer:
                     X_df[col] = X_df[col].astype(int)
                 elif X_df[col].dtype == 'object':
                     # Try to convert object columns to numeric, fill non-numeric with 0
-                    X_df[col] = pd.to_numeric(X_df[col], errors='coerce')
+                    X_df[col] = pd.to_numeric(X_df[col], errors='coerce').fillna(0)
             
             # Fill remaining NaN values with 0
-            X = X_df.values
+            X = X_df.fillna(0).values
             y = df_chunk[self.target_col].values
             
             # Convert to libsvm format and append to file
@@ -483,10 +483,10 @@ class MemoryOptimizedClusterTrainer:
                 X_df[col] = X_df[col].astype(int)
             elif X_df[col].dtype == 'object':
                 # Try to convert object columns to numeric, fill non-numeric with 0
-                X_df[col] = pd.to_numeric(X_df[col], errors='coerce')
+                X_df[col] = pd.to_numeric(X_df[col], errors='coerce').fillna(0)
         
         # Fill remaining NaN values with 0
-        X = X_df.values
+        X = X_df.fillna(0).values
         y = df_site[self.target_col].values
         
         # Convert to libsvm format and append to file

@@ -95,7 +95,7 @@ class MemoryOptimizedClusterTrainer:
     """
     
     def __init__(self, parquet_dir='../../processed_parquet', results_dir='./results/cluster_models', 
-                 cluster_file=None, force_gpu=False, run_name=None):
+                 cluster_file=None, force_gpu=False, allow_cpu=False, run_name=None):
         self.parquet_dir = parquet_dir
         self.cluster_file = cluster_file
         self.target_col = 'sap_flow'
@@ -104,6 +104,7 @@ class MemoryOptimizedClusterTrainer:
         self.random_state = 42
         self.timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
         self.force_gpu = force_gpu
+        self.allow_cpu = allow_cpu
         self.run_name = run_name
         
         # Create run-specific results directory
@@ -150,6 +151,8 @@ class MemoryOptimizedClusterTrainer:
         print(f"⏰ Timestamp: {self.timestamp}")
         print(f"🎯 Target column: {self.target_col}")
         print(f"🎮 GPU enabled: {self.use_gpu}")
+        if not self.use_gpu and not self.allow_cpu:
+            raise SystemExit("CPU fallback is disabled. A CUDA-capable GPU is required. Use --allow-cpu to override (legacy).")
         if cluster_file:
             print(f"📄 Cluster file: {cluster_file}")
     
@@ -213,7 +216,7 @@ class MemoryOptimizedClusterTrainer:
                     print("  🔥 Force GPU flag enabled - will attempt GPU training anyway")
                     self.use_gpu = True
                 else:
-                    print("  🔄 Falling back to CPU training")
+                    print("  🔄 GPU training unavailable")
                     self.use_gpu = False
                     
         except ImportError as e:
@@ -221,7 +224,7 @@ class MemoryOptimizedClusterTrainer:
             self.use_gpu = False
         
         if not self.use_gpu and not cuda_available:
-            print("  💻 Using CPU-only training")
+            print("  💻 GPU not detected")
     
     def _configure_memory_settings(self):
         """Configure memory settings based on available system memory"""
@@ -620,10 +623,10 @@ class MemoryOptimizedClusterTrainer:
                     X_df[col] = X_df[col].astype(int)
                 elif X_df[col].dtype == 'object':
                     # Try to convert object columns to numeric, fill non-numeric with 0
-                    X_df[col] = pd.to_numeric(X_df[col], errors='coerce')
+                    X_df[col] = pd.to_numeric(X_df[col], errors='coerce').fillna(0)
             
             # Fill remaining NaN values with 0
-            X = X_df.values
+            X = X_df.fillna(0).values
             y = df_chunk[self.target_col].values
             
             # Convert to libsvm format and append to file
@@ -681,10 +684,10 @@ class MemoryOptimizedClusterTrainer:
                 X_df[col] = X_df[col].astype(int)
             elif X_df[col].dtype == 'object':
                 # Try to convert object columns to numeric, fill non-numeric with 0
-                X_df[col] = pd.to_numeric(X_df[col], errors='coerce')
+                X_df[col] = pd.to_numeric(X_df[col], errors='coerce').fillna(0)
         
         # Fill remaining NaN values with 0
-        X = X_df.values
+        X = X_df.fillna(0).values
         y = df_site[self.target_col].values
         
         # Convert to libsvm format and append to file
@@ -1283,10 +1286,10 @@ class MemoryOptimizedClusterTrainer:
                 X_df[col] = X_df[col].astype(int)
             elif X_df[col].dtype == 'object':
                 # Try to convert object columns to numeric, fill non-numeric with 0
-                X_df[col] = pd.to_numeric(X_df[col], errors='coerce')
+                X_df[col] = pd.to_numeric(X_df[col], errors='coerce').fillna(0)
         
         # Fill remaining NaN values with 0
-        X = X_df.values
+        X = X_df.fillna(0).values
         
         return X, feature_cols
     
@@ -1483,6 +1486,22 @@ class MemoryOptimizedClusterTrainer:
                 print(f"Average Test R²: {avg_r2:.4f}")
                 print(f"Average Test RMSE: {avg_rmse:.4f}")
                 
+                # Save per-cluster metrics and overall summary
+                metrics_df = pd.DataFrame(all_metrics)
+                metrics_csv = os.path.join(self.results_dir, f"cluster_training_metrics_{self.timestamp}.csv")
+                metrics_df.to_csv(metrics_csv, index=False)
+                overall_summary = {
+                    "mean_test_r2": float(metrics_df["test_r2"].mean()),
+                    "mean_test_rmse": float(metrics_df["test_rmse"].mean()),
+                    "mean_test_mae": float(metrics_df["test_mae"].mean()),
+                    "clusters_trained": int(len(metrics_df))
+                }
+                summary_json = os.path.join(self.results_dir, f"cluster_training_summary_{self.timestamp}.json")
+                with open(summary_json, "w") as f:
+                    json.dump(overall_summary, f, indent=2)
+                print(f"Per-cluster metrics saved: {metrics_csv}")
+                print(f"Overall summary saved: {summary_json}")
+                
                 # Show per-cluster performance
                 print(f"\nPer-cluster performance:")
                 for info in sorted(all_model_info, key=lambda x: x['r2'], reverse=True):
@@ -1513,6 +1532,8 @@ def main():
                         help="Specific cluster CSV file to use (e.g., '../evaluation/clustering_results/biome_20250804_123456/flexible_site_clusters_20250804_123456.csv')")
     parser.add_argument('--force-gpu', action='store_true',
                         help="Force GPU usage even if detection fails")
+    parser.add_argument('--allow-cpu', action='store_true',
+                        help='Permit CPU fallback (legacy); otherwise require GPU')
     parser.add_argument('--run-name', default=None,
                         help="Name for this training run (will be appended with timestamp for directory naming)")
     
@@ -1545,6 +1566,7 @@ def main():
             results_dir=args.results_dir,
             cluster_file=args.cluster_file,
             force_gpu=args.force_gpu,
+            allow_cpu=args.allow_cpu,
             run_name=args.run_name
         )
         
