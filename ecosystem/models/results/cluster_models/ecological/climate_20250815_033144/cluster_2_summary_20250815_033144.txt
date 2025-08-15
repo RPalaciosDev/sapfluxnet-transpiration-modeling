@@ -1,0 +1,9 @@
+Cluster 2 Summary
+========================================
+
+Samples: train=3765900, test=941475, total=4707375
+Features: 78
+
+Train: RMSE=6.2884, MAE=1.6972, R2=0.9557
+Test : RMSE=11.6069, MAE=1.7170, R2=-1.9753
+Best iteration: 200

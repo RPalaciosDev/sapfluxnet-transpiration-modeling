@@ -1,0 +1,9 @@
+Cluster 4 Summary
+========================================
+
+Samples: train=4013370, test=1003343, total=5016713
+Features: 78
+
+Train: RMSE=1.1801, MAE=0.5620, R2=0.9043
+Test : RMSE=1.3250, MAE=0.5780, R2=0.8816
+Best iteration: 200
